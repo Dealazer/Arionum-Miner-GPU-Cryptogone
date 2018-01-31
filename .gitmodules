@@ -1,0 +1,3 @@
+[submodule "argon2-gpu"]
+	path = argon2-gpu
+	url = https://gitlab.com/omos/argon2-gpu.git
