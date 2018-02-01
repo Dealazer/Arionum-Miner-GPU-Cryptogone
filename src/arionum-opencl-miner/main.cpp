@@ -62,6 +62,17 @@ int main(int, const char *const *argv) {
     auto *updater = new Updater(stats, &settings, &data);
     updater->update();
 
+    cout << data << endl;
+size_t o = 111;
+    data.updateData("a","b",o,"c","d");
+    o = 44444;
+    cout << data << endl;
+
+    if(true)
+return 0;
+
+
+
     thread t(&Updater::start, updater);
 
     Miner *miner = new OpenClMiner(stats, &settings, &data, updater, &args.deviceIndex);
