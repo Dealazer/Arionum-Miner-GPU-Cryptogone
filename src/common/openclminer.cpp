@@ -34,6 +34,7 @@ void OpenClMiner::computeHash() {
     for (size_t j = 0; j < size; ++j) {
         unit->getHash(j, buffer.get());
         char *openClEnc = encode(buffer.get(), 32);
-        argons.push_back(std::string(openClEnc));
+        string encodedArgon(openClEnc);
+        argons.push_back(encodedArgon);
     }
 }

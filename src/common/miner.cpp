@@ -30,10 +30,12 @@ void Miner::mine() {
         argons.clear();
         buildBatch();
         computeHash();
+        cout << "size=" << *settings->getBatchSize() << endl;
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
         }
         stats->addHashes(*settings->getBatchSize());
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     }
 }
 
@@ -125,6 +127,11 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     result.set_str(duration, 10);
     diff.set_str(*data->getDifficulty(), 10);
     mpz_tdiv_r(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
+    gmp_printf("limit=%Zd", limit.get_mpz_t());
+    gmp_printf("Data - %Zd - %Zd - %Zd - %Zd\n", rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t(),
+               limit.get_mpz_t());
+    cout << ">0=" << mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) << endl;
+    cout << "<limit=" << mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) << endl;
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
         mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
@@ -137,17 +144,17 @@ void Miner::submit(string *argon, string *nonce) {
     string argonTail = argon->substr(29);
     stringstream body;
     boost::replace_all(*nonce, "+", "%2B");
-    boost::replace_all(*argon, "+", "%2B");
+    boost::replace_all(argonTail, "+", "%2B");
     boost::replace_all(*nonce, "$", "%24");
-    boost::replace_all(*argon, "$", "%24");
+    boost::replace_all(argonTail, "$", "%24");
     boost::replace_all(*nonce, "/", "%2F");
-    boost::replace_all(*argon, "/", "%2F");
+    boost::replace_all(argonTail, "/", "%2F");
     body << "address=" << *settings->getPrivateKey()
          << "&argon=" << argonTail
          << "&nonce=" << *nonce
          << "&private_key=" << *settings->getPrivateKey()
          << "&public_key=" << data->getPublic_key();
-
+    cout << body << endl;
     http_request req(methods::POST);
     req.set_request_uri(U("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
