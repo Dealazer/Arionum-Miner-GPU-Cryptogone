@@ -74,6 +74,7 @@ public:
         client = new http_client(U(ms->getPoolAddress()->c_str()));
         generator = std::mt19937(device());
         distribution = std::uniform_int_distribution<uint8_t>(0, 255);
+        limit = data->getLimit();
     };
 
     void mine();

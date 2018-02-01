@@ -21,8 +21,10 @@ static int b64_byte_to_char(unsigned x) {
 void Miner::mine() {
     while (true) {
         MinerData *pData = updater->getData();
-        if (*data != *pData)
+        if (*data != *pData) {
             data = pData->getCopy();
+            limit = data->getLimit();
+        }
         nonces.clear();
         bases.clear();
         argons.clear();
