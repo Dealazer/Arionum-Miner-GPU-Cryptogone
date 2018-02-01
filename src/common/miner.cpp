@@ -154,7 +154,7 @@ void Miner::submit(string *argon, string *nonce) {
          << "&nonce=" << *nonce
          << "&private_key=" << *settings->getPrivateKey()
          << "&public_key=" << data->getPublic_key();
-    cout << body << endl;
+    cout << body.str() << endl;
     http_request req(methods::POST);
     req.set_request_uri(U("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
