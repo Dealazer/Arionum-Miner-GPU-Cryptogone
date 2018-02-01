@@ -23,7 +23,7 @@ void Miner::mine() {
         MinerData *pData = updater->getData();
         //if (*data != *pData) {
             data = pData->getCopy();
-            limit. = data->getLimit();
+            limit = data->getLimit();
             gmp_printf("limit=%Zd", limit.get_mpz_t());
         //}
         nonces.clear();
@@ -36,7 +36,7 @@ void Miner::mine() {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
         }
         stats->addHashes(*settings->getBatchSize());
-        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     }
 }
 
