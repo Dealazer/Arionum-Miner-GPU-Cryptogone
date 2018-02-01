@@ -36,8 +36,6 @@ add_executable(arionum-opencl-miner
         include/miner.h
         include/openclminer.h
         src/common/openclminer.cpp
-        include/cudaminer.h
-        src/common/cudaminer.cpp
         include/updater.h
         src/common/updater.cpp
         include/stats.h
@@ -63,8 +61,6 @@ if(CUDA_FOUND)
 add_executable(arionum-cuda-miner
         src/arionum-cuda-miner/main.cpp
         include/miner.h
-        include/openclminer.h
-        src/common/openclminer.cpp
         include/cudaminer.h
         src/common/cudaminer.cpp
         include/updater.h
