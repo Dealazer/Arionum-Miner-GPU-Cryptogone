@@ -9,8 +9,6 @@
 #include "../../argon2-gpu/include/commandline/commandlineparser.h"
 #include "../../argon2-gpu/include/commandline/argumenthandlers.h"
 
-#include "../../argon2-gpu/include/argon2-opencl/globalcontext.h"
-
 #include "../../include/minerdata.h"
 #include "../../include/updater.h"
 #include "../../include/cudaminer.h"
