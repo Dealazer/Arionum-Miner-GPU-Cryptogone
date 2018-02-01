@@ -21,10 +21,11 @@ static int b64_byte_to_char(unsigned x) {
 void Miner::mine() {
     while (true) {
         MinerData *pData = updater->getData();
-        if (*data != *pData) {
+        //if (*data != *pData) {
             data = pData->getCopy();
-            limit = data->getLimit();
-        }
+            limit. = data->getLimit();
+            gmp_printf("limit=%Zd", limit.get_mpz_t());
+        //}
         nonces.clear();
         bases.clear();
         argons.clear();
@@ -127,7 +128,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     result.set_str(duration, 10);
     diff.set_str(*data->getDifficulty(), 10);
     mpz_tdiv_r(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
-    gmp_printf("limit=%Zd", limit.get_mpz_t());
+
     gmp_printf("Data - %Zd - %Zd - %Zd - %Zd\n", rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t(),
                limit.get_mpz_t());
     cout << ">0=" << mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) << endl;
