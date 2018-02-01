@@ -61,6 +61,7 @@ int main(int, const char *const *argv) {
 
     auto *updater = new Updater(stats, &settings, &data);
     updater->update();
+
     thread t(&Updater::start, updater);
 
     Miner *miner = new OpenClMiner(stats, &settings, &data, updater, &args.deviceIndex);

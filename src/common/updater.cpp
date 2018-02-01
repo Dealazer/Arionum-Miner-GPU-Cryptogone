@@ -58,7 +58,7 @@ void Updater::processResponse(const json::value *value) {
                 string public_key = jsonData.at(U("public_key")).as_string();
                 int limit = jsonData.at(U("limit")).as_integer();
                 if (data->isNewBlock(&block)) {
-                    data->updateData(status, difficulty, &limit, block, public_key);
+                    data->updateData(status, difficulty, static_cast<size_t>(limit), block, public_key);
                     cout << "New block found: " << *data << endl;
                 }
             }

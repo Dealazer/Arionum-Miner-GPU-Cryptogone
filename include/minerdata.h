@@ -24,9 +24,9 @@ private:
     MinerData(const MinerData &data);
 
 public:
-    MinerData() : limit(0) {};
+    MinerData() : limit(100000) {};
 
-    void updateData(string s, string d, int *l, string b, string p);
+    void updateData(string s, string d, size_t l, string b, string p);
 
     MinerData *getCopy();
 

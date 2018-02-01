@@ -15,11 +15,11 @@ MinerData::MinerData(const MinerData &data) {
     *public_key = *data.public_key;
 }
 
-void MinerData::updateData(string s, string d, int *l, string b, string p) {
+void MinerData::updateData(string s, string d, size_t l, string b, string p) {
     std::lock_guard<std::mutex> lg(mutex);
     status->assign(s);
     difficulty->assign(d);
-    limit = *l;
+    limit = l;
     block->assign(b);
     public_key->assign(p);
 }
