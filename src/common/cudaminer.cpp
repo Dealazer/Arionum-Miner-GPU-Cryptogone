@@ -7,10 +7,9 @@
 
 using namespace std;
 
-CudaMiner::CudaMiner(int *id) : Miner(id) {
+CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, MinerData *d, Updater *u) : Miner(s, ms, d, u) {
 
 }
 
 void CudaMiner::mine() {
-    cout << "Miner" << *id << endl;
 }

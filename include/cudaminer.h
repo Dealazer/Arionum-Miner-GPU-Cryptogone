@@ -6,12 +6,13 @@
 #define ARIONUM_GPU_MINER_CUDAMINER_H
 
 #include "miner.h"
+#include "updater.h"
 
 class CudaMiner : public Miner {
 public:
     void mine();
 
-    explicit CudaMiner(int *id);
+    explicit CudaMiner(Stats *s, MinerSettings *ms, MinerData *d, Updater *u);
 };
 
 #endif //ARIONUM_GPU_MINER_CUDAMINER_H
