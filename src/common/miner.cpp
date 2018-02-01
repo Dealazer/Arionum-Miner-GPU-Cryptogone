@@ -27,16 +27,11 @@ void Miner::mine() {
         bases.clear();
         argons.clear();
         buildBatch();
-        for (auto const &s : nonces) {
-            cout << s << endl;
-        }
-        for (auto const &s : bases) {
-            cout << s << endl;
-        }
         computeHash();
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
         }
+        stats->addHashes(*settings->getBatchSize());
     }
 }
 

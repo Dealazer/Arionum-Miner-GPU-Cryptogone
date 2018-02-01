@@ -55,8 +55,7 @@ bool MinerData::isNewBlock(string *newBlock) {
 
 
 ostream &operator<<(ostream &os, const MinerData &data) {
-    os << endl
-       << " - difficulty: " << *data.getDifficulty()
+    os << " difficulty: " << *data.getDifficulty()
        << " - limit: " << data.getLimit()
        << " - block: " << *data.getBlock()
        << " - public_key: " << *data.getPublic_key()

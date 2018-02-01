@@ -35,25 +35,6 @@ string generateUniqid();
 
 
 int main(int, const char *const *argv) {
-    auto saltBytes = new char[16];
-
-    argon2::opencl::GlobalContext global;
-    auto &devices = global.getAllDevices();
-    auto &device = devices[2];
-    cout << "using device " << device.getName() << endl;
-    argon2::Type type = argon2::ARGON2_I;
-    argon2::Version version = argon2::ARGON2_VERSION_13;
-    argon2::opencl::ProgramContext progCtx(&global, {device}, type, version);
-
-    argon2::Argon2Params params(32, saltBytes, 16, nullptr, 0, nullptr, 0, 4, 16384, 4);
-    argon2::opencl::ProcessingUnit unit(&progCtx, &params, &device, 1, false, false);
-
-
-    if(true)
-        return 0;
-
-
-
     MinerData data;
     CommandLineParser<OpenCLArguments> parser = buildCmdLineParser();
     OpenCLArguments args;
