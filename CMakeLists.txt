@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(arionum-gpu-miner CXX)
+project(arionum-gpu-miner)
 
 set(BINARY_INSTALL_DIR /usr/local/bin)
 set(LIBRARY_INSTALL_DIR /usr/local/lib)
@@ -22,9 +22,7 @@ else()
 endif()
 
 if(CUDA_FOUND)
-    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};
-            -std=c++11;-O3;--ptxas-options=-v;-arch sm_30;-lineinfo
-            )
+    include_directories("${CUDA_INCLUDE_DIRS}")
 endif()
 
 
