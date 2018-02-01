@@ -28,6 +28,27 @@ using namespace web::http;
 using namespace web::http::client;
 
 class Miner {
+private:
+    const char *alphanum = "0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    int stringLength = sizeof(alphanum) - 1;
+
+    char genRandom(int v) {
+        return alphanum[v];
+    }
+
+    std::string randomStr(int length) {
+        std::stringstream ss;
+        std::random_device rd; // obtain a random number from hardware
+        std::mt19937 eng(rd()); // seed the generator
+        std::uniform_int_distribution<> distr(0, stringLength); // define the range
+
+        for (int i = 0; i < length; ++i) {
+            ss << genRandom(distr(eng));
+        }
+        return ss.str();
+    }
+
+
 protected:
     mpz_class ZERO;
     mpz_class BLOCK_LIMIT;
@@ -49,8 +70,7 @@ protected:
     char *nonceBase64 = new char[64];
     uint8_t *byteBuffer = new uint8_t[32];
 
-    char *saltBase64 = new char[32];
-    uint8_t *saltBuffer = new uint8_t[16];
+    string salt;
 
     std::random_device device;
     std::mt19937 generator;
@@ -73,6 +93,8 @@ public:
         client = new http_client(U(ms->getPoolAddress()->c_str()));
         generator = std::mt19937(device());
         distribution = std::uniform_int_distribution<uint8_t>(0, 255);
+        salt = randomStr(16);
+        cout << "SALT=" << salt << endl;
     };
 
     void mine();
@@ -93,5 +115,9 @@ public:
 
 
 };
+
+
+
+
 
 #endif //ARIONUM_GPU_MINER_MINER_H
