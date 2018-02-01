@@ -39,7 +39,7 @@ add_executable(arionum-opencl-miner
         include/cudaminer.h
         src/common/cudaminer.cpp
         include/updater.h
-        src/common/updater.cpp
+        src/common/updater.cppuda v
         include/stats.h
         src/common/stats.cpp
         include/minerdata.h
