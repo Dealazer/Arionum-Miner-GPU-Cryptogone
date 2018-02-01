@@ -106,14 +106,6 @@ void Miner::buildBatch() {
 
 void Miner::checkArgon(string *base, string *argon, string *nonce) {
 
-    size_t encodedlen = argon2_encodedlen(4, 16384, 4, 16, 32, Argon2_i);
-    char *enc = new char[encodedlen];
-    const void *pw = base->data();
-    argon2i_hash_encoded(4, 16384, 4, pw, std::strlen(base->data()), salt.data(), 16, 32, enc, encodedlen);
-
-    cout << "My=" << *argon << endl;
-    cout << "Ot=" << enc << endl;
-
     std::stringstream oss;
     oss << *base << *argon;
 
