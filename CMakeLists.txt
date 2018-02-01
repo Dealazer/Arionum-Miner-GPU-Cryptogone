@@ -58,7 +58,7 @@ target_link_libraries(arionum-opencl-miner
         -lcpprest
         -largon2
         )
-
+if(CUDA_FOUND)
 add_executable(arionum-cuda-miner
         src/arionum-cuda-miner/main.cpp
         include/miner.h
@@ -78,7 +78,6 @@ add_executable(arionum-cuda-miner
 
 target_link_libraries(arionum-cuda-miner
         argon2-cuda
-        -lcuda
         -lboost_system
         -lssl
         -lcrypto
@@ -87,3 +86,4 @@ target_link_libraries(arionum-cuda-miner
         -lcpprest
         -largon2
         )
+endif()
