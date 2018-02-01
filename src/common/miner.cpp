@@ -23,8 +23,9 @@ void Miner::mine() {
         cout << "Round start" << endl;
         cout << (data == nullptr) << endl;
         cout << *updater->getData()->getBlock() << endl;
-        if(data!= nullptr)
+        if(data != NULL)
             cout << data->isNewBlock(updater->getData()->getBlock()) << endl;
+        cout << "after" << endl;
         if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
             cout << "Update data" << endl;
             data = updater->getData();

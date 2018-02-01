@@ -38,7 +38,7 @@ protected:
 
     Stats *stats;
     MinerSettings *settings;
-    MinerData *data;
+    MinerData *data = nullptr;
     http_client *client;
 
     Updater *updater;
