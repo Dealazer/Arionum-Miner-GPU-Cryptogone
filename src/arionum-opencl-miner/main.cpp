@@ -10,7 +10,6 @@
 #include "../../include/openclminer.h"
 #include "../../include/minerdata.h"
 #include "../../include/updater.h"
-#include "../../include/cudaminer.h"
 #include <sys/time.h>
 #include <iomanip>
 
