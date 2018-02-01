@@ -130,6 +130,10 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     mpz_tdiv_r(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
 
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
+        gmp_printf("limit=%Zd", limit.get_mpz_t());
+        gmp_printf("Data - %Zd - %Zd - %Zd - %Zd\n", rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t(), limit.get_mpz_t());
+        cout << ">0=" <<mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) << endl;
+        cout << "<limit="<<mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) << endl;
         mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
         submit(argon, nonce);
@@ -150,7 +154,7 @@ void Miner::submit(string *argon, string *nonce) {
          << "&argon=" << argonTail
          << "&nonce=" << *nonce
          << "&private_key=" << *settings->getPrivateKey()
-         << "&public_key=" << data->getPublic_key();
+         << "&public_key=" << *data->getPublic_key();
     cout << body.str() << endl;
     http_request req(methods::POST);
     req.set_request_uri(U("/mine.php?q=submitNonce"));
