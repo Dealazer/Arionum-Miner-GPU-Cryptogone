@@ -24,7 +24,8 @@ void Miner::mine() {
         //if (*data != *pData) {
             data = pData->getCopy();
             limit = data->getLimit();
-            gmp_printf("limit=%Zd", limit.get_mpz_t());
+            cout << data->getLimit() << endl;
+            gmp_printf("limit=%Zd\n", limit.get_mpz_t());
             cout << data->getLimit() << endl;
         //}
         nonces.clear();

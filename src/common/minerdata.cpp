@@ -38,6 +38,7 @@ string *MinerData::getDifficulty() const {
 }
 
 int MinerData::getLimit() const {
+    std::lock_guard<std::mutex> lg(mutex);
     return limit;
 }
 
