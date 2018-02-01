@@ -31,11 +31,9 @@ public:
     void start();
 
 
-    explicit Updater(Stats *s, MinerSettings *ms, MinerData *d) : stats(s),
-                                                                  settings(ms),
-                                                                  data(d) {
+    explicit Updater(Stats *s, MinerSettings *ms) : stats(s),
+                                                                  settings(ms) {
         client = new http_client(U(ms->getPoolAddress()->c_str()));
-
     };
 
 

@@ -23,7 +23,7 @@ private:
 public:
     void computeHash();
 
-    OpenClMiner(Stats *s, MinerSettings *ms, MinerData *d, Updater *pUpdater, size_t *deviceIndex);
+    OpenClMiner(Stats *s, MinerSettings *ms, Updater *pUpdater, size_t *deviceIndex);
 };
 
 #endif //ARIONUM_GPU_MINER_OPENCLMINER_H

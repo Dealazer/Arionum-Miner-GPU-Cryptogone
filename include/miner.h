@@ -61,7 +61,7 @@ protected:
     argon2::Argon2Params *params;
 
 public:
-    explicit Miner(Stats *s, MinerSettings *ms, MinerData *d, Updater *u) : stats(s),
+    explicit Miner(Stats *s, MinerSettings *ms, Updater *u) : stats(s),
                                                                                   settings(ms),
                                                                                   rest(0),
                                                                                   diff(1),
@@ -70,11 +70,9 @@ public:
                                                                                   BLOCK_LIMIT(240),
                                                                                   limit(0),
                                                                                   updater(u) {
-        data = d->getCopy();
         client = new http_client(U(ms->getPoolAddress()->c_str()));
         generator = std::mt19937(device());
         distribution = std::uniform_int_distribution<uint8_t>(0, 255);
-        limit = data->getLimit();
     };
 
     void mine();

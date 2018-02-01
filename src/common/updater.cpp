@@ -23,6 +23,7 @@ void Updater::update() {
                     response.headers().set_content_type("application/json");
                     return response.extract_json();
                 }
+                cout << "BAD RESPONSE" << endl;
                 return pplx::task_from_result(json::value());
             })
             .then([this](pplx::task<json::value> previousTask) {
@@ -57,8 +58,10 @@ void Updater::processResponse(const json::value *value) {
                 string block = jsonData.at(U("block")).as_string();
                 string public_key = jsonData.at(U("public_key")).as_string();
                 int limit = jsonData.at(U("limit")).as_integer();
-                if (data->isNewBlock(&block)) {
-                    data->updateData(status, difficulty, static_cast<size_t>(limit), block, public_key);
+                string limitAsString = std::to_string(limit);
+                cout << "ASSTRING=" << limitAsString << endl;
+                if (data==NULL || data->isNewBlock(&block)) {
+                    data = new MinerData(status, difficulty, limitAsString, block, public_key);
                     cout << "New block found: " << *data << endl;
                 }
             }

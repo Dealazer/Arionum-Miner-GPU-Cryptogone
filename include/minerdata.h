@@ -16,31 +16,30 @@ class MinerData {
 private:
     string *status = new string("");
     string *difficulty = new string("56648645");
-    std::atomic<int> limit;
+    string *limit = new string("");
     string *block = new string("");
     string *public_key = new string("");
-    std::mutex mutex;
-
-    MinerData(const MinerData &data);
 
 public:
-    MinerData() : limit(100000) {};
-
-    void updateData(string s, string d, size_t l, string b, string p);
-
-    MinerData *getCopy();
+    MinerData(string s, string d, string l, string b, string p) {
+        status = new string(s);
+        difficulty = new string(d);
+        block = new string(b);
+        public_key = new string(p);
+        limit = new string(l);
+    };
 
     string *getStatus() const;
 
     string *getDifficulty() const;
 
-    int getLimit() const;
+    string *getLimit() const;
 
     string *getBlock() const;
 
     string *getPublic_key() const;
 
-    bool isNewBlock(string *newBloack);
+    bool isNewBlock(string *newBlock);
 
     friend ostream &operator<<(ostream &os, const MinerData &data);
 

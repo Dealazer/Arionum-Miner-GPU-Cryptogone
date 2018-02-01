@@ -12,7 +12,7 @@ class CudaMiner : public Miner {
 public:
     void mine();
 
-    explicit CudaMiner(Stats *s, MinerSettings *ms, MinerData *d, Updater *u);
+    explicit CudaMiner(Stats *s, MinerSettings *ms, Updater *u);
 };
 
 #endif //ARIONUM_GPU_MINER_CUDAMINER_H

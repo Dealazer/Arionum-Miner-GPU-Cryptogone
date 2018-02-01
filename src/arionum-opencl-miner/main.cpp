@@ -35,7 +35,6 @@ string generateUniqid();
 
 
 int main(int, const char *const *argv) {
-    MinerData data;
     CommandLineParser<OpenCLArguments> parser = buildCmdLineParser();
     OpenCLArguments args;
     int ret = parser.parseArguments(args, argv);
@@ -59,12 +58,12 @@ int main(int, const char *const *argv) {
     vector<Miner *> miners;
     auto *stats = new Stats();
 
-    auto *updater = new Updater(stats, &settings, &data);
+    auto *updater = new Updater(stats, &settings);
     updater->update();
 
     thread t(&Updater::start, updater);
 
-    Miner *miner = new OpenClMiner(stats, &settings, &data, updater, &args.deviceIndex);
+    Miner *miner = new OpenClMiner(stats, &settings, updater, &args.deviceIndex);
     miners.push_back(miner);
     vector<thread> threads;
     for (auto const &miner: miners) {

@@ -7,8 +7,8 @@
 
 using namespace std;
 
-OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, MinerData *d, Updater *u, size_t *deviceIndex)
-        : Miner(s, ms, d, u) {
+OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceIndex)
+        : Miner(s, ms, u) {
     generateBytes(saltBase64, 32, saltBuffer, 16);
     string salt(saltBase64);
     global = new argon2::opencl::GlobalContext();
