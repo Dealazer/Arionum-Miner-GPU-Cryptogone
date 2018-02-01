@@ -28,10 +28,8 @@ void Miner::mine() {
         nonces.clear();
         bases.clear();
         argons.clear();
-        cout << "batch" << endl;
         buildBatch();
         computeHash();
-        cout << "size=" << *settings->getBatchSize() << endl;
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
         }
@@ -128,10 +126,6 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     result.set_str(duration, 10);
     mpz_tdiv_r(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
 
-    gmp_printf("Data - %Zd - %Zd - %Zd - %Zd\n", rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t(),
-               limit.get_mpz_t());
-    cout << ">0=" << mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) << endl;
-    cout << "<limit=" << mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) << endl;
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
         mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
