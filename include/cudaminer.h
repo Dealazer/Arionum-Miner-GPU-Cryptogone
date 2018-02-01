@@ -10,6 +10,11 @@
 #include "miner.h"
 #include "updater.h"
 
+#include "../argon2-gpu/include/argon2-cuda/processingunit.h"
+#include "../argon2-gpu/include/argon2-cuda/programcontext.h"
+#include "../argon2-gpu/include/argon2-cuda/device.h"
+#include "../argon2-gpu/include/argon2-cuda/globalcontext.h"
+
 class CudaMiner : public Miner {
 private:
     argon2::cuda::ProcessingUnit *unit;
