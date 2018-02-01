@@ -138,6 +138,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
         cout << "<limit="<<mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) << endl;
         mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
+        cout << hex_to_string(sha, 128) << endl;
         submit(argon, nonce);
     }
     x.clear();
