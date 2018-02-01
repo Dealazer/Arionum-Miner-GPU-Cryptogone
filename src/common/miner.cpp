@@ -124,9 +124,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     x << std::dec << std::setfill('0') << std::setw(2) << (unsigned int) sha[45];
     x << std::dec << std::setfill('0') << std::setw(2) << (unsigned int) sha[55];
     string duration = x.str();
-    cout << "duration="  << duration << endl;
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
-    cout << "duration="  << duration << endl;
 
     result.set_str(duration, 10);
     mpz_tdiv_r(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
