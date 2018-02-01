@@ -62,10 +62,8 @@ int main(int, const char *const *argv) {
     auto *updater = new Updater(stats, &settings, &data);
     updater->update();
     thread t(&Updater::start, updater);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Miner *miner = new OpenClMiner(stats, &settings, &data, updater, &args.deviceIndex);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     miners.push_back(miner);
     vector<thread> threads;
     for (auto const &miner: miners) {
