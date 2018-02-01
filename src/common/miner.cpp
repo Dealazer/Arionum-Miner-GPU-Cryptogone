@@ -20,16 +20,25 @@ static int b64_byte_to_char(unsigned x) {
 
 void Miner::mine() {
     while (true) {
+        cout << "Round start" << endl;
         if (data== nullptr || data->isNewBlock(updater->getData()->getBlock())) {
+            cout << "Update data" << endl;
             data = updater->getData();
             limit.set_str(*data->getLimit(), 10);
             diff.set_str(*data->getDifficulty(), 10);
+            cout << "date updated" << endl;
         }
         nonces.clear();
         bases.clear();
         argons.clear();
+        cout << "prepare batch" << endl;
+
         buildBatch();
+        cout << "compute" << endl;
+
         computeHash();
+        cout << "Check" << endl;
+
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
         }
