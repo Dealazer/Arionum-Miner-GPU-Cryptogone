@@ -140,7 +140,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
         //submit(argon, nonce);
         cout << "submit base:" << base->data()
              << endl << "nonce:" << nonce->data()
-             << endl << "argon:" << << argon->data()
+             << endl << "argon:"  << argon->data()
              << endl;
     }
     x.clear();
