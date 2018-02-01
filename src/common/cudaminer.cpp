@@ -4,6 +4,10 @@
 
 #include <iostream>
 #include "../../include/cudaminer.h"
+#include "../../argon2-gpu/include/argon2-cuda/processingunit.h"
+#include "../../argon2-gpu/include/argon2-cuda/programcontext.h"
+#include "../../argon2-gpu/include/argon2-cuda/device.h"
+#include "../../argon2-gpu/include/argon2-cuda/globalcontext.h"
 
 using namespace std;
 
