@@ -24,7 +24,7 @@ add_executable(arionum-gpu-miner
         src/common/minerdata.cpp
         include/minersettings.h
         src/common/minersettings.cpp
-        src/common/miner.cpp include/openclprogramcontext.h)
+        src/common/miner.cpp)
 
 target_link_libraries(arionum-gpu-miner
         argon2-opencl
