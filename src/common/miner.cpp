@@ -21,9 +21,10 @@ static int b64_byte_to_char(unsigned x) {
 void Miner::mine() {
     while (true) {
         cout << "Round start" << endl;
-        cout << "data == nullptr)" << endl;
-        cout << updater->getData()->getBlock() << endl;
-        cout << data->isNewBlock(updater->getData()->getBlock()) << endl;
+        cout << (data == nullptr) << endl;
+        cout << *updater->getData()->getBlock() << endl;
+        if(data!= nullptr)
+            cout << data->isNewBlock(updater->getData()->getBlock()) << endl;
         if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
             cout << "Update data" << endl;
             data = updater->getData();
