@@ -121,7 +121,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
 }
 
 void printDeviceList() {
-    opencl::GlobalContext global;
+    cuda::GlobalContext global;
     auto &devices = global.getAllDevices();
     for (size_t i = 0; i < devices.size(); i++) {
         auto &device = devices[i];

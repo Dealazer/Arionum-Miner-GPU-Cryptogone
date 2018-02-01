@@ -22,7 +22,7 @@ else()
 endif()
 
 if(CUDA_FOUND)
-    include_directories(/usr/local/cuda-9.1/targets/x86_64-linux/include)
+    include_directories(${CUDA_INCLUDE_DIRS})
 endif()
 
 
