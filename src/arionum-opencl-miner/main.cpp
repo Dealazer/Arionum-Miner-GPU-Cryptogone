@@ -14,6 +14,8 @@
 #include <sys/time.h>
 #include <iomanip>
 
+#pragma comment(lib, "cpprest110_1_1")
+
 using namespace argon2;
 using namespace std;
 using namespace libcommandline;
