@@ -53,8 +53,45 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
     x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[40];
     x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[45];
     x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[55];
-    string duration = x.str();
+    string dd = x.str();
+    dd.erase(0, min(dd.find_first_not_of('0'), dd.size() - 1));
+
+
+    toHex(sha);
+    int a, b, c, d, e, f, g, h;
+    std::stringstream aa;
+    aa << std::hex << AS_SHA.get()[20] << AS_SHA.get()[21];
+    aa >> a;
+    aa.clear();
+    aa << std::hex << AS_SHA.get()[30] << AS_SHA.get()[31];
+    aa >> b;
+    aa.clear();
+    aa << std::hex << AS_SHA.get()[40] << AS_SHA.get()[41];
+    aa >> c;
+    aa.clear();
+    aa << std::hex << AS_SHA.get()[46] << AS_SHA.get()[47];
+    aa >> d;
+    aa.clear();
+    aa << std::hex << AS_SHA.get()[62] << AS_SHA.get()[63];
+    aa >> e;
+    aa.clear();
+    aa << std::hex << AS_SHA.get()[80] << AS_SHA.get()[81];
+    aa >> f;
+    aa.clear();
+    aa << std::hex << AS_SHA.get()[90] << AS_SHA.get()[91];
+    aa >> g;
+    aa.clear();
+    aa << std::hex << AS_SHA.get()[110] << AS_SHA.get()[111];
+    aa >> h;
+    aa.clear();
+    std::stringstream durationss;
+    durationss << a << b << c << d << e << f << g << h;
+    string duration = durationss.str();
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
+
+    cout << dd
+         << duration
+         << endl;
 
     mpz_t r;
     mpz_init(r);
@@ -70,7 +107,7 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
     }
     stats->newDl(mpz_get_si(r));
     mpz_clear(r);
-    x.clear();
+    aa.clear();
 }
 
 void SimpleCudaMiner::submit(string *argon, string *nonce) {

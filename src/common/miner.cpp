@@ -126,6 +126,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[45];
     x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[55];
     string duration = x.str();
+
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
     result.set_str(duration, 10);
