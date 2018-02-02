@@ -41,13 +41,9 @@ private:
     cuda::ProgramContext *progCtx;
     argon2::Argon2Params *params;
 
-    const char alphanum[] =
-            "0123456789"
-                    "!@#$%^&*"
-                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                    "abcdefghijklmnopqrstuvwxyz";
+    const char alphanum[] ="0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-    int stringLength = sizeof(alphanum) - 1;
+    int stringLength = strlen(alphanum) - 1;
 
     char genRandom(int v);
 
