@@ -363,7 +363,7 @@ void SimpleCudaMiner::start() {
         auto current = std::chrono::high_resolution_clock::now();
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
         if (time.count() > 5000) {
-            cout << stats << end;
+            cout << *stats << end;
             updateInfoRequest(client);
             stats->newRound();
             start = std::chrono::high_resolution_clock::now();
