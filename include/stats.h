@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <mutex>
+#include <climits>
 
 using namespace std;
 
@@ -22,6 +23,7 @@ private:
     std::atomic<long> shares;
     std::atomic<long> blocks;
     std::atomic<long> rejections;
+    std::atomic<long> bestDl;
     std::chrono::time_point<std::chrono::high_resolution_clock> roundStart;
     std::chrono::time_point<std::chrono::high_resolution_clock> start;
     std::mutex mutex;
@@ -37,6 +39,7 @@ public:
               rounds(-1),
               hashRate(0.0),
               avgHashRate(0.0),
+              bestDl(LONG_MAX),
               roundStart(std::chrono::high_resolution_clock::now()),
               start(std::chrono::high_resolution_clock::now()) {};
 
@@ -44,7 +47,7 @@ public:
     void newShare();
     void newBlock();
     void newRejection();
-
+    void newDl(long dl);
     void newRound();
 
     const atomic<long> &getRoundHashes() const;
@@ -56,6 +59,8 @@ public:
     const atomic<long> &getHashes() const;
 
     const atomic<long> &getShares() const;
+
+    const atomic<long> &getBestDl() const;
 
     const atomic<long> &getBlocks() const;
 

@@ -65,12 +65,18 @@ void Stats::newRejection() {
     rejections++;
 }
 
+void Stats::newDl(long dl) {
+    if (dl < bestDl)
+        bestDl = dl;
+}
+
 void Stats::newRound() {
     std::lock_guard<std::mutex> lg(mutex);
     updateHashRate();
     rounds++;
     roundStart = std::chrono::high_resolution_clock::now();
     roundHashes = 0;
+    bestDl = 0;
 }
 
 void Stats::updateHashRate() {
@@ -95,6 +101,7 @@ ostream &operator<<(ostream &os, const Stats &settings) {
              << setw(8) << left << "Shares"
              << setw(8) << left << "Blocks"
              << setw(8) << left << "Reject"
+             << setw(14) << left << "Best DL"
              << endl;
     }
     auto t = std::chrono::system_clock::to_time_t(settings.getRoundStart());
@@ -104,7 +111,8 @@ ostream &operator<<(ostream &os, const Stats &settings) {
          << setw(20) << left << settings.getHashes()
          << setw(8) << left << settings.getShares()
          << setw(8) << left << settings.getBlocks()
-         << setw(8) << left << settings.getRejections();
+         << setw(8) << left << settings.getRejections()
+         << setw(14) << left << settings.getBestDl();
     return os;
 }
 
