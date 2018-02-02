@@ -9,6 +9,9 @@
 #include "minerdata.h"
 #include "stats.h"
 #include "minersettings.h"
+#include <argon2-cuda/programcontext.h>
+#include <argon2-cuda/processingunit.h>
+#include <argon2-cuda/globalcontext.h>
 
 #define EQ(x, y) ((((0U - ((unsigned)(x) ^ (unsigned)(y))) >> 8) & 0xFF) ^ 0xFF)
 #define GT(x, y) ((((unsigned)(y) - (unsigned)(x)) >> 8) & 0xFF)
@@ -58,12 +61,12 @@ private:
 
     void generateBytes(char *dst, size_t dst_len);
 
-    void buildBatch(std::vector <std::string> *nonces, std::vector <std::string> *bases, int batchSize);
+    void buildBatch(std::vector<std::string> *nonces, std::vector<std::string> *bases, int batchSize);
 
-    char *encode(argon2::opencl::ProgramContext *progCtx, argon2::Argon2Params *params, void *res, size_t reslen);
+    char *encode(argon2::cuda::ProgramContext *progCtx, argon2::Argon2Params *params, void *res, size_t reslen);
 
-    void computeHash(argon2::opencl::ProcessingUnit *unit, argon2::opencl::ProgramContext *progCtx,
-                     argon2::Argon2Params *params, std::vector <std::string> *bases, std::vector <std::string> *argons,
+    void computeHash(argon2::cuda::ProcessingUnit *unit, argon2::cuda::ProgramContext *progCtx,
+                     argon2::Argon2Params *params, std::vector<std::string> *bases, std::vector<std::string> *argons,
                      int batchSize);
 
     void updateInfoRequest(http_client &client);
