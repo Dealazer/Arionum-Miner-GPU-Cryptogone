@@ -19,12 +19,16 @@ void Updater::update() {
     req.set_request_uri(U(paths.str().data()));
     client->request(req)
             .then([](http_response response) {
-                if (response.status_code() == status_codes::OK) {
-                    response.headers().set_content_type("application/json");
-                    return response.extract_json();
+                try {
+                    if (response.status_code() == status_codes::OK) {
+                        response.headers().set_content_type("application/json");
+                        return response.extract_json();
+                    }
+                    cout << "BAD RESPONSE" << endl;
+                    return pplx::task_from_result(json::value());
+                } catch (web::json::json_exception const &e) {
+                    cerr << e.what() << endl;
                 }
-                cout << "BAD RESPONSE" << endl;
-                return pplx::task_from_result(json::value());
             })
             .then([this](pplx::task<json::value> previousTask) {
                 try {
@@ -32,7 +36,9 @@ void Updater::update() {
                     processResponse(&value);
                 }
                 catch (http_exception const &e) {
-                    cout << e.what() << endl;
+                    cerr << e.what() << endl;
+                } catch (web::json::json_exception const &e) {
+                    cerr << e.what() << endl;
                 }
             })
             .wait();
@@ -59,7 +65,7 @@ void Updater::processResponse(const json::value *value) {
                 string public_key = jsonData.at(U("public_key")).as_string();
                 int limit = jsonData.at(U("limit")).as_integer();
                 string limitAsString = std::to_string(limit);
-                if (data==NULL || data->isNewBlock(&block)) {
+                if (data == NULL || data->isNewBlock(&block)) {
                     data = new MinerData(status, difficulty, limitAsString, block, public_key);
                     cout << "New block found: " << *data << endl;
                     stats->newBlock();
