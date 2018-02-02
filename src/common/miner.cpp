@@ -137,6 +137,8 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
         submit(argon, nonce);
     }
+    if(_mpz_cmp_si(rest.get_mpz_t(), 32000000) > 0)
+        cout << "SUP TO LIMITTTTTTTTTTTTTTTTTTTTTT" << endl;
     long si = rest.get_si();
     stats->newDl(si);
     x.clear();
