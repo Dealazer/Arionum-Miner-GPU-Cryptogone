@@ -55,7 +55,7 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
     x << std::dec << std::setw(2) << (int) sha[45];
     x << std::dec << std::setw(2) << (int) sha[55];
     string duration = x.str();
-    duration.erase(0, min(dd.find_first_not_of('0'), dd.size() - 1));
+    duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
     mpz_t r;
     mpz_init(r);
@@ -71,7 +71,6 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
     }
     stats->newDl(mpz_get_si(r));
     mpz_clear(r);
-    aa.clear();
 }
 
 void SimpleCudaMiner::submit(string *argon, string *nonce) {
