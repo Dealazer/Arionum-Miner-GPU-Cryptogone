@@ -36,7 +36,7 @@ private:
     }
 
     std::string randomStr(int length) {
-        int stringLength = sizeof(alphanum) - 1;
+        size_t stringLength = strlen(alphanum) - 1;
         std::stringstream ss;
         std::random_device rd; // obtain a random number from hardware
         std::mt19937 eng(rd()); // seed the generator
@@ -82,14 +82,14 @@ protected:
 
 public:
     explicit Miner(Stats *s, MinerSettings *ms, Updater *u) : stats(s),
-                                                                                  settings(ms),
-                                                                                  rest(0),
-                                                                                  diff(1),
-                                                                                  result(0),
-                                                                                  ZERO(0),
-                                                                                  BLOCK_LIMIT(240),
-                                                                                  limit(0),
-                                                                                  updater(u) {
+                                                              settings(ms),
+                                                              rest(0),
+                                                              diff(1),
+                                                              result(0),
+                                                              ZERO(0),
+                                                              BLOCK_LIMIT(240),
+                                                              limit(0),
+                                                              updater(u) {
         client = new http_client(U(ms->getPoolAddress()->c_str()));
         generator = std::mt19937(device());
         distribution = std::uniform_int_distribution<uint8_t>(0, 255);
@@ -115,9 +115,6 @@ public:
 
 
 };
-
-
-
 
 
 #endif //ARIONUM_GPU_MINER_MINER_H

@@ -32,7 +32,7 @@ const atomic<long> &Stats::getBlocks() const {
 }
 
 const atomic<long> &Stats::getBestDl() const {
-    return blocks;
+    return bestDl;
 }
 
 const atomic<long> &Stats::getRejections() const {
