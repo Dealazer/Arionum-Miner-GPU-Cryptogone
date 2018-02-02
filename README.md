@@ -1,7 +1,7 @@
 
 # README #
 
-GPU miner for arionum coin : [enter link description here](https://www.arionum.com/)
+GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 
 ## Installation guide ###
 
