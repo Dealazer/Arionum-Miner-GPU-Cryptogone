@@ -108,7 +108,7 @@ void SimpleCudaMiner::submit(string *argon, string *nonce) {
                             cout << "nonce accepted by pool !!!!!" << endl;
                         } else {
                             cout << "nonce refused by pool :(:(:(" << endl;
-                            cout << jvalue.to_string() << endl;
+                            cout << jvalue << endl;
                             stats->newRejection();
                         }
                     }
