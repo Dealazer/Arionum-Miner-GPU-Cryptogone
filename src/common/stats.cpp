@@ -71,8 +71,6 @@ void Stats::newRejection() {
 
 void Stats::newDl(long dl) {
     long prev = bestDl;
-    cout << dl << endl;
-    cout << prev << endl;
     if (dl > 0 && dl < prev)
         bestDl.compare_exchange_weak(prev, dl);
 }
