@@ -3,6 +3,7 @@
 //
 
 #include "../../include/simplecudaminer.h"
+#include "../../include/stats.h"
 #include <strstream>
 #include <iomanip>
 #include <sys/time.h>
