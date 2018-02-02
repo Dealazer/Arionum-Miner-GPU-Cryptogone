@@ -100,9 +100,6 @@ void Miner::buildBatch() {
         nonces.push_back(nonce);
         bases.push_back(base);
     }
-    for(auto const &n: nonces) {
-        cout << n << endl;
-    }
 }
 
 
@@ -119,14 +116,14 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     sha = SHA512(sha, 64, nullptr);
 
     stringstream x;
-    x << std::dec << std::setfill('0') << std::setw(2) << (unsigned int) sha[10];
-    x << std::dec << std::setfill('0') << std::setw(2) << (unsigned int) sha[15];
-    x << std::dec << std::setfill('0') << std::setw(2) << (unsigned int) sha[20];
-    x << std::dec << std::setfill('0') << std::setw(2) << (unsigned int) sha[23];
-    x << std::dec << std::setfill('0') << std::setw(2) << (unsigned int) sha[31];
-    x << std::dec << std::setfill('0') << std::setw(2) << (unsigned int) sha[40];
-    x << std::dec << std::setfill('0') << std::setw(2) << (unsigned int) sha[45];
-    x << std::dec << std::setfill('0') << std::setw(2) << (unsigned int) sha[55];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[10];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[15];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[20];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[23];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[31];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[40];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[45];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[55];
     string duration = x.str();
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
@@ -134,14 +131,14 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     mpz_tdiv_q(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
 
     //gmp_printf("Submitting - %Zd/%Zd=%Zd\t\tLimit=%Zd\n", result.get_mpz_t(), diff.get_mpz_t(), rest.get_mpz_t(), limit.get_mpz_t());
-    long si = rest.get_si();
-    stats->newDl(si);
 
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
         mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
         submit(argon, nonce);
     }
+    long si = rest.get_si();
+    stats->newDl(si);
     x.clear();
 }
 
