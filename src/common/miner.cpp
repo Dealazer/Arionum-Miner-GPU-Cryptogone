@@ -132,7 +132,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
 
     //gmp_printf("Submitting - %Zd/%Zd=%Zd\t\tLimit=%Zd\n", result.get_mpz_t(), diff.get_mpz_t(), rest.get_mpz_t(), limit.get_mpz_t());
     long si = rest.get_si();
-    stats->newDl(&si);
+    stats->newDl(si);
 
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
         mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
