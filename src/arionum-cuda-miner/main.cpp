@@ -26,6 +26,7 @@ using namespace libcommandline;
 struct OpenCLArguments {
     bool showHelp = false;
     bool listDevices = false;
+    bool allDevices = false;
     size_t deviceIndex = 0;
     size_t batchSize = 1;
     string address = "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL";
@@ -69,10 +70,21 @@ int main(int, const char *const *argv) {
 
     thread t(&Updater::start, updater);
 
+    if (args.allDevices) {
+        cuda::GlobalContext global;
+        auto &devices = global.getAllDevices();
+        for (size_t i = 0; i < devices.size(); i++) {
+            for (int j = 0; j < args.threadsPerDevice; ++j) {
+                Miner *miner = new CudaMiner(stats, &settings, updater, &i);
+                miners.push_back(miner);
+            }
+        }
 
-    for (int j = 0; j < args.threadsPerDevice; ++j) {
-        Miner *miner = new CudaMiner(stats, &settings, updater, &args.deviceIndex);
-        miners.push_back(miner);
+    } else {
+        for (int j = 0; j < args.threadsPerDevice; ++j) {
+            Miner *miner = new CudaMiner(stats, &settings, updater, &args.deviceIndex);
+            miners.push_back(miner);
+        }
     }
     vector<thread> threads;
     for (auto const &miner: miners) {
@@ -95,6 +107,10 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                     [](OpenCLArguments &state) { state.listDevices = true; },
                     "list-devices", 'l', "list all available devices and exit"),
 
+            new FlagOption<OpenCLArguments>(
+                    [](OpenCLArguments &state) { state.allDevices = true; },
+                    "use-all-devices", 'u', "use all available devices"),
+
             new ArgumentOption<OpenCLArguments>(
                     [](OpenCLArguments &state, const string address) { state.address = address; }, "address", 'a',
                     "public arionum address",
@@ -111,9 +127,10 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                     }), "device", 'd', "use device with index INDEX", "0", "INDEX"),
 
             new ArgumentOption<OpenCLArguments>(
-                    makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t threadsPerDevice) {
-                        state.threadsPerDevice = (std::size_t) threadsPerDevice;
-                    }), "threads-per-device", 't', "thread to use per device", "1", "THREADS"),
+                    makeNumericHandler<OpenCLArguments, std::size_t>(
+                            [](OpenCLArguments &state, std::size_t threadsPerDevice) {
+                                state.threadsPerDevice = (std::size_t) threadsPerDevice;
+                            }), "threads-per-device", 't', "thread to use per device", "1", "THREADS"),
 
             new ArgumentOption<OpenCLArguments>(
                     makeNumericHandler<OpenCLArguments, size_t>([](OpenCLArguments &state, size_t index) {
