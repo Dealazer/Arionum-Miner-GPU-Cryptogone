@@ -126,9 +126,9 @@ void Miner::buildBatch() {
 void Miner::checkArgon(string *base, string *argon, string *nonce) {
     cout << "\t\t Verify ---" << endl;
 
-    cout << "base:" << base << endl;
-    cout << "nonce:" << nonce << endl;
-    cout << "argon:" << argon << endl;
+    cout << "base:" << *base << endl;
+    cout << "nonce:" << *nonce << endl;
+    cout << "argon:" << *argon << endl;
     cout << "\t\t Verify --- .........." << endl << endl << endl;
 
 
