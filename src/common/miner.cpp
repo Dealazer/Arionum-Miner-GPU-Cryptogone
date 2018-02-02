@@ -39,6 +39,7 @@ void Miner::mine() {
         }
         cout << "DEBUG Built batch --- .........." << endl << endl << endl;
 
+        
 
         computeHash();
 
