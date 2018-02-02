@@ -6,6 +6,7 @@
 #include <openssl/sha.h>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 
 #include "../../include/miner.h"
 #include "argon2.h"
@@ -86,18 +87,26 @@ void Miner::generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buf
 
 void Miner::buildBatch() {
     for (int j = 0; j < *settings->getBatchSize(); ++j) {
-        generateBytes(nonceBase64, 64, byteBuffer, 32);
-        std::string nonce(nonceBase64);
+        string nonce;
+        bool first = true;
+        do {
+            if(!first) {
+                cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>GENERATE NONCE MORE THAN 1" << endl;
+            }
+            generateBytes(nonceBase64, 64, byteBuffer, 32);
 
-        boost::replace_all(nonce, "/", "");
-        boost::replace_all(nonce, "+", "");
+            nonce = string(nonceBase64);
 
+            boost::replace_all(nonce, "/", "");
+            boost::replace_all(nonce, "+", "");
+
+            first = false;
+        } while (std::find(nonces.begin(),nonces.end(), nonce))
+        nonces.push_back(nonce);
         std::stringstream ss;
         ss << *data->getPublic_key() << "-" << nonce << "-" << *data->getBlock() << "-" << *data->getDifficulty();
         //cout << ss.str() << endl;
         std::string base = ss.str();
-
-        nonces.push_back(nonce);
         bases.push_back(base);
     }
 }
