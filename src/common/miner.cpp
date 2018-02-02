@@ -38,6 +38,7 @@ void Miner::mine() {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
         }
         stats->addHashes(*settings->getBatchSize());
+        sleep(1);
     }
 }
 
@@ -126,7 +127,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[55];
     string duration = x.str();
 
-    cout << duration << "/" << diff.get_str(10) << endl;
+    cout << oss.str() << " - " << duration << "/" << diff.get_str(10) << endl;
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
     result.set_str(duration, 10);
