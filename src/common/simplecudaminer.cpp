@@ -46,14 +46,14 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
 
     stringstream x;
     x << std::hex << std::setfill('0');
-    x <<std::dec << std::setw(2) << (int) sha[10];
-    x <<std::dec << std::setw(2) << (int) sha[15];
-    x <<std::dec << std::setw(2) << (int) sha[20];
-    x <<std::dec << std::setw(2) << (int) sha[23];
-    x <<std::dec << std::setw(2) << (int) sha[31];
-    x <<std::dec << std::setw(2) << (int) sha[40];
-    x <<std::dec << std::setw(2) << (int) sha[45];
-    x<<std::dec  << std::setw(2) << (int) sha[55];
+    x << std::dec << std::setw(2) << (int) sha[10];
+    x << std::dec << std::setw(2) << (int) sha[15];
+    x << std::dec << std::setw(2) << (int) sha[20];
+    x << std::dec << std::setw(2) << (int) sha[23];
+    x << std::dec << std::setw(2) << (int) sha[31];
+    x << std::dec << std::setw(2) << (int) sha[40];
+    x << std::dec << std::setw(2) << (int) sha[45];
+    x << std::dec << std::setw(2) << (int) sha[55];
     string dd = x.str();
     dd.erase(0, min(dd.find_first_not_of('0'), dd.size() - 1));
 
@@ -90,9 +90,10 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
     string duration = durationss.str();
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
-    cout << "n=" << dd << endl
-         << "o=" << duration
-         << endl;
+    if (dd.compare(duration) != 0)
+        cout << "n=" << dd << endl
+             << "o=" << duration
+             << endl;
 
     mpz_t r;
     mpz_init(r);
