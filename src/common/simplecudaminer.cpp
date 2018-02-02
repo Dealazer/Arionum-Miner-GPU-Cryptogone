@@ -359,6 +359,7 @@ void SimpleCudaMiner::start() {
     std::vector<std::string> nonces;
     std::vector<std::string> bases;
     std::vector<std::string> argons;
+    updateInfoRequest(client);
     while (true) {
         auto current = std::chrono::high_resolution_clock::now();
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
