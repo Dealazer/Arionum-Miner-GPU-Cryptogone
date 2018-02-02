@@ -69,6 +69,7 @@ int main(int, const char *const *argv) {
 
     thread t(&Updater::start, updater);
 
+
     for (int j = 0; j < args.threadsPerDevice; ++j) {
         Miner *miner = new CudaMiner(stats, &settings, updater, &args.deviceIndex);
         miners.push_back(miner);
@@ -110,8 +111,8 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                     }), "device", 'd', "use device with index INDEX", "0", "INDEX"),
 
             new ArgumentOption<OpenCLArguments>(
-                    makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t index) {
-                        state.deviceIndex = (std::size_t) index;
+                    makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t threadsPerDevice) {
+                        state.threadsPerDevice = (std::size_t) index;
                     }), "threads-per-device", 't', "thread to use per device", "1", "THREADS"),
 
             new ArgumentOption<OpenCLArguments>(
