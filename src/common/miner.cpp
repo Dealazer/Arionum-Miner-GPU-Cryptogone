@@ -34,20 +34,20 @@ void Miner::mine() {
 
         cout << "DEBUG Built batch ---" << endl;
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
-            cout << "base:" << bases.at(j) << end;
-            cout << "nonce:" << nonces.at(j) << end;
+            cout << "base:" << bases.at(j) << endl;
+            cout << "nonce:" << nonces.at(j) << endl;
         }
         cout << "DEBUG Built batch --- .........." << endl << endl << endl;
 
-        
+
 
         computeHash();
 
         cout << "DEBUG HASH ---" << endl;
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
-            cout << "base:" << bases.at(j) << end;
-            cout << "nonce:" << nonces.at(j) << end;
-            cout << "argon:" << argons.at(j) << end;
+            cout << "base:" << bases.at(j) << endl;
+            cout << "nonce:" << nonces.at(j) << endl;
+            cout << "argon:" << argons.at(j) << endl;
         }
         cout << "DEBUG HASH --- .........." << endl << endl << endl;
 
