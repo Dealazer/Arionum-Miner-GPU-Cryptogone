@@ -30,13 +30,13 @@ using namespace web::http::client;
 class Miner {
 private:
     const char *alphanum = "0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    int stringLength = sizeof(alphanum) - 1;
 
     char genRandom(int v) {
         return alphanum[v];
     }
 
     std::string randomStr(int length) {
+        int stringLength = sizeof(alphanum) - 1;
         std::stringstream ss;
         std::random_device rd; // obtain a random number from hardware
         std::mt19937 eng(rd()); // seed the generator
