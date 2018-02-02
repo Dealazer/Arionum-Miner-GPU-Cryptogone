@@ -83,7 +83,7 @@ int main(int, const char *const *argv) {
 */
     string uniqid = generateUniqid();
     MinerSettings settings(&args.poolUrl, &args.address, &uniqid, &args.batchSize);
-    SimpleCudaMiner miner(args.poolUrl, args.batchSize, settings, args.deviceIndex);
+    SimpleCudaMiner miner(settings, args.deviceIndex);
     miner.start();
     return 0;
 }
