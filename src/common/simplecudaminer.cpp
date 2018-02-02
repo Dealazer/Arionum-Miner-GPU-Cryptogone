@@ -90,10 +90,11 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
     string duration = durationss.str();
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
-    if (dd.compare(duration) != 0)
+    if (dd != duration) {
         cout << "n=" << dd << endl
              << "o=" << duration
              << endl;
+    }
 
     mpz_t r;
     mpz_init(r);
