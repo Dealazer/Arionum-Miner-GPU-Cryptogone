@@ -101,7 +101,7 @@ void Miner::buildBatch() {
             boost::replace_all(nonce, "+", "");
 
             first = false;
-        } while (std::find(nonces.begin(),nonces.end(), nonce))
+        } while (std::find(nonces.begin(),nonces.end(), nonce) == nonces.end() )
         nonces.push_back(nonce);
         std::stringstream ss;
         ss << *data->getPublic_key() << "-" << nonce << "-" << *data->getBlock() << "-" << *data->getDifficulty();
