@@ -4,7 +4,7 @@
 
 #include "../../include/simplecudaminer.h"
 #include "../../include/stats.h"
-#include <strstream>
+#include <sstream>
 #include <iomanip>
 #include <iostream>
 #include <sys/time.h>
