@@ -356,7 +356,7 @@ void SimpleCudaMiner::start() {
     argon2::Argon2Params params(32, saltBytes, 16, nullptr, 0, nullptr, 0, 4, 16384, 4);
     argon2::cuda::ProcessingUnit unit(&progCtx, &params, &device, batchSize, false, false);
     long hashes = 0;
-    const chrono::time_point &start = chrono::high_resolution_clock::now();
+    chrono::time_point start = chrono::high_resolution_clock::now();
     std::vector<std::string> nonces;
     std::vector<std::string> bases;
     std::vector<std::string> argons;
