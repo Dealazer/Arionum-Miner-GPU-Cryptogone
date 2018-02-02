@@ -81,3 +81,10 @@ target_link_libraries(arionum-cuda-miner
         -largon2
         )
 endif()
+
+add_executable(arionum-test
+        src/test/main.cpp)
+
+target_link_libraries(arionum-test
+        -lgmp
+        )
