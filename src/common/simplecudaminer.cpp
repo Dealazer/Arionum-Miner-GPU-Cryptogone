@@ -6,6 +6,7 @@
 #include "../../include/stats.h"
 #include <strstream>
 #include <iomanip>
+#include <iostream>
 #include <sys/time.h>
 #include <sstream>
 #include <string>
