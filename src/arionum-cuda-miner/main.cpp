@@ -82,8 +82,10 @@ int main(int, const char *const *argv) {
         }
 
     } else {
+        size_t deviceIndex = args.deviceIndex;
+        cout << "start using device #" << deviceIndex << endl;
         for (int j = 0; j < args.threadsPerDevice; ++j) {
-            Miner *miner = new CudaMiner(stats, &settings, updater, &args.deviceIndex);
+            Miner *miner = new CudaMiner(stats, &settings, updater, &deviceIndex);
             miners.push_back(miner);
         }
     }
