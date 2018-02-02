@@ -141,7 +141,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
     result.set_str(duration, 10);
-    mpz_tdiv_r(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
+    mpz_tdiv_q(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
 
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
         mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
