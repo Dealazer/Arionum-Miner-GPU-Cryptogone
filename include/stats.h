@@ -78,6 +78,7 @@ public:
 
     const atomic<double> &getAvgHashRate() const;
 
+    void blockChange();
 };
 
 #endif //ARIONUM_GPU_MINER_STATS_H
