@@ -70,7 +70,7 @@ void Stats::newRejection() {
 }
 
 void Stats::newDl(long dl) {
-    if (dl < bestDl)
+    if (dl > 0 && dl < bestDl)
         bestDl = dl;
 }
 
@@ -80,7 +80,7 @@ void Stats::newRound() {
     rounds++;
     roundStart = std::chrono::high_resolution_clock::now();
     roundHashes = 0;
-    bestDl = 0;
+    bestDl = LONG_MAX;
 }
 
 void Stats::updateHashRate() {
