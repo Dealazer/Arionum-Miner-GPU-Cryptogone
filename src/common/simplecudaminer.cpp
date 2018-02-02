@@ -104,14 +104,14 @@ void SimpleCudaMiner::submit(string *argon, string *nonce) {
     req.set_request_uri(U("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
     client.request(req)
-            .then([](http_response response) {
+            .then([this](http_response response) {
                 if (response.status_code() == status_codes::OK) {
                     response.headers().set_content_type("application/json");
                     return response.extract_json();
                 }
                 return pplx::task_from_result(json::value());
             })
-            .then([](pplx::task<json::value> previousTask) {
+            .then(this](pplx::task<json::value> previousTask) {
                 try {
                     json::value jvalue = previousTask.get();
                     if (!jvalue.is_null() && jvalue.is_object()) {
@@ -309,14 +309,14 @@ void SimpleCudaMiner::updateInfoRequest(http_client &client) {
     req.headers().set_content_type("application/json");
     req.set_request_uri(U(paths.str().data()));
     client.request(req)
-            .then([](http_response response) {
+            .then([this](http_response response) {
                 if (response.status_code() == status_codes::OK) {
                     response.headers().set_content_type("application/json");
                     return response.extract_json();
                 }
                 return pplx::task_from_result(json::value());
             })
-            .then([](pplx::task<json::value> previousTask) {
+            .then([this](pplx::task<json::value> previousTask) {
                 try {
                     parseUpdateJson(previousTask.get());
                 }
