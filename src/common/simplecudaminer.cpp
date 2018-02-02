@@ -86,6 +86,7 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
         string argonTail = argon->substr(29);
         submit(&argonTail, nonce);
     }
+    stats->newDl(mpz_get_si(r));
     mpz_clear(r);
     aa.clear();
 }
