@@ -14,15 +14,15 @@
 #include <argon2-cuda/programcontext.h>
 #include <argon2-cuda/processingunit.h>
 
-SimpleCudaMiner::SimpleCudaMiner(const string &poolAddress, int theBatchSize, MinerSettings ms, size_t di)
+SimpleCudaMiner::SimpleCudaMiner(MinerSettings ms, size_t di)
         : minerSettings(ms),
           updateData(MinerData("", "", "", "", "")),
-          deviceIndex(di) {
+          deviceIndex(di),
+          client(http_client(U(*ms.getPoolAddress()))){
     mpz_init(ZERO);
     mpz_init(BLOCK_LIMIT);
     mpz_set_si(BLOCK_LIMIT, 240);
-    client = http_client(U(poolAddress));
-    batchSize = theBatchSize;
+    batchSize = *ms.getBatchSize();
     Stats stats();
     alphanum = const_cast<char *>("0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
     stringLength = static_cast<int>(strlen(alphanum) - 1);
@@ -300,7 +300,7 @@ void SimpleCudaMiner::computeHash(argon2::cuda::ProcessingUnit *unit, argon2::cu
 void SimpleCudaMiner::updateInfoRequest(http_client &client) {
     stringstream paths;
     double rate = stats.getHashRate();
-    paths << "/mine.php?q=info&worker=" << uniqid << "&address=" << *minerSettings.getPrivateKey() << "&hashrate="
+    paths << "/mine.php?q=info&worker=" << *minerSettings.getUniqid() << "&address=" << *minerSettings.getPrivateKey() << "&hashrate="
           << rate;
     //cout << "PATH="<< paths.str() << endl;
     http_request req(methods::GET);

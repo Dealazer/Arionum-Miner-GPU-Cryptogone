@@ -77,7 +77,7 @@ private:
 
 public:
 
-    SimpleCudaMiner(const string &poolAddress, int theBatchSize, MinerSettings ms, size_t di);
+    SimpleCudaMiner(MinerSettings ms, size_t di);
 
     void start();
 
