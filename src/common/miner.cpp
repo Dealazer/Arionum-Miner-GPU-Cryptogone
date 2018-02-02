@@ -79,8 +79,11 @@ void Miner::to_base64(char *dst, size_t dst_len, const void *src, size_t src_len
 
 
 void Miner::generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buffer_size) {
+    std::random_device de;
+    std::mt19937 gen(de());
+    std::uniform_int_distribution<uint8_t> dist(0, 255);
     for (int i = 0; i < buffer_size; ++i) {
-        buffer[i] = distribution(generator);
+        buffer[i] = dist(gen);
     }
     to_base64(dst, dst_len, buffer, buffer_size);
 }
