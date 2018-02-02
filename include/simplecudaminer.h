@@ -40,7 +40,7 @@ private:
     cuda::ProgramContext *progCtx;
     argon2::Argon2Params *params;
 
-    char alphanum[];
+    char *alphanum;
 
     int stringLength;
 
