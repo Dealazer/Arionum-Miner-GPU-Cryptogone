@@ -35,6 +35,10 @@ const atomic<long> &Stats::getBestDl() const {
     return bestDl;
 }
 
+const atomic<long> &Stats::getBlockBestDl() const {
+    return blockBestDl;
+}
+
 const atomic<long> &Stats::getRejections() const {
     return rejections;
 }
@@ -105,7 +109,8 @@ ostream &operator<<(ostream &os, const Stats &settings) {
              << setw(8) << left << "Shares"
              << setw(8) << left << "Blocks"
              << setw(8) << left << "Reject"
-             << setw(14) << left << "Best DL"
+             << setw(14) << left << "Block best DL"
+             << setw(14) << left << "Ever best DL"
              << endl;
     }
     auto t = std::chrono::system_clock::to_time_t(settings.getRoundStart());
@@ -116,6 +121,7 @@ ostream &operator<<(ostream &os, const Stats &settings) {
          << setw(8) << left << settings.getShares()
          << setw(8) << left << settings.getBlocks()
          << setw(8) << left << settings.getRejections()
+         << setw(14) << left << settings.getBlockBestDl()
          << setw(14) << left << settings.getBestDl();
     return os;
 }

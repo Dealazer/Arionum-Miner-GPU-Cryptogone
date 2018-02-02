@@ -24,6 +24,7 @@ private:
     std::atomic<long> blocks;
     std::atomic<long> rejections;
     std::atomic<long> bestDl;
+    std::atomic<long> blockBestDl;
     std::chrono::time_point<std::chrono::high_resolution_clock> roundStart;
     std::chrono::time_point<std::chrono::high_resolution_clock> start;
     std::mutex mutex;
@@ -40,6 +41,7 @@ public:
               hashRate(0.0),
               avgHashRate(0.0),
               bestDl(LONG_MAX),
+              blockBestDl(LONG_MAX),
               roundStart(std::chrono::high_resolution_clock::now()),
               start(std::chrono::high_resolution_clock::now()) {};
 
@@ -49,6 +51,7 @@ public:
     void newRejection();
     void newDl(long dl);
     void newRound();
+    void newBlock();
 
     const atomic<long> &getRoundHashes() const;
 
@@ -61,6 +64,8 @@ public:
     const atomic<long> &getShares() const;
 
     const atomic<long> &getBestDl() const;
+
+    const atomic<long> &getBlockBestDl() const;
 
     const atomic<long> &getBlocks() const;
 
