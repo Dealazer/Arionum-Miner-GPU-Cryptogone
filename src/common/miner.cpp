@@ -36,6 +36,7 @@ void Miner::mine() {
 
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
+/*
             cout << "b=" << bases[j] << endl
                  << "a=" << argons[j] << endl
                  << "n=" << nonces[j] << endl;
@@ -44,9 +45,10 @@ void Miner::mine() {
             argon2i_hash_encoded(4, 16384, 4, bases[j].data(), strlen(bases[j].data()), salt.data(),
                                  strlen(salt.data()), 32, enc, encodedlen);
             cout << "t=" << enc << endl;
+*/
         }
         stats->addHashes(*settings->getBatchSize());
-        sleep(5);
+        //sleep(5);
     }
 }
 
