@@ -24,6 +24,8 @@ SimpleCudaMiner::SimpleCudaMiner(const string &poolAddress, int theBatchSize, Mi
     client = http_client(U(poolAddress));
     batchSize = theBatchSize;
     Stats stats();
+    alphanum ="0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    stringLength = static_cast<int>(strlen(alphanum) - 1);
 }
 
 void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
