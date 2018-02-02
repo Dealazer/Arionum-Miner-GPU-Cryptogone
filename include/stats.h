@@ -47,7 +47,7 @@ public:
     void newShare();
     void newBlock();
     void newRejection();
-    void newDl(long dl);
+    void newDl(long *dl);
     void newRound();
 
     const atomic<long> &getRoundHashes() const;

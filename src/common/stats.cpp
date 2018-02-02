@@ -69,7 +69,7 @@ void Stats::newRejection() {
     rejections++;
 }
 
-void Stats::newDl(long dl) {
+void Stats::newDl(long *dl) {
     if (dl > 0 && dl < bestDl)
         bestDl = dl;
 }
