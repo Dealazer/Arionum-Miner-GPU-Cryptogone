@@ -68,7 +68,7 @@ add_executable(arionum-cuda-miner
         src/common/minerdata.cpp
         include/minersettings.h
         src/common/minersettings.cpp
-        src/common/miner.cpp src/simple-cuda/main.cpp)
+        src/common/miner.cpp)
 
 target_link_libraries(arionum-cuda-miner
         argon2-cuda
