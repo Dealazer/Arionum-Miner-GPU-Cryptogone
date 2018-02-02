@@ -45,7 +45,7 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
     sha = SHA512(sha, 64, NULL);
 
     stringstream x;
-    x << std::hex << std::setfill('0');
+    x << std::hex;// << std::setfill('0');
     x << std::dec << std::setw(2) << (int) sha[10];
     x << std::dec << std::setw(2) << (int) sha[15];
     x << std::dec << std::setw(2) << (int) sha[20];
