@@ -14,6 +14,7 @@
 #include "../../include/cudaminer.h"
 #include <sys/time.h>
 #include <iomanip>
+#include "../../include/simplecudaminer.h"
 
 #pragma comment(lib, "cpprest110_1_1")
 
@@ -54,6 +55,7 @@ int main(int, const char *const *argv) {
         return 0;
     }
 
+/*
     string uniqid = generateUniqid();
     MinerSettings settings(&args.poolUrl, &args.address, &uniqid, &args.batchSize);
 
@@ -78,6 +80,10 @@ int main(int, const char *const *argv) {
         thread.join();
     }
     t.join();
+*/
+    MinerSettings settings(&args.poolUrl, &args.address, &uniqid, &args.batchSize);
+    SimpleCudaMiner miner(args.poolUrl, args.batchSize, settings, args.deviceIndex);
+    miner.start();
     return 0;
 }
 
