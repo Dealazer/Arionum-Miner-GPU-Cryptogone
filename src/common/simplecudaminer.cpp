@@ -72,7 +72,6 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
     }
     stats->newDl(mpz_get_si(r));
     mpz_clear(r);
-    aa.clear();
 }
 
 void SimpleCudaMiner::submit(string *argon, string *nonce) {
