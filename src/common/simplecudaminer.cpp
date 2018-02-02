@@ -3,7 +3,7 @@
 //
 
 #include "../../include/simplecudaminer.h"
-#include "../../include/stats.h"
+#include "../../include/stats->h"
 #include <strstream>
 #include <iomanip>
 #include <iostream>
@@ -31,6 +31,7 @@ SimpleCudaMiner::SimpleCudaMiner(MinerSettings ms, size_t di)
     batchSize = static_cast<int>(*ms.getBatchSize());
     alphanum = const_cast<char *>("0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
     stringLength = static_cast<int>(strlen(alphanum) - 1);
+    stats = new Stats();
 }
 
 void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
@@ -80,7 +81,7 @@ void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {
     mpz_tdiv_q(r, result.get_mpz_t(), diff.get_mpz_t());
     mpz_class l(*updateData.getLimit(), 10);
     if (mpz_cmp(r, ZERO) > 0 && mpz_cmp(r, l.get_mpz_t()) <= 0) {
-        mpz_cmp(r, BLOCK_LIMIT) < 0 ? stats.newBlock() : stats.newShare();
+        mpz_cmp(r, BLOCK_LIMIT) < 0 ? stats->newBlock() : stats->newShare();
         gmp_printf("Submitting - %Zd - %s - %s\n", r, nonce->data(), argon->data());
         string argonTail = argon->substr(29);
         submit(&argonTail, nonce);
@@ -124,7 +125,7 @@ void SimpleCudaMiner::submit(string *argon, string *nonce) {
                         } else {
                             cout << "nonce refused by pool :(:(:(" << endl;
                             cout << jvalue.to_string() << endl;
-                            stats.newRejection();
+                            stats->newRejection();
                         }
                     }
                 }
@@ -304,7 +305,7 @@ void SimpleCudaMiner::computeHash(argon2::cuda::ProcessingUnit *unit, argon2::cu
 
 void SimpleCudaMiner::updateInfoRequest(http_client &client) {
     stringstream paths;
-    double rate = stats.getHashRate();
+    double rate = stats->getHashRate();
     paths << "/mine.php?q=info&worker=" << *minerSettings.getUniqid() << "&address=" << *minerSettings.getPrivateKey()
           << "&hashrate="
           << rate;
@@ -364,7 +365,7 @@ void SimpleCudaMiner::start() {
         if (time.count() > 5000) {
             cout << stats << end;
             updateInfoRequest(client);
-            stats.newRound();
+            stats->newRound();
             start = std::chrono::high_resolution_clock::now();
         }
         nonces.clear();
@@ -380,7 +381,7 @@ void SimpleCudaMiner::start() {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
         }
         auto endBatch = std::chrono::high_resolution_clock::now();
-        stats.addHashes(batchSize);
+        stats->addHashes(batchSize);
     }
 
 }
