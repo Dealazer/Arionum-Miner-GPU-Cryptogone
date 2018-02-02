@@ -138,8 +138,8 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
          << endl;
 
 
-    cout  << duration << "/" << diff.get_str(10) << endl;
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
+    cout  << duration << "/" << diff.get_str(10) << endl;
 
     result.set_str(duration, 10);
     mpz_tdiv_r(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
