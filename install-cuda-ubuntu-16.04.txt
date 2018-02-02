@@ -1,0 +1,44 @@
+sudo apt-get install gcc g++ python-dev -y
+sudo apt install libgmp-dev -y
+sudo apt-get --purge remove libboost-dev libboost-doc
+sudo apt-get --purge remove libboost-dev
+sudo apt-get --purge remove libboost-all-dev
+sudo apt autoremove
+wget https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz
+tar xvzf boost_1_66_0.tar.gz
+cd boost_1_66_0/
+./bootstrap.sh --prefix=/usr/local && ./b2
+sudo ./b2 install
+
+
+sudo apt-get install git make zlib1g-dev libssl-dev cmake
+git clone https://github.com/Microsoft/cpprestsdk.git casablanca
+cd casablanca/
+cd Release/
+mkdir build.release
+cd build.release/
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make
+sudo make install
+
+wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_9.1.85-1_amd64.deb
+sudo dpkg -i cuda-repo-ubuntu1604_9.1.85-1_amd64.deb 
+sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
+sudo apt-get update
+sudo apt-get install cuda -y 
+sudo apt install nvidia-libopencl1-390 -y
+sudo apt install nvidia-opencl-dev -y
+
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+sudo apt-get update
+sudo apt-get install gcc-6 g++-6 -y
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 1
+
+
+wget https://cmake.org/files/v3.10/cmake-3.10.2-Linux-x86_64.sh
+cd cmake-3.10.2-Linux-x86_64
+sudo cp -r bin /usr/ && sudo cp -r doc /usr/share/ && sudo cp -r man /usr/share/ && sudo cp -r share /usr/
+git clone myrepo
+cd myrepo
+git checkout warp-shuffle
+git submodule update --init --recursive
