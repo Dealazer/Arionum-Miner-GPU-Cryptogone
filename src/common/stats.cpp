@@ -67,6 +67,7 @@ void Stats::newShare() {
 
 void Stats::newBlock() {
     blocks++;
+    blockBestDl = LONG_MAX;
 }
 
 void Stats::newRejection() {

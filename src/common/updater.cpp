@@ -62,6 +62,7 @@ void Updater::processResponse(const json::value *value) {
                 if (data==NULL || data->isNewBlock(&block)) {
                     data = new MinerData(status, difficulty, limitAsString, block, public_key);
                     cout << "New block found: " << *data << endl;
+                    stats->newBlock();
                 }
             }
         } else {

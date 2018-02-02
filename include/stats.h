@@ -51,7 +51,6 @@ public:
     void newRejection();
     void newDl(long dl);
     void newRound();
-    void newBlock();
 
     const atomic<long> &getRoundHashes() const;
 
