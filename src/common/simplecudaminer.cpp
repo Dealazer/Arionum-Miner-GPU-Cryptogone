@@ -20,10 +20,11 @@
 
 using namespace std;
 
-SimpleCudaMiner::SimpleCudaMiner(MinerSettings ms, size_t di)
+SimpleCudaMiner::SimpleCudaMiner(Stats *s, MinerSettings ms, size_t di)
         : minerSettings(ms),
           updateData(MinerData("", "", "", "", "")),
           deviceIndex(di),
+          stats(s),
           client(http_client(U(*ms.getPoolAddress()))) {
     mpz_init(ZERO);
     mpz_init(BLOCK_LIMIT);
@@ -31,7 +32,6 @@ SimpleCudaMiner::SimpleCudaMiner(MinerSettings ms, size_t di)
     batchSize = static_cast<int>(*ms.getBatchSize());
     alphanum = const_cast<char *>("0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
     stringLength = static_cast<int>(strlen(alphanum) - 1);
-    stats = new Stats();
 }
 
 void SimpleCudaMiner::checkArgon(string *base, string *argon, string *nonce) {

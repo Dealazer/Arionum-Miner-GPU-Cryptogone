@@ -77,7 +77,7 @@ private:
 
 public:
 
-    SimpleCudaMiner(MinerSettings ms, size_t di);
+    SimpleCudaMiner(Stats *s, MinerSettings ms, size_t di);
 
     void start();
 
