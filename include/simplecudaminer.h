@@ -30,7 +30,6 @@ private:
 
     const mpz_t ZERO;
     const mpz_t BLOCK_LIMIT;
-    string uniqid;
     unique_ptr<char[]> AS_SHA = std::unique_ptr<char[]>(new char[128]);
     http_client client;
     int batchSize;

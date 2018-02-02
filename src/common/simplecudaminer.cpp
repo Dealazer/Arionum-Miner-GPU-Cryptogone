@@ -21,14 +21,6 @@ SimpleCudaMiner::SimpleCudaMiner(const string &poolAddress, int theBatchSize, Mi
     mpz_init(ZERO);
     mpz_init(BLOCK_LIMIT);
     mpz_set_si(BLOCK_LIMIT, 240);
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    int sec = (int) tv.tv_sec;
-    int usec = (int) (tv.tv_usec % 0x100000);
-    stringstream uniqids;
-    uniqids << std::setfill('0') << std::setw(8) << std::hex << sec << std::setfill('0') << std::setw(5) << std::hex
-            << usec;
-    uniqid = uniqids.str();
     client = http_client(U(poolAddress));
     batchSize = theBatchSize;
     Stats stats();
