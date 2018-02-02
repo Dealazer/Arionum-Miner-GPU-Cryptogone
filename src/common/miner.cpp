@@ -6,7 +6,6 @@
 #include <openssl/sha.h>
 #include <thread>
 #include <chrono>
-#include <algorithm>
 
 #include "../../include/miner.h"
 #include "argon2.h"
@@ -79,38 +78,30 @@ void Miner::to_base64(char *dst, size_t dst_len, const void *src, size_t src_len
 
 
 void Miner::generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buffer_size) {
-    std::random_device de;
-    std::mt19937 gen(de());
-    std::uniform_int_distribution<uint8_t> dist(0, 255);
     for (int i = 0; i < buffer_size; ++i) {
-        buffer[i] = dist(gen);
+        buffer[i] = distribution(generator);
     }
     to_base64(dst, dst_len, buffer, buffer_size);
 }
 
 void Miner::buildBatch() {
     for (int j = 0; j < *settings->getBatchSize(); ++j) {
-        string nonce;
-        bool first = true;
-        do {
-            if(!first) {
-                cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>GENERATE NONCE MORE THAN 1" << endl;
-            }
-            generateBytes(nonceBase64, 64, byteBuffer, 32);
+        generateBytes(nonceBase64, 64, byteBuffer, 32);
+        std::string nonce(nonceBase64);
 
-            nonce = string(nonceBase64);
+        boost::replace_all(nonce, "/", "");
+        boost::replace_all(nonce, "+", "");
 
-            boost::replace_all(nonce, "/", "");
-            boost::replace_all(nonce, "+", "");
-
-            first = false;
-        } while (std::find(nonces.begin(),nonces.end(), nonce) == nonces.end());
-        nonces.push_back(nonce);
         std::stringstream ss;
         ss << *data->getPublic_key() << "-" << nonce << "-" << *data->getBlock() << "-" << *data->getDifficulty();
         //cout << ss.str() << endl;
         std::string base = ss.str();
+
+        nonces.push_back(nonce);
         bases.push_back(base);
+    }
+    for(auto const &n: nonces) {
+        cout << n << endl;
     }
 }
 
