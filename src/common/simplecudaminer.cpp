@@ -29,7 +29,6 @@ SimpleCudaMiner::SimpleCudaMiner(MinerSettings ms, size_t di)
     mpz_init(BLOCK_LIMIT);
     mpz_set_si(BLOCK_LIMIT, 240);
     batchSize = static_cast<int>(*ms.getBatchSize());
-    stats = Stats();
     alphanum = const_cast<char *>("0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
     stringLength = static_cast<int>(strlen(alphanum) - 1);
 }

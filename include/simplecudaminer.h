@@ -38,7 +38,7 @@ private:
     int batchSize;
     size_t deviceIndex;
     MinerData updateData;
-    Stats stats;
+    const Stats stats();
     MinerSettings minerSettings;
     cuda::ProgramContext *progCtx;
     argon2::Argon2Params *params;
