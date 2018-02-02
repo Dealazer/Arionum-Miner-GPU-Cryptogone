@@ -117,17 +117,28 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     sha = SHA512(sha, 64, nullptr);
 
     stringstream x;
-    x << std::hex << std::setfill('0') << std::setw(2) << (int) sha[10];
-    x << std::hex << std::setfill('0') << std::setw(2) << (int) sha[15];
-    x << std::hex << std::setfill('0') << std::setw(2) << (int) sha[20];
-    x << std::hex << std::setfill('0') << std::setw(2) << (int) sha[23];
-    x << std::hex << std::setfill('0') << std::setw(2) << (int) sha[31];
-    x << std::hex << std::setfill('0') << std::setw(2) << (int) sha[40];
-    x << std::hex << std::setfill('0') << std::setw(2) << (int) sha[45];
-    x << std::hex << std::setfill('0') << std::setw(2) << (int) sha[55];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[10];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[15];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[20];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[23];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[31];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[40];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[45];
+    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[55];
     string duration = x.str();
 
-    cout << oss.str() << " - " << duration << "/" << diff.get_str(10) << endl;
+    cout << std::dec << std::setfill('0') << std::setw(2) << (int) sha[10] << "-"
+         << std::dec << std::setfill('0') << std::setw(2) << (int) sha[15] << "-"
+         << std::dec << std::setfill('0') << std::setw(2) << (int) sha[20] << "-"
+         << std::dec << std::setfill('0') << std::setw(2) << (int) sha[23] << "-"
+         << std::dec << std::setfill('0') << std::setw(2) << (int) sha[31] << "-"
+         << std::dec << std::setfill('0') << std::setw(2) << (int) sha[40] << "-"
+         << std::dec << std::setfill('0') << std::setw(2) << (int) sha[45] << "-"
+         << std::dec << std::setfill('0') << std::setw(2) << (int) sha[55] << "-"
+         << endl;
+
+
+    cout  << duration << "/" << diff.get_str(10) << endl;
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
     result.set_str(duration, 10);
@@ -138,7 +149,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
         submit(argon, nonce);
     }
-    if(mpz_cmp(rest.get_mpz_t(), diff.get_mpz_t()) > 0)
+    if (mpz_cmp(rest.get_mpz_t(), diff.get_mpz_t()) > 0)
         cout << "SUP TO LIMITTTTTTTTTTTTTTTTTTTTTT" << endl;
     long si = rest.get_si();
     stats->newDl(si);
