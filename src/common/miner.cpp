@@ -117,14 +117,15 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     sha = SHA512(sha, 64, nullptr);
 
     stringstream x;
-    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[10];
-    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[15];
-    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[20];
-    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[23];
-    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[31];
-    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[40];
-    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[45];
-    x << std::dec << std::setfill('0') << std::setw(2) << (int) sha[55];
+    x << std::hex;
+    x << std::dec << (int) sha[10];
+    x << std::dec << (int) sha[15];
+    x << std::dec << (int) sha[20];
+    x << std::dec << (int) sha[23];
+    x << std::dec << (int) sha[31];
+    x << std::dec << (int) sha[40];
+    x << std::dec << (int) sha[45];
+    x << std::dec << (int) sha[55];
     string duration = x.str();
 
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
@@ -137,8 +138,6 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
         submit(argon, nonce);
     }
-    if (mpz_cmp(rest.get_mpz_t(), diff.get_mpz_t()) > 0)
-        cout << "SUP TO LIMITTTTTTTTTTTTTTTTTTTTTT" << endl;
     long si = rest.get_si();
     stats->newDl(si);
     x.clear();
@@ -162,10 +161,14 @@ void Miner::submit(string *argon, string *nonce) {
     req.set_request_uri(U("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
     client->request(req)
-            .then([](http_response response) {
-                if (response.status_code() == status_codes::OK) {
-                    response.headers().set_content_type("application/json");
-                    return response.extract_json();
+            .then([this](http_response response) {
+                try {
+                    if (response.status_code() == status_codes::OK) {
+                        response.headers().set_content_type("application/json");
+                        return response.extract_json();
+                    }
+                } catch (http_exception const &e) {
+                    cout << e.what() << endl;
                 }
                 return pplx::task_from_result(json::value());
             })

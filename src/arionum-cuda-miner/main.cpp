@@ -55,7 +55,6 @@ int main(int, const char *const *argv) {
         return 0;
     }
 
-/*
     string uniqid = generateUniqid();
     MinerSettings settings(&args.poolUrl, &args.address, &uniqid, &args.batchSize);
 
@@ -80,12 +79,6 @@ int main(int, const char *const *argv) {
         thread.join();
     }
     t.join();
-*/
-    auto *stats = new Stats();
-    string uniqid = generateUniqid();
-    MinerSettings settings(&args.poolUrl, &args.address, &uniqid, &args.batchSize);
-    SimpleCudaMiner miner(stats, settings, args.deviceIndex);
-    miner.start();
     return 0;
 }
 
