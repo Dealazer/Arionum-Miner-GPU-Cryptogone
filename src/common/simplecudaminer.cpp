@@ -28,8 +28,8 @@ SimpleCudaMiner::SimpleCudaMiner(MinerSettings ms, size_t di)
     mpz_init(ZERO);
     mpz_init(BLOCK_LIMIT);
     mpz_set_si(BLOCK_LIMIT, 240);
-    batchSize = *ms.getBatchSize();
-    Stats stats();
+    batchSize = static_cast<int>(*ms.getBatchSize());
+    stats = Stats();
     alphanum = const_cast<char *>("0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
     stringLength = static_cast<int>(strlen(alphanum) - 1);
 }
@@ -355,7 +355,6 @@ void SimpleCudaMiner::start() {
 
     argon2::Argon2Params params(32, saltBytes, 16, nullptr, 0, nullptr, 0, 4, 16384, 4);
     argon2::cuda::ProcessingUnit unit(&progCtx, &params, &device, batchSize, false, false);
-    long hashes = 0;
     auto start = chrono::high_resolution_clock::now();
     std::vector<std::string> nonces;
     std::vector<std::string> bases;
@@ -364,7 +363,7 @@ void SimpleCudaMiner::start() {
         auto current = std::chrono::high_resolution_clock::now();
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
         if (time.count() > 5000) {
-            //cout << stats << end;
+            cout << stats << end;
             updateInfoRequest(client);
             stats.newRound();
             start = std::chrono::high_resolution_clock::now();
