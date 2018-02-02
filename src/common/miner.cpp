@@ -48,10 +48,14 @@ void Miner::mine() {
             cout << "base:" << bases.at(j) << endl;
             cout << "nonce:" << nonces.at(j) << endl;
             cout << "argon:" << argons.at(j) << endl;
+            int verify = argon2i_verify(argons.at(j).data(), bases.at(j).data(), bases.at(j).length());
+            cout << "verify>>>>>>>>>>>>>" << verify << endl;
         }
         cout << "DEBUG HASH --- .........." << endl << endl << endl;
 
 
+        
+        
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
         }
