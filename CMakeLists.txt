@@ -80,18 +80,4 @@ target_link_libraries(arionum-cuda-miner
         -lcpprest
         -largon2
         )
-
-add_executable(simple-cuda-miner
-        src/simple-cuda/main.cpp)
-
-target_link_libraries(arionum-cuda-miner
-        argon2-cuda
-        -lboost_system
-        -lssl
-        -lcrypto
-        -lgmp
-        -lpthread
-        -lcpprest
-        -largon2
-        )
 endif()
