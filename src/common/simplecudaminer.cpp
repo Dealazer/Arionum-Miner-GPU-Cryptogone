@@ -14,6 +14,8 @@
 #include <argon2-cuda/programcontext.h>
 #include <argon2-cuda/processingunit.h>
 
+using  namespace std;
+
 SimpleCudaMiner::SimpleCudaMiner(MinerSettings ms, size_t di)
         : minerSettings(ms),
           updateData(MinerData("", "", "", "", "")),
