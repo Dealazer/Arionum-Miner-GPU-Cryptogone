@@ -112,7 +112,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
 
             new ArgumentOption<OpenCLArguments>(
                     makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t threadsPerDevice) {
-                        state.threadsPerDevice = (std::size_t) index;
+                        state.threadsPerDevice = (std::size_t) threadsPerDevice;
                     }), "threads-per-device", 't', "thread to use per device", "1", "THREADS"),
 
             new ArgumentOption<OpenCLArguments>(
