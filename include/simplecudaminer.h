@@ -28,7 +28,7 @@ private:
     const mpz_t ZERO;
     const mpz_t BLOCK_LIMIT;
     string uniqid;
-    auto AS_SHA = std::unique_ptr<char[]>(new char[128]);
+    unique_ptr<char[]> AS_SHA = std::unique_ptr<char[]>(new char[128]);
     http_client client;
     int batchSize;
     size_t deviceIndex;
@@ -54,7 +54,7 @@ private:
 
     int b64_byte_to_char(unsigned x);
 
-    static size_t to_base64(char *dst, size_t dst_len, const void *src, size_t src_len);
+    size_t to_base64(char *dst, size_t dst_len, const void *src, size_t src_len);
 
     void generateBytes(char *dst, size_t dst_len);
 
