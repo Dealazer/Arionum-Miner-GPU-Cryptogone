@@ -12,6 +12,9 @@
 #include <argon2-cuda/programcontext.h>
 #include <argon2-cuda/processingunit.h>
 #include <argon2-cuda/globalcontext.h>
+#include <cpprest/http_client.h>
+#include <cpprest/json.h>
+
 
 #define EQ(x, y) ((((0U - ((unsigned)(x) ^ (unsigned)(y))) >> 8) & 0xFF) ^ 0xFF)
 #define GT(x, y) ((((unsigned)(y) - (unsigned)(x)) >> 8) & 0xFF)
