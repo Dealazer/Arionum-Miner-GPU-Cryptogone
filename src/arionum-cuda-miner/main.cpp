@@ -30,6 +30,7 @@ struct OpenCLArguments {
     size_t batchSize = 1;
     string address = "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL";
     string poolUrl = "http://aropool.com";
+    size_t threadsPerDevice = 1;
 };
 
 void printDeviceList();
@@ -68,8 +69,10 @@ int main(int, const char *const *argv) {
 
     thread t(&Updater::start, updater);
 
-    Miner *miner = new CudaMiner(stats, &settings, updater, &args.deviceIndex);
-    miners.push_back(miner);
+    for (int j = 0; j < args.threadsPerDevice; ++j) {
+        Miner *miner = new CudaMiner(stats, &settings, updater, &args.deviceIndex);
+        miners.push_back(miner);
+    }
     vector<thread> threads;
     for (auto const &miner: miners) {
         thread minerT(&Miner::mine, miner);
@@ -105,6 +108,11 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                     makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t index) {
                         state.deviceIndex = (std::size_t) index;
                     }), "device", 'd', "use device with index INDEX", "0", "INDEX"),
+
+            new ArgumentOption<OpenCLArguments>(
+                    makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t index) {
+                        state.deviceIndex = (std::size_t) index;
+                    }), "threads-per-device", 't', "thread to use per device", "1", "THREADS"),
 
             new ArgumentOption<OpenCLArguments>(
                     makeNumericHandler<OpenCLArguments, size_t>([](OpenCLArguments &state, size_t index) {
