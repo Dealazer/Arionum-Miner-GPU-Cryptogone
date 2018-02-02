@@ -70,8 +70,8 @@ void Stats::newRejection() {
 }
 
 void Stats::newDl(long *dl) {
-    if (dl > 0 && dl < bestDl)
-        bestDl = dl;
+    if (*dl > 0 && *dl < bestDl)
+        bestDl = *dl;
 }
 
 void Stats::newRound() {
