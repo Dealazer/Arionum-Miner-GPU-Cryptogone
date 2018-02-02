@@ -40,7 +40,6 @@ void Miner::mine() {
         cout << "DEBUG Built batch --- .........." << endl << endl << endl;
 
 
-
         computeHash();
 
         cout << "DEBUG HASH ---" << endl;
@@ -54,8 +53,6 @@ void Miner::mine() {
         cout << "DEBUG HASH --- .........." << endl << endl << endl;
 
 
-        
-        
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
         }
@@ -127,6 +124,13 @@ void Miner::buildBatch() {
 
 
 void Miner::checkArgon(string *base, string *argon, string *nonce) {
+    cout << "\t\t Verify ---" << endl;
+
+    cout << "base:" << base << endl;
+    cout << "nonce:" << nonce << endl;
+    cout << "argon:" << argon << endl;
+    cout << "\t\t Verify --- .........." << endl << endl << endl;
+
 
     std::stringstream oss;
     oss << *base << *argon;
