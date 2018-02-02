@@ -20,6 +20,7 @@ static int b64_byte_to_char(unsigned x) {
 }
 
 void Miner::mine() {
+    size_t encodedlen = argon2_encodedlen(4, 16384, 4, 16, 32, Argon2_i);
     while (true) {
         if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
             data = updater->getData();
@@ -36,6 +37,9 @@ void Miner::mine() {
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
             cout << "base:" << bases.at(j) << endl;
             cout << "nonce:" << nonces.at(j) << endl;
+            auto encoded = new char[encodedlen];
+            argon2i_hash_encoded(4, 16384, 4, bases.at(j).data(), strlen(bases.at(j).data()), salt.data(), strlen(salt.data()),32,encoded, encodedlen);
+            cout << "true argon:" << encoded << endl;
         }
         cout << "DEBUG Built batch --- .........." << endl << endl << endl;
 
@@ -47,7 +51,7 @@ void Miner::mine() {
             cout << "base:" << bases.at(j) << endl;
             cout << "nonce:" << nonces.at(j) << endl;
             cout << "argon:" << argons.at(j) << endl;
-            int verify = argon2i_verify(argons.at(j).data(), bases.at(j).data(), bases.at(j).length());
+            int verify = argon2i_verify(argons.at(j).data(), bases.at(j).data(), strlen(bases.at(j).data()));
             cout << "verify>>>>>>>>>>>>>" << verify << endl;
         }
         cout << "DEBUG HASH --- .........." << endl << endl << endl;
@@ -128,7 +132,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
 
     cout << "base:" << *base << endl;
     cout << "nonce:" << *nonce << endl;
-    cout << "argon:" << *argon << endl;
+    cout << "argon:" << *   argon << endl;
     cout << "\t\t Verify --- .........." << endl << endl << endl;
 
 
