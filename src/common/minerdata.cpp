@@ -28,6 +28,9 @@ bool MinerData::isNewBlock(string *newBlock) {
     return *block != *newBlock;
 }
 
+long MinerData::getLongDiff() const {
+    return longDiff;
+}
 
 ostream &operator<<(ostream &os, const MinerData &data) {
     os << " difficulty: " << *data.getDifficulty()

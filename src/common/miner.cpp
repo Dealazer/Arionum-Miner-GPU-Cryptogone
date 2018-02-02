@@ -128,7 +128,8 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
     result.set_str(duration, 10);
-    mpz_tdiv_q(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
+    mpz_class d = data->getLongDiff();
+    mpz_tdiv_r(rest.get_mpz_t(), result.get_mpz_t(), d.get_mpz_t());
 
     //gmp_printf("Submitting - %Zd/%Zd=%Zd\t\tLimit=%Zd\n", result.get_mpz_t(), diff.get_mpz_t(), rest.get_mpz_t(), limit.get_mpz_t());
 
@@ -137,7 +138,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
         submit(argon, nonce);
     }
-    if(_mpz_cmp_si(rest.get_mpz_t(), 32000000) > 0)
+    if(_mpz_cmp_si(rest.get_mpz_t(), data->getLongDiff()) > 0)
         cout << "SUP TO LIMITTTTTTTTTTTTTTTTTTTTTT" << endl;
     long si = rest.get_si();
     stats->newDl(si);

@@ -19,6 +19,7 @@ private:
     string *limit = new string("");
     string *block = new string("");
     string *public_key = new string("");
+    long longDiff = 1;
 
 public:
     MinerData(string s, string d, string l, string b, string p) {
@@ -27,6 +28,7 @@ public:
         block = new string(b);
         public_key = new string(p);
         limit = new string(l);
+        longDiff = stol(d);
     };
 
     string *getStatus() const;
@@ -46,6 +48,8 @@ public:
     friend bool operator==(const MinerData &lhs, const MinerData &rhs);
 
     friend bool operator!=(const MinerData &lhs, const MinerData &rhs);
+
+    long getLongDiff() const;
 
 };
 
