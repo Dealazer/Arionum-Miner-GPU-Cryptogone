@@ -1,12 +1,10 @@
 #include "../../argon2-gpu/include/commandline/commandlineparser.h"
 #include "../../argon2-gpu/include/commandline/argumenthandlers.h"
 
-#include "../../argon2-gpu/include/argon2-gpu-common/argon2params.h"
-#include "../../argon2-gpu/include/argon2-gpu-common/argon2-common.h"
-#include "../../argon2-gpu/include/argon2-opencl/programcontext.h"
-#include "../../argon2-gpu/include/argon2-opencl/processingunit.h"
-#include "../../argon2-gpu/include/argon2-cuda/processingunit.h"
-#include "../../argon2-gpu/include/argon2-cuda/cudaexception.h"
+#include <argon2-gpu-common/argon2-common.h>
+#include <argon2-opencl/programcontext.h>
+#include <argon2-gpu-common/argon2params.h>
+#include <argon2-opencl/processingunit.h>
 #include <openssl/sha.h>
 #include <iomanip>
 #include <gmp.h>
