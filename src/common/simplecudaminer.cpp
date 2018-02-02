@@ -22,7 +22,7 @@ using namespace std;
 
 SimpleCudaMiner::SimpleCudaMiner(Stats *s, MinerSettings ms, size_t di)
         : minerSettings(ms),
-          updateData(MinerData("", "", "", "", "")),
+          updateData(MinerData("", "1", "", "", "")),
           deviceIndex(di),
           stats(s),
           client(http_client(U(*ms.getPoolAddress()))) {
