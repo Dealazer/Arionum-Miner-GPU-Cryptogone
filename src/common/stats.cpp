@@ -75,9 +75,14 @@ void Stats::newRejection() {
 }
 
 void Stats::newDl(long dl) {
+    if (dl <= 0)
+        return;
     long prev = bestDl;
-    if (dl > 0 && dl < prev)
+    if (dl < prev)
         bestDl.compare_exchange_weak(prev, dl);
+    long prevBlock = blockBestDl;
+    if (dl < prevBlock)
+        blockBestDl.compare_exchange_weak(prevBlock, dl);
 }
 
 void Stats::newRound() {
@@ -110,8 +115,8 @@ ostream &operator<<(ostream &os, const Stats &settings) {
              << setw(8) << left << "Shares"
              << setw(8) << left << "Blocks"
              << setw(8) << left << "Reject"
-             << setw(14) << left << "Block best DL"
-             << setw(14) << left << "Ever best DL"
+             << setw(22) << left << "Block best DL"
+             << setw(22) << left << "Ever best DL"
              << endl;
     }
     auto t = std::chrono::system_clock::to_time_t(settings.getRoundStart());
@@ -122,8 +127,8 @@ ostream &operator<<(ostream &os, const Stats &settings) {
          << setw(8) << left << settings.getShares()
          << setw(8) << left << settings.getBlocks()
          << setw(8) << left << settings.getRejections()
-         << setw(14) << left << settings.getBlockBestDl()
-         << setw(14) << left << settings.getBestDl();
+         << setw(22) << left << settings.getBlockBestDl()
+         << setw(22) << left << settings.getBestDl();
     return os;
 }
 
