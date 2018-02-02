@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <sys/time.h>
 #include <sstream>
+#include <string>
 #include <cpprest/http_client.h>
 #include <gmpxx.h>
 #include <chrono>
@@ -14,13 +15,13 @@
 #include <argon2-cuda/programcontext.h>
 #include <argon2-cuda/processingunit.h>
 
-using  namespace std;
+using namespace std;
 
 SimpleCudaMiner::SimpleCudaMiner(MinerSettings ms, size_t di)
         : minerSettings(ms),
           updateData(MinerData("", "", "", "", "")),
           deviceIndex(di),
-          client(http_client(U(*ms.getPoolAddress()))){
+          client(http_client(U(*ms.getPoolAddress()))) {
     mpz_init(ZERO);
     mpz_init(BLOCK_LIMIT);
     mpz_set_si(BLOCK_LIMIT, 240);
@@ -111,7 +112,7 @@ void SimpleCudaMiner::submit(string *argon, string *nonce) {
                 }
                 return pplx::task_from_result(json::value());
             })
-            .then(this](pplx::task<json::value> previousTask) {
+            .then([this](pplx::task<json::value> previousTask) {
                 try {
                     json::value jvalue = previousTask.get();
                     if (!jvalue.is_null() && jvalue.is_object()) {
@@ -203,7 +204,7 @@ void SimpleCudaMiner::parseUpdateJson(const json::value &jvalue) {
                     std::cout << "block =>" << block << std::endl;
                     std::cout << "limit =>" << limit << std::endl;
                     std::cout << "public_key =>" << public_key << std::endl;
-                    updateData = MinerData(status, difficulty, limit, block, public_key);
+                    updateData = MinerData(status, difficulty, std::to_string(limit), block, public_key);
                 }
             }
         } else {
@@ -302,7 +303,8 @@ void SimpleCudaMiner::computeHash(argon2::cuda::ProcessingUnit *unit, argon2::cu
 void SimpleCudaMiner::updateInfoRequest(http_client &client) {
     stringstream paths;
     double rate = stats.getHashRate();
-    paths << "/mine.php?q=info&worker=" << *minerSettings.getUniqid() << "&address=" << *minerSettings.getPrivateKey() << "&hashrate="
+    paths << "/mine.php?q=info&worker=" << *minerSettings.getUniqid() << "&address=" << *minerSettings.getPrivateKey()
+          << "&hashrate="
           << rate;
     //cout << "PATH="<< paths.str() << endl;
     http_request req(methods::GET);
