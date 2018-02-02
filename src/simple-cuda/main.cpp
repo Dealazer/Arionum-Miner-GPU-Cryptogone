@@ -1,10 +1,10 @@
-#include "commandline/commandlineparser.h"
-#include "commandline/argumenthandlers.h"
+#include "../../argon2-gpu/include/commandline/commandlineparser.h"
+#include "../../argon2-gpu/include/commandline/argumenthandlers.h"
 
-#include "argon2-gpu-common/argon2params.h"
-#include "argon2-opencl/processingunit.h"
-#include "argon2-cuda/processingunit.h"
-#include "argon2-cuda/cudaexception.h"
+#include "../../argon2-gpu/include/argon2-gpu-common/argon2params.h"
+#include "../../argon2-gpu/include/argon2-opencl/processingunit.h"
+#include "../../argon2-gpu/include/argon2-cuda/processingunit.h"
+#include "../../argon2-gpu/include/argon2-cuda/cudaexception.h"
 #include <openssl/sha.h>
 #include <iomanip>
 #include <gmp.h>
@@ -22,9 +22,6 @@ using namespace web::http;
 using namespace web::http::client;
 
 
-extern "C" {
-#include "argon2-opencl/myopencl.h"
-}
 
 #include "argon2.h"
 
