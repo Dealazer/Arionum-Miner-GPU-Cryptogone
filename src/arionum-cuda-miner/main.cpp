@@ -71,6 +71,7 @@ int main(int, const char *const *argv) {
     thread t(&Updater::start, updater);
 
     if (args.allDevices) {
+        cout << "Use all Devices" << endl;
         cuda::GlobalContext global;
         auto &devices = global.getAllDevices();
         for (size_t i = 0; i < devices.size(); i++) {
