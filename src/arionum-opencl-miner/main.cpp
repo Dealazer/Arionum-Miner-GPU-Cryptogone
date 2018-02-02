@@ -37,17 +37,6 @@ string generateUniqid();
 
 
 int main(int, const char *const *argv) {
-    const char *base = "PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD-emrhftNTYurTsCeUhwpfx96s0JpZn2y3byfVqoMfw-2CRWhsLP6gWiWJSGzjjTWbpHJceUkoPHYTtC5bsXJ1Tg4pxDchgyuebsTH4iSyxjcrnbhLQhFudWJ2esNEDD8JD1-15432169";
-    const char *salt = "vAxzPthKVYaceaBZ";
-
-    size_t encodedlen = argon2_encodedlen(4, 16384, 4, 16, 32, Argon2_i);
-    auto enc = new char[encodedlen];
-    argon2i_hash_encoded(4, 16384, 4, base, strlen(base), salt, strlen(salt), 32, enc, encodedlen);
-    cout << enc << endl;
-
-    if(true)
-        return 0;
-
     CommandLineParser<OpenCLArguments> parser = buildCmdLineParser();
     OpenCLArguments args;
     int ret = parser.parseArguments(args, argv);
