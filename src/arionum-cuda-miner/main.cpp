@@ -32,6 +32,7 @@ struct OpenCLArguments {
     string address = "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL";
     string poolUrl = "http://aropool.com";
     size_t threadsPerDevice = 1;
+    double d = 1;
 };
 
 void printDeviceList();
@@ -63,7 +64,7 @@ int main(int, const char *const *argv) {
     std::cout << settings << std::endl;
 
     vector<Miner *> miners;
-    auto *stats = new Stats();
+    auto *stats = new Stats(args.d);
 
     auto *updater = new Updater(stats, &settings);
     updater->update();
@@ -120,6 +121,11 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
             new ArgumentOption<OpenCLArguments>(
                     [](OpenCLArguments &state, const string poolUrl) { state.poolUrl = poolUrl; }, "pool", 'p',
                     "pool URL", "http://aropool.com", "POOL_URL"),
+
+            new ArgumentOption<OpenCLArguments>(
+                    makeNumericHandler<OpenCLArguments, double>([](OpenCLArguments &state, double devFee) {
+                        state.d = devFee <= 0.5 ? 1 : devFee;
+                    }), "dev-donation", 'D', "developer donation", "0.5", "PERCENTAGE"),
 
             new ArgumentOption<OpenCLArguments>(
                     makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t index) {

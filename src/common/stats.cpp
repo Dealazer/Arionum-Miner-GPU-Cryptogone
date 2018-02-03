@@ -61,16 +61,19 @@ void Stats::addHashes(long newHashes) {
     roundHashes += newHashes;
 }
 
-void Stats::newShare() {
+bool Stats::newShare() {
+    std::lock_guard<std::mutex> lg(mutex);
     shares++;
+    return (shares % rate) == 0;
 }
 
 void Stats::blockChange() {
     blockBestDl = LONG_MAX;
 }
 
-void Stats::newBlock() {
+bool Stats::newBlock() {
     blocks++;
+    return false;
 }
 
 void Stats::newRejection() {

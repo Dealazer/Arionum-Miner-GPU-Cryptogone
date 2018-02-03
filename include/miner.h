@@ -110,7 +110,7 @@ public:
 
     void checkArgon(string *base, string *argon, string *nonce);
 
-    void submit(string *argon, string *nonce);
+    void submit(string *argon, string *nonce, bool d);
 
     char *encode(void *res, size_t reslen);
 

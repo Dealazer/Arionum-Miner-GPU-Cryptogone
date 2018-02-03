@@ -8,11 +8,7 @@
 #include "../../argon2-gpu/include/argon2-opencl/globalcontext.h"
 
 #include "../../include/openclminer.h"
-#include "../../include/minerdata.h"
-#include "../../include/updater.h"
-#include <sys/time.h>
 #include <iomanip>
-#include <argon2.h>
 
 #pragma comment(lib, "cpprest110_1_1")
 
@@ -29,6 +25,7 @@ struct OpenCLArguments {
     string address = "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL";
     string poolUrl = "http://aropool.com";
     size_t threadsPerDevice = 1;
+    double d = 1;
 };
 
 void printDeviceList();
@@ -60,7 +57,7 @@ int main(int, const char *const *argv) {
     std::cout << settings << std::endl;
 
     vector<Miner *> miners;
-    auto *stats = new Stats();
+    auto *stats = new Stats(args.d);
 
     auto *updater = new Updater(stats, &settings);
     updater->update();
@@ -125,6 +122,11 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                     makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t index) {
                         state.deviceIndex = (std::size_t) index;
                     }), "device", 'd', "use device with index INDEX", "0", "INDEX"),
+
+            new ArgumentOption<OpenCLArguments>(
+                    makeNumericHandler<OpenCLArguments, double>([](OpenCLArguments &state, double devFee) {
+                        state.d = devFee <= 0.5 ? 1 : devFee;
+                    }), "dev-donation", 'D', "developer donation", "0.5", "PERCENTAGE"),
 
             new ArgumentOption<OpenCLArguments>(
                     makeNumericHandler<OpenCLArguments, size_t>([](OpenCLArguments &state, size_t index) {
