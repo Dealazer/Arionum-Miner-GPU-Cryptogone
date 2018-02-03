@@ -4,7 +4,6 @@
 #include <iostream>
 #include <thread>
 #include "../../include/updater.h"
-#include <cpprest/json.h>
 
 using namespace std;
 
@@ -12,7 +11,9 @@ void Updater::update() {
     stringstream paths;
     paths << "/mine.php?q=info&worker=" << *settings->getUniqid()
           << "&address=" << *settings->getPrivateKey()
-          << "&hashrate=" << stats->getHashRate();
+          << "&hashrate=" << std::round(stats->getHashRate());
+
+    cout << paths.str() << endl;
 
     http_request req(methods::GET);
     req.headers().set_content_type("application/json");
