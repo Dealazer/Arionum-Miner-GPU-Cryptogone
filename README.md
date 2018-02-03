@@ -1,7 +1,21 @@
 
-# README #
+# Arionum GPU Miner #
 
 GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
+
+## Updates ##
+
+02/03/18
+- FIX for multi GPUs under CUDA devices - now can run on multi GPUs
+- FIX miner crash sometimes when updating info or submitting nonce.
+- ADD developer donation parameter, default 1%
+
+### Update guide
+
+    git submodule update --remote
+    git pull
+    cmake -DCMAKE_BUILD_TYPE=Release
+    make
 
 ## Installation guide ###
 
