@@ -9,6 +9,7 @@ GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 
 * FIX for multi GPUs under CUDA devices - now can run on multi GPUs
 * FIX miner crash sometimes when updating info or submitting nonce.
+* FIX minor thing, like unused includes
 * ADD developer donation parameter, default 1%
 
 ### Update guide
@@ -34,8 +35,14 @@ GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
     sudo apt install nvidia-libopencl1-390 -y
     sudo apt install nvidia-opencl-dev -y
 #### AMD GPU
+##### AMD driver
 You must install AMD opencl drivers.
+See [AMD site](http://support.amd.com/en-us/kb-articles/Pages/AMDGPU-PRO-Driver-for-Linux-Release-Notes.aspx)
 
+#### Install opencl headers
+
+    sudo apt-get install opencl-headers
+    
 #### Build the miner
 
     enter code here
