@@ -82,9 +82,6 @@ int main(int, const char *const *argv) {
         }
     }
 
-
-    Miner *miner = new OpenClMiner(stats, &settings, updater, &args.deviceIndex);
-    miners.push_back(miner);
     vector<thread> threads;
     for (auto const &miner: miners) {
         thread minerT(&Miner::mine, miner);
