@@ -33,7 +33,10 @@ public:
 
     explicit Updater(Stats *s, MinerSettings *ms) : stats(s),
                                                                   settings(ms) {
-        client = new http_client(U(ms->getPoolAddress()->c_str()));
+        http_client_config config;
+        utility::seconds timeout(2);
+        config.set_timeout(timeout);
+        client = new http_client(U(ms->getPoolAddress()->c_str()), config);
     };
 
 
