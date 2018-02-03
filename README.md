@@ -56,3 +56,14 @@ You must install AMD opencl drivers.
 
     ./arionum-opencl-miner -p http://aropool.com -a your_address
 
+
+## Developer Donation
+
+By default the miner will donate 1% of the shares to my address.
+
+    -D parameters allow you to change that: minimu is 0.5%
+
+If you want to donate directly to support further development, here is my wallet 
+
+    4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL
+    
