@@ -13,8 +13,6 @@ void Updater::update() {
           << "&address=" << *settings->getPrivateKey()
           << "&hashrate=" << std::round(stats->getHashRate());
 
-    cout << paths.str() << endl;
-
     http_request req(methods::GET);
     req.headers().set_content_type("application/json");
     req.set_request_uri(U(paths.str().data()));
