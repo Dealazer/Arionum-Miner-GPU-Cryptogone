@@ -66,7 +66,26 @@ See [AMD site](http://support.amd.com/en-us/kb-articles/Pages/AMDGPU-PRO-Driver-
 #### For OpenCL
 
     ./arionum-opencl-miner -p http://aropool.com -a your_address
+    
+#### Options
 
+    Options:
+    -l, --list-devices                list all available devices and exit
+    -u, --use-all-devices             use all available devices
+    -a, --address=ADDRESS             public arionum address [default: 4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL]
+    -p, --pool=POOL_URL               pool URL [default: http://aropool.com]
+    -d, --device=INDEX                use device with index INDEX [default: 0]
+    -b, --batchSize=SIZE              batch size [default: 200]
+    -t, --threads-per-device=THREADS  thread to use per device [default: 1]
+    -?, --help                        show this help and exit
+
+* -b define number of nonces to be hashed in the same batch
+* -t define the number of CPU thread for aa GPU device
+* -d allow specifying a GPU device
+* -u use all GPU devices available
+
+-b and -t are the most important settings, you need to test different values and find the pair giving the best hashrate.
+For me it was -b 128 -t 4 !
 
 ## Developer Donation
 
