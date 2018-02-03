@@ -72,6 +72,7 @@ int main(int, const char *const *argv) {
     thread t(&Updater::start, updater);
 
     if (args.allDevices) {
+        cout << "Use all Devices" << endl;
         cuda::GlobalContext global;
         auto &devices = global.getAllDevices();
         for (size_t i = 0; i < devices.size(); ++i) {
@@ -82,8 +83,10 @@ int main(int, const char *const *argv) {
         }
 
     } else {
+        size_t deviceIndex = args.deviceIndex;
+        cout << "start using device #" << deviceIndex << endl;
         for (int j = 0; j < args.threadsPerDevice; ++j) {
-            Miner *miner = new CudaMiner(stats, &settings, updater, &args.deviceIndex);
+            Miner *miner = new CudaMiner(stats, &settings, updater, &deviceIndex);
             miners.push_back(miner);
         }
     }
