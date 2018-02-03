@@ -91,7 +91,10 @@ public:
                                                               BLOCK_LIMIT(240),
                                                               limit(0),
                                                               updater(u) {
-        client = new http_client(U(ms->getPoolAddress()->c_str()));
+        http_client_config config;
+        utility::seconds timeout(2);
+        config.set_timeout(timeout);
+        client = new http_client(U(ms->getPoolAddress()->c_str()), config);
         generator = std::mt19937(device());
         distribution = std::uniform_int_distribution<uint8_t>(0, 255);
         salt = randomStr(16);
