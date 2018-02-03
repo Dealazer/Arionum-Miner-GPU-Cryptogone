@@ -9,6 +9,7 @@ GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 
 * FIX for multi GPUs under CUDA devices - now can run on multi GPUs
 * FIX miner crash sometimes when updating info or submitting nonce.
+* FIX hash reporting to pool
 * FIX minor thing, like unused includes
 * ADD developer donation parameter, default 1%
 
