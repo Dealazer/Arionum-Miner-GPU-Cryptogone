@@ -10,6 +10,7 @@
 #include <chrono>
 #include <mutex>
 #include <climits>
+#include <cmath>
 
 using namespace std;
 
@@ -27,29 +28,39 @@ private:
     std::atomic<long> blockBestDl;
     std::chrono::time_point<std::chrono::high_resolution_clock> roundStart;
     std::chrono::time_point<std::chrono::high_resolution_clock> start;
+    int rate;
     std::mutex mutex;
 
     void updateHashRate();
+
 public:
 
-    Stats() : roundHashes(0),
-              hashes(0),
-              shares(0),
-              blocks(0),
-              rejections(0),
-              rounds(-1),
-              hashRate(0.0),
-              avgHashRate(0.0),
-              bestDl(LONG_MAX),
-              blockBestDl(LONG_MAX),
-              roundStart(std::chrono::high_resolution_clock::now()),
-              start(std::chrono::high_resolution_clock::now()) {};
+    Stats(double dd) : roundHashes(0),
+                       hashes(0),
+                       shares(0),
+                       blocks(0),
+                       rejections(0),
+                       rounds(-1),
+                       hashRate(0.0),
+                       avgHashRate(0.0),
+                       bestDl(LONG_MAX),
+                       blockBestDl(LONG_MAX),
+                       roundStart(std::chrono::high_resolution_clock::now()),
+                       start(std::chrono::high_resolution_clock::now()) {
+        double t = dd <= 0.5 ? 0.5 : dd;
+        rate = std::round(100 / t);
+    };
 
     void addHashes(long hashes);
-    void newShare();
-    void newBlock();
+
+    bool newShare();
+
+    bool newBlock();
+
     void newRejection();
+
     void newDl(long dl);
+
     void newRound();
 
     const atomic<long> &getRoundHashes() const;

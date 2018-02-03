@@ -24,8 +24,9 @@ void Updater::update() {
                         response.headers().set_content_type("application/json");
                         return response.extract_json();
                     }
-                    cout << "BAD RESPONSE" << endl;
                     return pplx::task_from_result(json::value());
+                } catch (http_exception const &e) {
+                    cerr << e.what() << endl;
                 } catch (web::json::json_exception const &e) {
                     cerr << e.what() << endl;
                 }
@@ -34,8 +35,7 @@ void Updater::update() {
                 try {
                     const json::value &value = previousTask.get();
                     processResponse(&value);
-                }
-                catch (http_exception const &e) {
+                } catch (http_exception const &e) {
                     cerr << e.what() << endl;
                 } catch (web::json::json_exception const &e) {
                     cerr << e.what() << endl;
