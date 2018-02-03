@@ -12,7 +12,7 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *device
     global = new argon2::opencl::GlobalContext();
     auto &devices = global->getAllDevices();
     device = &devices[*deviceIndex];
-    cout << "using device " << device->getName() << endl;
+    cout << "using device #" << *deviceIndex << " - " << device->getName() << endl;
     cout << "using salt " << salt << endl;
     progCtx = new argon2::opencl::ProgramContext(global, {*device}, type, version,
                                                  const_cast<char *>("./argon2-gpu/data/kernels/"));

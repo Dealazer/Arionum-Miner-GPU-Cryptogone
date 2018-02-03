@@ -68,7 +68,7 @@ int main(int, const char *const *argv) {
     if (args.allDevices) {
         opencl::GlobalContext global;
         auto &devices = global.getAllDevices();
-        for (size_t i = 0; i < devices.size(); i++) {
+        for (size_t i = 0; i < devices.size(); ++i) {
             for (int j = 0; j < args.threadsPerDevice; ++j) {
                 Miner *miner = new OpenClMiner(stats, &settings, updater, &i);
                 miners.push_back(miner);
