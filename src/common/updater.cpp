@@ -11,7 +11,7 @@ void Updater::update() {
     stringstream paths;
     paths << "/mine.php?q=info&worker=" << *settings->getUniqid()
           << "&address=" << *settings->getPrivateKey()
-          << "&hashrate=" << std::round(stats->getHashRate());
+          << "&hashrate=" << std::round(stats->getAvgHashRate());
 
     http_request req(methods::GET);
     req.headers().set_content_type("application/json");
