@@ -36,19 +36,8 @@ void Miner::mine() {
 
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
-/*
-            cout << "b=" << bases[j] << endl
-                 << "a=" << argons[j] << endl
-                 << "n=" << nonces[j] << endl;
-            size_t encodedlen = argon2_encodedlen(4, 16384, 4, 16, 32, Argon2_i);
-            auto enc = new char[encodedlen];
-            argon2i_hash_encoded(4, 16384, 4, bases[j].data(), strlen(bases[j].data()), salt.data(),
-                                 strlen(salt.data()), 32, enc, encodedlen);
-            cout << "t=" << enc << endl;
-*/
         }
         stats->addHashes(*settings->getBatchSize());
-        //sleep(5);
     }
 }
 
@@ -179,6 +168,8 @@ void Miner::submit(string *argon, string *nonce) {
                     }
                 } catch (http_exception const &e) {
                     cout << e.what() << endl;
+                } catch (web::json::json_exception const &e) {
+                    cerr << e.what() << endl;
                 }
                 return pplx::task_from_result(json::value());
             })
@@ -198,6 +189,8 @@ void Miner::submit(string *argon, string *nonce) {
                 }
                 catch (http_exception const &e) {
                     cout << e.what() << endl;
+                } catch (web::json::json_exception const &e) {
+                    cerr << e.what() << endl;
                 }
             });
 }
