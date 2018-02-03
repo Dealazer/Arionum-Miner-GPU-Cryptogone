@@ -26,6 +26,7 @@ GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 #### Dependencies
 
     sudo apt install gcc-6 g++-6 libgmp-dev python-dev libboost-dev libcpprest-dev cmake git make zlib1g-dev libssl-dev libargon2-0-dev -y
+
 #### Nvidia GPU - CUDA Installation
 
     wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_9.1.85-1_amd64.deb
@@ -35,18 +36,20 @@ GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
     sudo apt-get install cuda -y 
     sudo apt install nvidia-libopencl1-390 -y
     sudo apt install nvidia-opencl-dev -y
+
 #### AMD GPU
+
 ##### AMD driver
 You must install AMD opencl drivers.
 See [AMD site](http://support.amd.com/en-us/kb-articles/Pages/AMDGPU-PRO-Driver-for-Linux-Release-Notes.aspx)
 
-#### Install opencl headers
+##### Install opencl headers
 
     sudo apt-get install opencl-headers
     
+
 #### Build the miner
 
-    enter code here
     sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 1
     sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 1
     git clone https://guli13@bitbucket.org/guli13/arionum-gpu-miner.git
