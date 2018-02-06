@@ -16,7 +16,7 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *device
     cout << "using salt " << salt << endl;
     progCtx = new argon2::opencl::ProgramContext(global, {*device}, type, version,
                                                  const_cast<char *>("./argon2-gpu/data/kernels/"));
-    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 4, 16384, 4);
+    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 1, 524288, 1);
     unit = new argon2::opencl::ProcessingUnit(progCtx, params, device, *settings->getBatchSize(), false, false);
 }
 
