@@ -141,7 +141,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
 }
 
 void Miner::submit(string *argon, string *nonce, bool d) {
-    string argonTail = argon->substr(29);
+    string argonTail = argon->substr(30);
     stringstream body;
     boost::replace_all(*nonce, "+", "%2B");
     boost::replace_all(argonTail, "+", "%2B");
