@@ -3,6 +3,8 @@
 
 GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 
+# Miner has been updated with new settings !!!!!
+
 ## Updates ##
 
 ### 02/03/18
