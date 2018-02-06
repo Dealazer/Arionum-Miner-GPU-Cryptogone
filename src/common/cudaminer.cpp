@@ -18,7 +18,7 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     cout << "using device " << *deviceIndex << " - " << device->getName() << endl;
     cout << "using salt " << salt << endl;
     progCtx = new argon2::cuda::ProgramContext(global, {*device}, type, version);
-    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 4, 16384, 4);
+    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 1, 524288, 1);
     unit = new argon2::cuda::ProcessingUnit(progCtx, params, device, *settings->getBatchSize(), false, false);
 }
 
