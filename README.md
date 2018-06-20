@@ -1,11 +1,18 @@
 
-# Arionum GPU Miner #
+# Arionum GPU Miner, Windows Edition #
 
 GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
+
+This is a fork of Guli's initial miner, modified in order to make it compile/run on windows
 
 # Miner has been updated with new settings !!!!!
 
 ## Updates ##
+
+
+### 20/06/18 (cryptogone)
+
+* start windows port
 
 ### 02/03/18
 
@@ -22,7 +29,11 @@ GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
     cmake -DCMAKE_BUILD_TYPE=Release
     make
 
-## Installation guide ###
+## Installation guide for Windows ###
+
+TBD
+
+## Installation guide for Linux ###
 
 ### Ubuntu 17.10
 #### Dependencies
