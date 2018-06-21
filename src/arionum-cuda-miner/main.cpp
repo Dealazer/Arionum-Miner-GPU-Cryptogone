@@ -12,12 +12,16 @@
 #include "../../include/minerdata.h"
 #include "../../include/updater.h"
 #include "../../include/cudaminer.h"
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <iomanip>
 #include "../../include/simplecudaminer.h"
 
-#pragma comment(lib, "cpprest110_1_1")
+// cpprest lib
+#pragma comment(lib, "cpprest_2_10")
 
+// openSSL libs
+#pragma comment(lib, "ssleay32")
+#pragma comment(lib, "libeay32")
 
 using namespace argon2;
 using namespace std;
@@ -166,9 +170,34 @@ void printDeviceList() {
     }
 }
 
+#include <windows.h>
+
+int _gettimeofday(struct timeval* p, void* tz) {
+	ULARGE_INTEGER ul; // As specified on MSDN.
+	FILETIME ft;
+
+	// Returns a 64-bit value representing the number of
+	// 100-nanosecond intervals since January 1, 1601 (UTC).
+	GetSystemTimeAsFileTime(&ft);
+
+	// Fill ULARGE_INTEGER low and high parts.
+	ul.LowPart = ft.dwLowDateTime;
+	ul.HighPart = ft.dwHighDateTime;
+	// Convert to microseconds.
+	ul.QuadPart /= 10ULL;
+	// Remove Windows to UNIX Epoch delta.
+	ul.QuadPart -= 11644473600000000ULL;
+	// Modulo to retrieve the microseconds.
+	p->tv_usec = (long)(ul.QuadPart % 1000000LL);
+	// Divide to retrieve the seconds.
+	p->tv_sec = (long)(ul.QuadPart / 1000000LL);
+
+	return 0;
+}
+
 string generateUniqid() {
     struct timeval tv{};
-    gettimeofday(&tv, nullptr);
+    _gettimeofday(&tv, nullptr);
     auto sec = (int) tv.tv_sec;
     auto usec = (int) (tv.tv_usec % 0x100000);
     std::stringstream ss;

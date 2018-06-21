@@ -1,0 +1,77 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 401628a..5ca007b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -95,29 +95,3 @@ else()
+         arch/generic/lib/argon2-arch.c
+     )
+ endif()
+-
+-add_executable(argon2-exec src/run.c)
+-target_link_libraries(argon2-exec argon2 argon2-internal)
+-target_include_directories(argon2-exec PRIVATE src)
+-set_target_properties(argon2-exec PROPERTIES OUTPUT_NAME argon2)
+-
+-add_executable(argon2-genkat src/genkat.c)
+-target_include_directories(argon2-genkat PRIVATE src)
+-target_link_libraries(argon2-genkat argon2)
+-
+-add_executable(argon2-bench2 src/bench2.c)
+-target_include_directories(argon2-bench2 PRIVATE src)
+-target_link_libraries(argon2-bench2 argon2 -lrt)
+-
+-add_executable(argon2-test tests/test.c)
+-target_include_directories(argon2-test PRIVATE tests)
+-target_link_libraries(argon2-test argon2)
+-
+-add_test(test argon2-test)
+-
+-install(TARGETS argon2 DESTINATION ${LIBRARY_INSTALL_DIR})
+-install(FILES
+-    include/argon2.h
+-    DESTINATION ${INCLUDE_INSTALL_DIR}
+-)
+-install(TARGETS argon2-exec DESTINATION ${BINARY_INSTALL_DIR})
+diff --git a/lib/encoding.c b/lib/encoding.c
+index af56e44..22f2c38 100644
+--- a/lib/encoding.c
++++ b/lib/encoding.c
+@@ -1,3 +1,5 @@
++#define _CRT_SECURE_NO_WARNINGS
++
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+diff --git a/lib/impl-select.c b/lib/impl-select.c
+index 6bc3fb5..84c62ae 100644
+--- a/lib/impl-select.c
++++ b/lib/impl-select.c
+@@ -5,10 +5,10 @@
+ 
+ #include "argon2.h"
+ 
+-#define log_maybe(file, args...) \
++#define log_maybe(file, ...) \
+     do { \
+         if (file) { \
+-            fprintf(file, args); \
++            fprintf(file, __VA_ARGS__); \
+         } \
+     } while((void)0, 0)
+ 
+diff --git a/src/bench2.c b/src/bench2.c
+index b27bcdc..45d3309 100644
+--- a/src/bench2.c
++++ b/src/bench2.c
+@@ -19,7 +19,10 @@
+ #define BENCH_OUTLEN 16
+ #define BENCH_INLEN 16
+ 
+-static double min(const double *samples, size_t count)
++#undef min
++#define min _min
++
++static double _min(const double *samples, size_t count)
+ {
+     size_t i;
+     double min = INFINITY;

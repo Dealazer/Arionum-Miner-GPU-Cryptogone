@@ -5,8 +5,6 @@ GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 
 This is a fork of Guli's initial miner, modified in order to make it compile/run on windows
 
-# Miner has been updated with new settings !!!!!
-
 ## Updates ##
 
 
@@ -14,68 +12,38 @@ This is a fork of Guli's initial miner, modified in order to make it compile/run
 
 * start windows port
 
-### 02/03/18
-
-* FIX for multi GPUs under CUDA devices - now can run on multi GPUs
-* FIX miner crash sometimes when updating info or submitting nonce.
-* FIX hash reporting to pool
-* FIX minor thing, like unused includes
-* ADD developer donation parameter, default 1%
-
-### Update guide
+### Update sources guide
 
     git submodule update --remote
     git pull
-    cmake -DCMAKE_BUILD_TYPE=Release
-    make
+    ./make_prj.sh
 
 ## Installation guide for Windows ###
-
-TBD
-
-## Installation guide for Linux ###
-
-### Ubuntu 17.10
-#### Dependencies
-
-    sudo apt install gcc-6 g++-6 libgmp-dev python-dev libboost-dev libcpprest-dev cmake git make zlib1g-dev libssl-dev libargon2-0-dev -y
-
-#### Nvidia GPU - CUDA Installation
-
-    wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_9.1.85-1_amd64.deb
-    sudo dpkg -i cuda-repo-ubuntu1604_9.1.85-1_amd64.deb 
-    sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
-    sudo apt-get update
-    sudo apt-get install cuda -y 
-    sudo apt install nvidia-libopencl1-390 -y
-    sudo apt install nvidia-opencl-dev -y
-
-#### AMD GPU
-
-##### AMD driver
-You must install AMD opencl drivers.
-See [AMD site](http://support.amd.com/en-us/kb-articles/Pages/AMDGPU-PRO-Driver-for-Linux-Release-Notes.aspx)
-
-##### Install opencl headers
-
-    sudo apt-get install opencl-headers
-    
-
-#### Build the miner
-
-    sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 1
-    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 1
-    git clone https://guli13@bitbucket.org/guli13/arionum-gpu-miner.git
-    cd arionum-gpu-miner
-    git submodule update --init --recursive
-    cmake -DCMAKE_BUILD_TYPE=Release .
-    make
-
+    Install Github for Windows
+    Install Visual Studio 2015 or 2017 Community Edition
+    Install CMake for windows
+      add "C:\Program Files (x86)\Windows Kits\10\bin\10.0.17134.0" to path 
+      (see https://github.com/Microsoft/vcpkg/issues/1689 for more info)
+      make sure cmake.exe is in the path
+    Install CUDA
+      https://developer.nvidia.com/cuda-downloads (this also installs OpenCL)
+    Install vcpkg
+      vcpkg (https://github.com/Microsoft/vcpkg)
+    Install dependencies
+      vcpkg install cpprestsdk cpprestsdk:x64-windows
+      vcpkg install boost
+      ./setup_mpir.sh
+    Prepare submodules
+      ./apply_submodules_paches.sh
+    Generate Visual Studio solution
+      ./gen_prj.sh
 
 ### Start miner ###
+
 #### For CUDA
 
     ./arionum-cuda-miner -p http://aropool.com -a your_address
+
 #### For OpenCL
 
     ./arionum-opencl-miner -p http://aropool.com -a your_address

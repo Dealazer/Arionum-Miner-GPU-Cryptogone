@@ -26,8 +26,8 @@ private:
     std::atomic<long> rejections;
     std::atomic<long> bestDl;
     std::atomic<long> blockBestDl;
-    std::chrono::time_point<std::chrono::high_resolution_clock> roundStart;
-    std::chrono::time_point<std::chrono::high_resolution_clock> start;
+    std::chrono::time_point<std::chrono::system_clock> roundStart;
+    std::chrono::time_point<std::chrono::system_clock> start;
     int rate;
     std::mutex mutex;
 
@@ -45,10 +45,10 @@ public:
                        avgHashRate(0.0),
                        bestDl(LONG_MAX),
                        blockBestDl(LONG_MAX),
-                       roundStart(std::chrono::high_resolution_clock::now()),
-                       start(std::chrono::high_resolution_clock::now()) {
+                       roundStart(std::chrono::system_clock::now()),
+                       start(std::chrono::system_clock::now()) {
         double t = dd <= 0.5 ? 0.5 : dd;
-        rate = std::round(100 / t);
+        rate = (int)std::round(100 / t);
     };
 
     void addHashes(long hashes);
@@ -81,9 +81,9 @@ public:
 
     const atomic<long> &getRejections() const;
 
-    const chrono::time_point<chrono::high_resolution_clock> &getRoundStart() const;
+    const chrono::time_point<chrono::system_clock> &getRoundStart() const;
 
-    const chrono::time_point<chrono::high_resolution_clock> &getStart() const;
+    const chrono::time_point<chrono::system_clock> &getStart() const;
 
     friend ostream &operator<<(ostream &os, const Stats &stats);
 

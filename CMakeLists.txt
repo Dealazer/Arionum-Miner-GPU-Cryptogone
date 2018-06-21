@@ -25,6 +25,9 @@ if(CUDA_FOUND)
     include_directories(${CUDA_INCLUDE_DIRS})
 endif()
 
+include_directories(mpir-3.0.0)
+
+link_directories(mpir-3.0.0/lib/x64/Release)
 
 add_subdirectory(argon2-gpu)
 
@@ -45,15 +48,10 @@ add_executable(arionum-opencl-miner
 
 target_link_libraries(arionum-opencl-miner
         argon2-opencl
-        -lOpenCL
-        -lboost_system
-        -lssl
-        -lcrypto
-        -lgmp
-        -lpthread
-        -lcpprest
-        -largon2
+        argon2
+        mpir
         )
+
 if(CUDA_FOUND)
 add_executable(arionum-cuda-miner
         src/arionum-cuda-miner/main.cpp
@@ -74,12 +72,8 @@ add_executable(arionum-cuda-miner
 
 target_link_libraries(arionum-cuda-miner
         argon2-cuda
-        -lboost_system
-        -lssl
-        -lcrypto
-        -lgmp
-        -lpthread
-        -lcpprest
-        -largon2
+        argon2
+		mpir
         )
+
 endif()

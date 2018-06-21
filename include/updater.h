@@ -30,15 +30,7 @@ public:
 
     void start();
 
-
-    explicit Updater(Stats *s, MinerSettings *ms) : stats(s),
-                                                                  settings(ms) {
-        http_client_config config;
-        utility::seconds timeout(2);
-        config.set_timeout(timeout);
-        client = new http_client(U(ms->getPoolAddress()->c_str()), config);
-    };
-
+    explicit Updater(Stats *s, MinerSettings *ms);
 
     void processResponse(const json::value *value);
 

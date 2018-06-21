@@ -1,0 +1,201 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3dd95ba..15fb786 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,9 +28,17 @@ if(CUDA_FOUND)
+     )
+ endif()
+ 
++FIND_PACKAGE(OpenCL)
++INCLUDE_DIRECTORIES(${OPENCL_INCLUDE_DIR})
++if (OPENCL_FOUND)
++    message("INFO: Using OPENCL version ${OpenCL_VERSION_MAJOR}.${OpenCL_VERSION_MINOR}")
++else()
++    message("INFO: OPENCL not found")
++endif()
++
+ add_subdirectory(ext/argon2)
+ 
+-add_library(argon2-gpu-common SHARED
++add_library(argon2-gpu-common STATIC
+     lib/argon2-gpu-common/argon2params.cpp
+     lib/argon2-gpu-common/blake2b.cpp
+ )
+@@ -44,7 +52,7 @@ target_include_directories(argon2-gpu-common PRIVATE
+ )
+ 
+ if(CUDA_FOUND)
+-    cuda_add_library(argon2-cuda SHARED
++    cuda_add_library(argon2-cuda STATIC
+         lib/argon2-cuda/device.cpp
+         lib/argon2-cuda/globalcontext.cpp
+         lib/argon2-cuda/programcontext.cpp
+@@ -52,7 +60,7 @@ if(CUDA_FOUND)
+         lib/argon2-cuda/kernels.cu
+     )
+ else()
+-    add_library(argon2-cuda SHARED
++    add_library(argon2-cuda STATIC
+         lib/argon2-cuda/nocuda.cpp
+     )
+ endif()
+@@ -67,7 +75,7 @@ target_include_directories(argon2-cuda INTERFACE
+ )
+ target_link_libraries(argon2-cuda argon2-gpu-common)
+ 
+-add_library(argon2-opencl SHARED
++add_library(argon2-opencl STATIC
+     lib/argon2-opencl/device.cpp
+     lib/argon2-opencl/globalcontext.cpp
+     lib/argon2-opencl/kernelloader.cpp
+@@ -84,56 +92,5 @@ target_include_directories(argon2-opencl PRIVATE
+     lib/argon2-opencl
+ )
+ target_link_libraries(argon2-opencl
+-    argon2-gpu-common -lOpenCL
+-)
+-
+-add_executable(argon2-gpu-test
+-    src/argon2-gpu-test/main.cpp
+-    src/argon2-gpu-test/testcase.cpp
+-)
+-target_include_directories(argon2-gpu-test PRIVATE src/argon2-gpu-test)
+-target_link_libraries(argon2-gpu-test
+-    argon2-cuda argon2-opencl argon2 -lOpenCL
+-)
+-
+-add_executable(argon2-gpu-bench
+-    src/argon2-gpu-bench/cpuexecutive.cpp
+-    src/argon2-gpu-bench/cudaexecutive.cpp
+-    src/argon2-gpu-bench/openclexecutive.cpp
+-    src/argon2-gpu-bench/benchmark.cpp
+-    src/argon2-gpu-bench/main.cpp
+-)
+-target_include_directories(argon2-gpu-bench PRIVATE src/argon2-gpu-bench)
+-target_link_libraries(argon2-gpu-bench
+-    argon2-cuda argon2-opencl argon2 -lOpenCL
+-)
+-
+-add_test(argon2-gpu-test-opencl argon2-gpu-test -m opencl)
+-add_test(argon2-gpu-test-cuda argon2-gpu-test -m cuda)
+-
+-install(
+-    TARGETS argon2-gpu-common argon2-opencl argon2-cuda
+-    DESTINATION ${LIBRARY_INSTALL_DIR}
+-)
+-install(FILES
+-    include/argon2-gpu-common/argon2-common.h
+-    include/argon2-gpu-common/argon2params.h
+-    include/argon2-opencl/cl.hpp
+-    include/argon2-opencl/opencl.h
+-    include/argon2-opencl/device.h
+-    include/argon2-opencl/globalcontext.h
+-    include/argon2-opencl/programcontext.h
+-    include/argon2-opencl/processingunit.h
+-    include/argon2-opencl/kernelrunner.h
+-    include/argon2-cuda/cudaexception.h
+-    include/argon2-cuda/kernels.h
+-    include/argon2-cuda/device.h
+-    include/argon2-cuda/globalcontext.h
+-    include/argon2-cuda/programcontext.h
+-    include/argon2-cuda/processingunit.h
+-    DESTINATION ${INCLUDE_INSTALL_DIR}
+-)
+-install(
+-    TARGETS argon2-gpu-bench argon2-gpu-test
+-    DESTINATION ${BINARY_INSTALL_DIR}
++    argon2-gpu-common ${OpenCL_LIBRARY}
+ )
+diff --git a/include/argon2-gpu-common/argon2-common.h b/include/argon2-gpu-common/argon2-common.h
+index fbcf67c..7a849bb 100644
+--- a/include/argon2-gpu-common/argon2-common.h
++++ b/include/argon2-gpu-common/argon2-common.h
+@@ -1,6 +1,8 @@
+ #ifndef ARGON2COMMON_H
+ #define ARGON2COMMON_H
+ 
++#include <cstddef>
++
+ namespace argon2 {
+ 
+ enum {
+diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
+index 79fb767..5aa8538 100644
+--- a/lib/argon2-cuda/kernels.cu
++++ b/lib/argon2-cuda/kernels.cu
+@@ -49,8 +49,8 @@ __device__ uint64_t u64_shuffle(uint64_t v, uint32_t thread)
+ {
+     uint32_t lo = u64_lo(v);
+     uint32_t hi = u64_hi(v);
+-    lo = __shfl(lo, thread);
+-    hi = __shfl(hi, thread);
++    lo = __shfl_sync(0xFFFFFFFF, lo, thread);
++    hi = __shfl_sync(0xFFFFFFFF, hi, thread);
+     return u64_build(hi, lo);
+ }
+ 
+diff --git a/lib/argon2-cuda/processingunit.cpp b/lib/argon2-cuda/processingunit.cpp
+index 7768427..45a6fcf 100644
+--- a/lib/argon2-cuda/processingunit.cpp
++++ b/lib/argon2-cuda/processingunit.cpp
+@@ -24,6 +24,9 @@ static bool isPowerOfTwo(std::uint32_t x)
+     return (x & (x - 1)) == 0;
+ }
+ 
++#pragma warning(disable:4267)
++#pragma warning(disable:4101)
++
+ ProcessingUnit::ProcessingUnit(
+         const ProgramContext *programContext, const Argon2Params *params,
+         const Device *device, std::size_t batchSize, bool bySegment,
+diff --git a/lib/argon2-gpu-common/argon2params.cpp b/lib/argon2-gpu-common/argon2params.cpp
+index dd122d8..b74c11d 100644
+--- a/lib/argon2-gpu-common/argon2params.cpp
++++ b/lib/argon2-gpu-common/argon2params.cpp
+@@ -20,6 +20,8 @@ static void store32(void *dst, std::uint32_t v)
+     *out++ = static_cast<std::uint8_t>(v);
+ }
+ 
++#pragma warning(disable:4267)
++
+ Argon2Params::Argon2Params(
+         std::size_t outLen,
+         const void *salt, std::size_t saltLen,
+diff --git a/lib/argon2-gpu-common/blake2b.h b/lib/argon2-gpu-common/blake2b.h
+index 094fb83..7f438ee 100644
+--- a/lib/argon2-gpu-common/blake2b.h
++++ b/lib/argon2-gpu-common/blake2b.h
+@@ -2,6 +2,7 @@
+ #define ARGON2_BLAKE2B_H
+ 
+ #include <cstdint>
++#include <cstddef>
+ 
+ namespace argon2 {
+ 
+diff --git a/lib/argon2-opencl/kernelloader.cpp b/lib/argon2-opencl/kernelloader.cpp
+index 22949f3..927a44d 100644
+--- a/lib/argon2-opencl/kernelloader.cpp
++++ b/lib/argon2-opencl/kernelloader.cpp
+@@ -38,6 +38,7 @@ cl::Program KernelLoader::loadArgon2Program(
+         for (cl::Device &device : context.getInfo<CL_CONTEXT_DEVICES>()) {
+             std::cerr << "  Build log from device '" << device.getInfo<CL_DEVICE_NAME>() << "':" << std::endl;
+             std::cerr << prog.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
++			err;
+         }
+         throw;
+     }
+diff --git a/lib/argon2-opencl/processingunit.cpp b/lib/argon2-opencl/processingunit.cpp
+index 598ced7..59e92a9 100644
+--- a/lib/argon2-opencl/processingunit.cpp
++++ b/lib/argon2-opencl/processingunit.cpp
+@@ -13,6 +13,9 @@ static bool isPowerOfTwo(std::uint32_t x)
+     return (x & (x - 1)) == 0;
+ }
+ 
++#pragma warning(disable:4267)
++#pragma warning(disable:4101)
++
+ ProcessingUnit::ProcessingUnit(
+         const ProgramContext *programContext, const Argon2Params *params,
+         const Device *device, std::size_t batchSize,

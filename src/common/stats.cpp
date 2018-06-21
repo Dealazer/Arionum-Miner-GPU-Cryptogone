@@ -43,11 +43,11 @@ const atomic<long> &Stats::getRejections() const {
     return rejections;
 }
 
-const chrono::time_point<chrono::high_resolution_clock> &Stats::getRoundStart() const {
+const chrono::time_point<chrono::system_clock> &Stats::getRoundStart() const {
     return roundStart;
 }
 
-const chrono::time_point<chrono::high_resolution_clock> &Stats::getStart() const {
+const chrono::time_point<chrono::system_clock> &Stats::getStart() const {
     return start;
 }
 
@@ -95,18 +95,18 @@ void Stats::newRound() {
     std::lock_guard<std::mutex> lg(mutex);
     updateHashRate();
     rounds++;
-    roundStart = std::chrono::high_resolution_clock::now();
+    roundStart = std::chrono::system_clock::now();
     roundHashes = 0;
 }
 
 void Stats::updateHashRate() {
-    auto now = std::chrono::high_resolution_clock::now();
+    auto now = std::chrono::system_clock::now();
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(now - roundStart);
-    long roundDuration = time.count();
+    auto roundDuration = time.count();
     if (roundDuration > 0)
         hashRate = (roundHashes * 1000.0) / roundDuration;
     auto globalTime = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
-    long duration = globalTime.count();
+    auto duration = globalTime.count();
     if (duration > 0)
         avgHashRate = (hashes * 1000.0) / duration;
 }
@@ -125,8 +125,12 @@ ostream &operator<<(ostream &os, const Stats &settings) {
              << setw(22) << left << "Ever best DL"
              << endl;
     }
-    auto t = std::chrono::system_clock::to_time_t(settings.getRoundStart());
-    cout << setw(20) << left << std::put_time(std::localtime(&t), "%D %T   ")
+
+	auto roundStart = settings.getRoundStart();
+	auto t = std::chrono::system_clock::to_time_t(roundStart);
+    
+	#pragma warning(disable:4996)
+	cout << setw(20) << left << std::put_time(std::localtime(&t), "%D %T   ")
          << setw(16) << left << settings.getAvgHashRate()
          << setw(16) << left << settings.getHashRate()
          << setw(20) << left << settings.getHashes()

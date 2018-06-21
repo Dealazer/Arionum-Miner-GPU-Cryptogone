@@ -7,12 +7,16 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
-#include <sys/time.h>
+#include <locale>
+#include <codecvt>
+#include <string>
+//#include <sys/time.h>
 #include <sstream>
 #include <string>
 #include <cpprest/http_client.h>
-#include <gmpxx.h>
+#include <mpirxx.h>
 #include <chrono>
+#include <boost/algorithm/string/replace.hpp>
 #include <argon2-gpu-common/argon2params.h>
 #include <argon2-cuda/programcontext.h>
 #include <argon2-cuda/processingunit.h>
@@ -20,12 +24,24 @@
 
 using namespace std;
 
+std::wstring toWide(const std::string& s) {
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+	std::wstring ws = converter.from_bytes(s);
+	return ws;
+}
+
+std::string toNarrow(const std::wstring& ws) {
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+	std::string s = converter.to_bytes(ws);
+	return s;
+}
+
 SimpleCudaMiner::SimpleCudaMiner(Stats *s, MinerSettings ms, size_t di)
         : minerSettings(ms),
           updateData(MinerData("", "1", "", "", "")),
           deviceIndex(di),
           stats(s),
-          client(http_client(U(*ms.getPoolAddress()))) {
+          client(http_client(toWide(*ms.getPoolAddress()))) {
     mpz_init(ZERO);
     mpz_init(BLOCK_LIMIT);
     mpz_set_si(BLOCK_LIMIT, 240);
@@ -89,12 +105,12 @@ void SimpleCudaMiner::submit(string *argon, string *nonce) {
     cout << body.str() << endl;
 
     http_request req(methods::POST);
-    req.set_request_uri(U("/mine.php?q=submitNonce"));
+    req.set_request_uri(_XPLATSTR("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
     client.request(req)
             .then([this](http_response response) {
                 if (response.status_code() == status_codes::OK) {
-                    response.headers().set_content_type("application/json");
+                    response.headers().set_content_type(L"application/json");
                     return response.extract_json();
                 }
                 return pplx::task_from_result(json::value());
@@ -103,13 +119,15 @@ void SimpleCudaMiner::submit(string *argon, string *nonce) {
                 try {
                     json::value jvalue = previousTask.get();
                     if (!jvalue.is_null() && jvalue.is_object()) {
-                        string status = jvalue.at(U("status")).as_string();
-                        if (strcmp(status.data(), "ok") == 0) {
+                        wstring wstatus = jvalue.at(L"status").as_string();
+                        if (wstatus == L"ok") {
                             cout << "nonce accepted by pool !!!!!" << endl;
                         } else {
                             cout << "nonce refused by pool :(:(:(" << endl;
-                            cout << jvalue << endl;
-                            stats->newRejection();
+							std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+							std::string status = converter.to_bytes(wstatus);
+							cout << status << endl;
+							stats->newRejection();
                         }
                     }
                 }
@@ -122,7 +140,7 @@ void SimpleCudaMiner::submit(string *argon, string *nonce) {
 void SimpleCudaMiner::generateBytes(char *dst, size_t dst_len) {
     std::random_device device;
     std::mt19937 generator(device());
-    std::uniform_int_distribution<uint8_t> distribution(0, 255);
+    std::uniform_int_distribution<int> distribution(0, 255);
     std::vector<uint8_t> bytes;
     for (int i = 0; i < 32; ++i) {
         bytes.push_back(distribution(generator));
@@ -174,24 +192,29 @@ int SimpleCudaMiner::b64_byte_to_char(unsigned x) {
 
 void SimpleCudaMiner::parseUpdateJson(const json::value &jvalue) {
     if (!jvalue.is_null() && jvalue.is_object()) {
-        string status = jvalue.at(U("status")).as_string();
-        if (strcmp(status.data(), "ok") == 0) {
-            json::value data = jvalue.at(U("data"));
+        wstring status = jvalue.at(L"status").as_string();
+        if (status == L"ok") {
+            json::value data = jvalue.at(L"data");
             if (data.is_object()) {
-                string difficulty = data.at(U("difficulty")).as_string();
-                string block = data.at(U("block")).as_string();
-                string public_key = data.at(U("public_key")).as_string();
-                int limit = data.at(U("limit")).as_integer();
+                wstring difficulty = data.at(L"difficulty").as_string();
+                wstring block = data.at(L"block").as_string();
+                wstring public_key = data.at(L"public_key").as_string();
+                int limit = data.at(L"limit").as_integer();
 
-
-                if (std::strcmp(updateData.getBlock()->data(), block.data()) != 0) {
+                if (std::strcmp(updateData.getBlock()->data(), toNarrow(block).data()) != 0) {
                     std::cout << "NEW BLOCK FOUND" << std::endl;
-                    std::cout << "status =>" << status << std::endl;
-                    std::cout << "difficulty =>" << difficulty << std::endl;
-                    std::cout << "block =>" << block << std::endl;
-                    std::cout << "limit =>" << limit << std::endl;
-                    std::cout << "public_key =>" << public_key << std::endl;
-                    updateData = MinerData(status, difficulty, std::to_string(limit), block, public_key);
+                    std::cout << "status =>" << toNarrow(status) << std::endl;
+                    std::cout << "difficulty =>" << toNarrow(difficulty) << std::endl;
+                    std::cout << "block =>" << toNarrow(block) << std::endl;
+                    std::cout << "limit =>" << std::to_string(limit) << std::endl;
+                    std::cout << "public_key =>" << toNarrow(public_key) << std::endl;
+                    updateData = MinerData(
+						toNarrow(status), 
+						toNarrow(difficulty), 
+						std::to_string(limit), 
+						toNarrow(block), 
+						toNarrow(public_key)
+					);
                 }
             }
         } else {
@@ -295,12 +318,12 @@ void SimpleCudaMiner::updateInfoRequest(http_client &client) {
           << rate;
     //cout << "PATH="<< paths.str() << endl;
     http_request req(methods::GET);
-    req.headers().set_content_type("application/json");
-    req.set_request_uri(U(paths.str().data()));
+    req.headers().set_content_type(L"application/json");
+	req.set_request_uri(toWide(paths.str()));
     client.request(req)
             .then([this](http_response response) {
                 if (response.status_code() == status_codes::OK) {
-                    response.headers().set_content_type("application/json");
+                    response.headers().set_content_type(L"application/json");
                     return response.extract_json();
                 }
                 return pplx::task_from_result(json::value());

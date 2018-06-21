@@ -8,9 +8,13 @@
 #include <cpprest/http_client.h>
 #include <iostream>
 #include <gmp.h>
-#include <gmpxx.h>
+#include <mpirxx.h>
 #include <argon2-gpu-common/argon2-common.h>
 #include <argon2-gpu-common/argon2params.h>
+
+#include <locale>
+#include <codecvt>
+#include <string>
 
 #include "stats.h"
 #include "minersettings.h"
@@ -41,7 +45,7 @@ private:
         std::stringstream ss;
         std::random_device rd; // obtain a random number from hardware
         std::mt19937 eng(rd()); // seed the generator
-        std::uniform_int_distribution<> distr(0, stringLength); // define the range
+        std::uniform_int_distribution<> distr(0, (int)stringLength); // define the range
 
         for (int i = 0; i < length; ++i) {
             ss << genRandom(distr(eng));
@@ -75,7 +79,7 @@ protected:
 
     std::random_device device;
     std::mt19937 generator;
-    std::uniform_int_distribution<uint8_t> distribution;
+    std::uniform_int_distribution<int> distribution;
 
     argon2::Type type = argon2::ARGON2_I;
     argon2::Version version = argon2::ARGON2_VERSION_13;
@@ -94,9 +98,13 @@ public:
         http_client_config config;
         utility::seconds timeout(2);
         config.set_timeout(timeout);
-        client = new http_client(U(ms->getPoolAddress()->c_str()), config);
+
+		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+		std::wstring poolAddressW = converter.from_bytes(*(ms->getPoolAddress()));
+
+        client = new http_client(poolAddressW, config);
         generator = std::mt19937(device());
-        distribution = std::uniform_int_distribution<uint8_t>(0, 255);
+        distribution = std::uniform_int_distribution<int>(0, 255);
         salt = randomStr(16);
         cout << "SALT=" << salt << endl;
     };

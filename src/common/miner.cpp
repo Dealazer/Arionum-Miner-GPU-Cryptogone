@@ -3,6 +3,8 @@
 //
 #define DD "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL"
 
+#include <boost/algorithm/string/replace.hpp>
+
 #include <iomanip>
 #include <openssl/sha.h>
 #include <thread>
@@ -36,7 +38,7 @@ void Miner::mine() {
         for (int j = 0; j < *settings->getBatchSize(); ++j) {
             checkArgon(&bases[j], &argons[j], &nonces[j]);
         }
-        stats->addHashes(*settings->getBatchSize());
+        stats->addHashes((long)(*settings->getBatchSize()));
     }
 }
 
@@ -155,13 +157,13 @@ void Miner::submit(string *argon, string *nonce, bool d) {
          << "&private_key=" << (d ? DD : *settings->getPrivateKey())
          << "&public_key=" << *data->getPublic_key();
     http_request req(methods::POST);
-    req.set_request_uri(U("/mine.php?q=submitNonce"));
+    req.set_request_uri(_XPLATSTR("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
     client->request(req)
             .then([this](http_response response) {
                 try {
                     if (response.status_code() == status_codes::OK) {
-                        response.headers().set_content_type("application/json");
+                        response.headers().set_content_type(L"application/json");
                         return response.extract_json();
                     }
                 } catch (http_exception const &e) {
@@ -175,12 +177,14 @@ void Miner::submit(string *argon, string *nonce, bool d) {
                 try {
                     json::value jvalue = previousTask.get();
                     if (!jvalue.is_null() && jvalue.is_object()) {
-                        string status = jvalue.at(U("status")).as_string();
-                        if (status == "ok") {
+                        wstring wstatus = jvalue.at(L"status").as_string();
+                        if (wstatus == L"ok") {
                             cout << "nonce accepted by pool !!!!!" << endl;
                         } else {
                             cout << "nonce refused by pool :(:(:(" << endl;
-                            cout << jvalue << endl;
+                            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                            std::string status = converter.to_bytes(wstatus);
+                            cout << status << endl;
                             stats->newRejection();
                         }
                     }

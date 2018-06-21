@@ -9,6 +9,7 @@
 #include <iostream>
 #include <mutex>
 #include <atomic>
+#include <string>
 
 using namespace std;
 
@@ -28,7 +29,7 @@ public:
         block = new string(b);
         public_key = new string(p);
         limit = new string(l);
-        longDiff = stol(d);
+        longDiff = std::stol(d);
     };
 
     string *getStatus() const;
