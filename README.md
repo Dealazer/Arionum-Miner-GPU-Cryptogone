@@ -4,22 +4,16 @@
 GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 
 This is a fork of Guli's initial miner, modified in order to make it compile/run on windows
+Original sources can be found here: https://bitbucket.org/guli13/arionum-gpu-miner/src
 
 ## Updates ##
 
 
-### 20/06/18 (cryptogone)
+### 22/06/18 (cryptogone)
 
-* start windows port
+* windows first working CUDA & OpenCL versions
 
-### Update sources guide
-
-    git submodule update --remote
-    git pull
-    ./make_prj.sh
-
-## Installation guide for Windows ###
-    Install Github for Windows
+## Compilation guide for Windows ###
     Install Visual Studio 2015 or 2017 Community Edition
     Install CMake for windows
       add "C:\Program Files (x86)\Windows Kits\10\bin\10.0.17134.0" to path 
@@ -27,16 +21,19 @@ This is a fork of Guli's initial miner, modified in order to make it compile/run
       make sure cmake.exe is in the path
     Install CUDA
       https://developer.nvidia.com/cuda-downloads (this also installs OpenCL)
+    Install Github for Windows
+       all commands below need to be run from a git for Windows console
+       git clone https://cryptogone@bitbucket.org/cryptogone/arionum-gpu-miner.git
     Install vcpkg
-      vcpkg (https://github.com/Microsoft/vcpkg)
+      ./setup_vcpkg.sh
     Install dependencies
-      vcpkg install cpprestsdk cpprestsdk:x64-windows
-      vcpkg install boost
-      ./setup_mpir.sh
-    Prepare submodules
-      ./apply_submodules_paches.sh
+      ./setup_libs.sh
+    Init & patch submodules
+      ./init_submodules.sh
     Generate Visual Studio solution
       ./gen_prj.sh
+    Build
+      tbd
 
 ### Start miner ###
 
@@ -68,13 +65,13 @@ This is a fork of Guli's initial miner, modified in order to make it compile/run
 -b and -t are the most important settings, you need to test different values and find the pair giving the best hashrate.
 For me it was -b 128 -t 4 !
 
-## Developer Donation
+## Developers Donation
 
-By default the miner will donate 1% of the shares to my address.
+By default the miner will donate 1% of the shares to Guli's address.
 
-    -D parameters allow you to change that: minimu is 0.5%
+    -D parameters allow you to change that: minimum is 0.5%
 
-If you want to donate directly to support further development, here is my wallet 
+Donations:
 
-    4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL
-    
+    Guli's wallet: 4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL
+    Cryptogone's wallet: 4bb66RkoTCz63XPBvMyHfWRE1vWif21j77m1kNVNRd7o4YtJdEQWY7BsRVxAYoTdMexSVFGFaekrc3UATTSERwmQ 
