@@ -25,9 +25,13 @@ if(CUDA_FOUND)
     include_directories(${CUDA_INCLUDE_DIRS})
 endif()
 
+find_package(cpprestsdk REQUIRED)
+
 include_directories(mpir-3.0.0)
+include_directories("vcpkg/installed/x64-windows/include")
 
 link_directories(mpir-3.0.0/lib/x64/Release)
+link_directories("vcpkg/installed/x64-windows/lib")
 
 add_subdirectory(argon2-gpu)
 
@@ -46,7 +50,8 @@ add_executable(arionum-opencl-miner
         src/common/minersettings.cpp
         src/common/miner.cpp)
 
-target_link_libraries(arionum-opencl-miner
+target_link_libraries(
+        arionum-opencl-miner
         argon2-opencl
         argon2
         mpir
@@ -70,10 +75,11 @@ add_executable(arionum-cuda-miner
         include/simplecudaminer.h
         src/common/simplecudaminer.cpp)
 
-target_link_libraries(arionum-cuda-miner
+target_link_libraries(
+        arionum-cuda-miner
         argon2-cuda
         argon2
-		mpir
+        mpir
         )
 
 endif()

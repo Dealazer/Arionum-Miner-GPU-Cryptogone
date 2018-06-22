@@ -14,10 +14,10 @@ Original sources can be found here: https://bitbucket.org/guli13/arionum-gpu-min
 * windows first working CUDA & OpenCL versions
 
 ## Compilation guide for Windows ###
-    Install Visual Studio 2015 or 2017 Community Edition
+    Install Visual Studio 2015 (or 2017), Community Edition
     Install CMake for windows
-      add "C:\Program Files (x86)\Windows Kits\10\bin\10.0.17134.0" to path 
-      (see https://github.com/Microsoft/vcpkg/issues/1689 for more info)
+	  https://cmake.org/download/
+      add "C:\Program Files (x86)\Windows Kits\10\bin\10.0.17134.0" to path (https://github.com/Microsoft/vcpkg/issues/1689)
       make sure cmake.exe is in the path
     Install CUDA
       https://developer.nvidia.com/cuda-downloads (this also installs OpenCL)
@@ -53,7 +53,7 @@ Original sources can be found here: https://bitbucket.org/guli13/arionum-gpu-min
     -a, --address=ADDRESS             public arionum address [default: 4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL]
     -p, --pool=POOL_URL               pool URL [default: http://aropool.com]
     -d, --device=INDEX                use device with index INDEX [default: 0]
-    -b, --batchSize=SIZE              batch size [default: 200]
+    -b, --batchSize=SIZE              batch size [default: 1]
     -t, --threads-per-device=THREADS  thread to use per device [default: 1]
     -?, --help                        show this help and exit
 

@@ -148,7 +148,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
             new ArgumentOption<OpenCLArguments>(
                     makeNumericHandler<OpenCLArguments, size_t>([](OpenCLArguments &state, size_t index) {
                         state.batchSize = index;
-                    }), "batchSize", 'b', "batch size", "200", "SIZE"),
+                    }), "batchSize", 'b', "batch size", "1", "SIZE"),
 
             new FlagOption<OpenCLArguments>(
                     [](OpenCLArguments &state) { state.showHelp = true; },
