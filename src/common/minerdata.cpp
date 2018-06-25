@@ -3,7 +3,6 @@
 //
 #include "../../include/minerdata.h"
 
-
 string *MinerData::getStatus() const {
     return status;
 }
@@ -32,12 +31,19 @@ long MinerData::getLongDiff() const {
     return longDiff;
 }
 
+std::string strOrNull(const std::string* s) {
+    if (s)
+        return *s;
+    else
+        return string("null");
+}
+
 ostream &operator<<(ostream &os, const MinerData &data) {
-    os << " difficulty: " << *data.getDifficulty()
-       << " - limit: " << *data.getLimit()
-       << " - block: " << *data.getBlock()
-       << " - public_key: " << *data.getPublic_key()
-       << endl;
+    os << "status     : " << strOrNull(data.getStatus()) << std::endl;
+    os << "difficulty : " << strOrNull(data.getDifficulty()) << std::endl;
+    os << "block      : " << strOrNull(data.getBlock()) << std::endl;
+    os << "limit      : " << strOrNull(data.getLimit()) << std::endl;
+    os << "public_key : " << strOrNull(data.getPublic_key()) << std::endl;
     return os;
 }
 

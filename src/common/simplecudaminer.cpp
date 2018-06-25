@@ -25,15 +25,15 @@
 using namespace std;
 
 std::wstring toWide(const std::string& s) {
-	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-	std::wstring ws = converter.from_bytes(s);
-	return ws;
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring ws = converter.from_bytes(s);
+    return ws;
 }
 
 std::string toNarrow(const std::wstring& ws) {
-	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-	std::string s = converter.to_bytes(ws);
-	return s;
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::string s = converter.to_bytes(ws);
+    return s;
 }
 
 SimpleCudaMiner::SimpleCudaMiner(Stats *s, MinerSettings ms, size_t di)
@@ -124,10 +124,10 @@ void SimpleCudaMiner::submit(string *argon, string *nonce) {
                             cout << "nonce accepted by pool !!!!!" << endl;
                         } else {
                             cout << "nonce refused by pool :(:(:(" << endl;
-							std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-							std::string status = converter.to_bytes(wstatus);
-							cout << status << endl;
-							stats->newRejection();
+                            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                            std::string status = converter.to_bytes(wstatus);
+                            cout << status << endl;
+                            stats->newRejection();
                         }
                     }
                 }
@@ -202,19 +202,14 @@ void SimpleCudaMiner::parseUpdateJson(const json::value &jvalue) {
                 int limit = data.at(L"limit").as_integer();
 
                 if (std::strcmp(updateData.getBlock()->data(), toNarrow(block).data()) != 0) {
-                    std::cout << "NEW BLOCK FOUND" << std::endl;
-                    std::cout << "status =>" << toNarrow(status) << std::endl;
-                    std::cout << "difficulty =>" << toNarrow(difficulty) << std::endl;
-                    std::cout << "block =>" << toNarrow(block) << std::endl;
-                    std::cout << "limit =>" << std::to_string(limit) << std::endl;
-                    std::cout << "public_key =>" << toNarrow(public_key) << std::endl;
                     updateData = MinerData(
-						toNarrow(status), 
-						toNarrow(difficulty), 
-						std::to_string(limit), 
-						toNarrow(block), 
-						toNarrow(public_key)
-					);
+                        toNarrow(status), 
+                        toNarrow(difficulty), 
+                        std::to_string(limit), 
+                        toNarrow(block), 
+                        toNarrow(public_key)
+                    );
+                    cout << endl << "-- NEW BLOCK FOUND --" << endl << updateData << endl;
                 }
             }
         } else {
@@ -319,7 +314,7 @@ void SimpleCudaMiner::updateInfoRequest(http_client &client) {
     //cout << "PATH="<< paths.str() << endl;
     http_request req(methods::GET);
     req.headers().set_content_type(L"application/json");
-	req.set_request_uri(toWide(paths.str()));
+    req.set_request_uri(toWide(paths.str()));
     client.request(req)
             .then([this](http_response response) {
                 if (response.status_code() == status_codes::OK) {

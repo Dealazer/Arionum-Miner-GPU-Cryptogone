@@ -10,6 +10,10 @@
 #include "../../include/openclminer.h"
 #include <iomanip>
 
+#ifdef _MSC_VER
+#include "../../include/win_tools.h"
+#endif
+
 // cpprest lib
 #pragma comment(lib, "cpprest_2_10")
 
@@ -41,6 +45,11 @@ string generateUniqid();
 
 
 int main(int, const char *const *argv) {
+#ifdef _MSC_VER
+	// set a fixed console size (default is not wide enough)
+	setConsoleSize(150, 40, 2000);
+#endif
+
     CommandLineParser<OpenCLArguments> parser = buildCmdLineParser();
     OpenCLArguments args;
     int ret = parser.parseArguments(args, argv);

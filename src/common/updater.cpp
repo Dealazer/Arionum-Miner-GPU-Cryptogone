@@ -76,15 +76,14 @@ void Updater::processResponse(const json::value *value) {
                 int limit = jsonData.at(L"limit").as_integer();
                 string limitAsString = std::to_string(limit);
 
-				std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-				std::string narrow_status = converter.to_bytes(status);
-				std::string narrow_block = converter.to_bytes(block);
-				std::string narrow_diff = converter.to_bytes(difficulty);
-				std::string narrow_public_key = converter.to_bytes(public_key);
-
-				if (data == NULL || data->isNewBlock(&narrow_block)) {
+                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                std::string narrow_status = converter.to_bytes(status);
+                std::string narrow_block = converter.to_bytes(block);
+                std::string narrow_diff = converter.to_bytes(difficulty);
+                std::string narrow_public_key = converter.to_bytes(public_key);
+                if (data == NULL || data->isNewBlock(&narrow_block)) {
                     data = new MinerData(narrow_status, narrow_diff, limitAsString, narrow_block, narrow_public_key);
-                    cout << "New block found: " << *data << endl;
+                    cout << endl << "-- NEW BLOCK FOUND --" << endl << *data << endl;
                     stats->blockChange();
                 }
             }
@@ -104,8 +103,8 @@ Updater::Updater(Stats *s, MinerSettings *ms) : stats(s), settings(ms) {
     utility::seconds timeout(2);
     config.set_timeout(timeout);
 
-	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-	std::wstring poolAddressW = converter.from_bytes(*(ms->getPoolAddress()));
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring poolAddressW = converter.from_bytes(*(ms->getPoolAddress()));
 
     client = new http_client(poolAddressW, config);
 }

@@ -20,9 +20,9 @@ size_t *MinerSettings::getBatchSize() const {
 }
 
 ostream &operator<<(ostream &os, const MinerSettings &settings) {
-	os << "uniqid: " << settings.getUniqid()->c_str()
-       << " - pool address: " << settings.getPoolAddress()->c_str()
-       << " - private key: " << settings.getPrivateKey()->c_str();
+	os << "uniqid        : " << settings.getUniqid()->c_str() << std::endl
+       << "pool address  : " << settings.getPoolAddress()->c_str() << std::endl
+       << "wallet address: " << settings.getPrivateKey()->c_str();
     return os;
 }
 

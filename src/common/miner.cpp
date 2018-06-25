@@ -20,7 +20,13 @@ static int b64_byte_to_char(unsigned x) {
            (EQ(x, 63) & '/');
 }
 
+// to fix mixed up messages at start
+bool gMiningStarted = false;
+
 void Miner::mine() {
+
+    gMiningStarted = true;
+
     while (true) {
         if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
             data = updater->getData();

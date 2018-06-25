@@ -111,8 +111,17 @@ void Stats::updateHashRate() {
         avgHashRate = (hashes * 1000.0) / duration;
 }
 
+extern bool gMiningStarted;
+#pragma warning(disable:4996)
+
 ostream &operator<<(ostream &os, const Stats &settings) {
-    if (settings.getRounds() % 10 == 0) {
+    if (!gMiningStarted) {
+        return os;
+    }
+
+    static unsigned long r = -1;
+    r++;
+    if (r % 10 == 0) {
         cout << endl
              << setw(20) << left << "Date"
              << setw(16) << left << "Avg hash/s"
@@ -126,11 +135,10 @@ ostream &operator<<(ostream &os, const Stats &settings) {
              << endl;
     }
 
-	auto roundStart = settings.getRoundStart();
-	auto t = std::chrono::system_clock::to_time_t(roundStart);
+    auto roundStart = settings.getRoundStart();
+    auto t = std::chrono::system_clock::to_time_t(roundStart);
     
-	#pragma warning(disable:4996)
-	cout << setw(20) << left << std::put_time(std::localtime(&t), "%D %T   ")
+    cout << setw(20) << left << std::put_time(std::localtime(&t), "%D %T   ")
          << setw(16) << left << settings.getAvgHashRate()
          << setw(16) << left << settings.getHashRate()
          << setw(20) << left << settings.getHashes()
