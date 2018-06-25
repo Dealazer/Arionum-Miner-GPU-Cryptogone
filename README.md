@@ -24,6 +24,7 @@ Original sources can be found here: https://bitbucket.org/guli13/arionum-gpu-min
     Install Github for Windows
        all commands below need to be run from a git for Windows console
        git clone https://cryptogone@bitbucket.org/cryptogone/arionum-gpu-miner.git
+	   cd arionum-gpu-miner
     Install vcpkg
       ./setup_vcpkg.sh
     Install dependencies
@@ -33,7 +34,10 @@ Original sources can be found here: https://bitbucket.org/guli13/arionum-gpu-min
     Generate Visual Studio solution
       ./gen_prj.sh
     Build
-      tbd
+      Open arionum-gpu-miner.sln with visual studio 2015 or 2017
+	  In the toolbars, select Release and x64
+	  Build Menu -> Build Solution
+	  Binaries can be found in the Release/ folder (arionum-cuda-miner.exe / arionum-opencl-miner.exe)
 
 ### Start miner ###
 
