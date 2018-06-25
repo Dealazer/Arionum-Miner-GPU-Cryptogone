@@ -20,6 +20,7 @@ Win32
 *.bak
 *.db
 *.dir
+*.user
 mpir-3.0.0
 cmake_install.cmake
 

@@ -9,7 +9,7 @@ Original sources can be found here: https://bitbucket.org/guli13/arionum-gpu-min
 ## Updates ##
 
 
-### 22/06/18 (cryptogone)
+### 25/06/18 (cryptogone)
 
 * windows first working CUDA & OpenCL versions
 
@@ -32,7 +32,7 @@ Original sources can be found here: https://bitbucket.org/guli13/arionum-gpu-min
     Init & patch submodules
       ./init_submodules.sh
     Generate Visual Studio solution
-      ./gen_prj.sh
+      ./gen_prj_vs2015.sh or ./gen_prj_vs2017.sh depending on your visual studio version
     Build
       Open arionum-gpu-miner.sln with visual studio 2015 or 2017
 	  In the toolbars, select Release and x64
