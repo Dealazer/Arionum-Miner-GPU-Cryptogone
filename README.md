@@ -28,8 +28,7 @@ Get it at https://git-scm.com/download/win
     cd arionum-gpu-miner
 	
 #### 6. Install dependencies 
-Run only one of those, depending on your Visual Studio version
-
+Run **only one** of those, depending on your Visual Studio version
 
     ./setup_libs.sh vs2015
     ./setup_libs.sh vs2017
@@ -38,8 +37,7 @@ Run only one of those, depending on your Visual Studio version
     ./setup_submodules.sh
 	
 #### 8. Generate Visual Studio solution
-Run only one of those, depending on your Visual Studio version
-
+Run **only one** of those, depending on your Visual Studio version
 
     ./gen_prj.sh vs2015
     ./gen_prj.sh vs2017
