@@ -43,7 +43,7 @@ Run **only one** of those, depending on your Visual Studio version
     ./gen_prj.sh vs2017
 	
 #### 9. Build
-Open arionum-gpu-miner.sln with Visual Studio 2015 or 2017 
+Open ```arionum-gpu-miner.sln``` with Visual Studio 2015 or 2017 
 
 In the toolbar select ```Release / x64``` then ```Build Menu -> Build Solution```
 
