@@ -80,7 +80,7 @@ After a succesfull build, binaries can be found here:
 * -u use all GPU devices available
 
 -b and -t are the most important settings, you need to test different values and find the pair giving the best hashrate.
-For Guli it was -b 128 -t 4, Cryptogone tested on a GTX960 and uses -b 6 -t 1
+For Guli it was -b 128 -t 4 (GPU unknown), Cryptogone tested on a GTX960 and uses -b 6 -t 1 (6.9 H/s)
 
 If miner crashes at launch this is probably because batch size or number of threads are too big relative to your GPU RAM size.
 
