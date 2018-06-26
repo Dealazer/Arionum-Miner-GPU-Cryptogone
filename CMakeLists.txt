@@ -48,7 +48,8 @@ add_executable(arionum-opencl-miner
         src/common/minerdata.cpp
         include/minersettings.h
         src/common/minersettings.cpp
-        src/common/miner.cpp)
+        src/common/miner.cpp
+        src/common/win_tools.cpp)
 
 target_link_libraries(
         arionum-opencl-miner
@@ -73,7 +74,8 @@ add_executable(arionum-cuda-miner
         src/common/minersettings.cpp
         src/common/miner.cpp
         include/simplecudaminer.h
-        src/common/simplecudaminer.cpp)
+        src/common/simplecudaminer.cpp
+        src/common/win_tools.cpp)
 
 target_link_libraries(
         arionum-cuda-miner
