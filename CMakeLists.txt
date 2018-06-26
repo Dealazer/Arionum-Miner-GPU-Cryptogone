@@ -41,6 +41,7 @@ add_executable(arionum-opencl-miner
         include/openclminer.h
         src/common/openclminer.cpp
         include/updater.h
+		include/miner_version.h
         src/common/updater.cpp
         include/stats.h
         src/common/stats.cpp
@@ -63,6 +64,7 @@ add_executable(arionum-cuda-miner
         src/arionum-cuda-miner/main.cpp
         include/miner.h
         include/cudaminer.h
+        include/miner_version.h
         src/common/cudaminer.cpp
         include/updater.h
         src/common/updater.cpp

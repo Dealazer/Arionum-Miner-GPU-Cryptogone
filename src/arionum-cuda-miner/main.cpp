@@ -19,6 +19,8 @@
 #include "../../include/win_tools.h"
 #endif
 
+#include "../../include/miner_version.h"
+
 // cpprest lib
 #pragma comment(lib, "cpprest_2_10")
 
@@ -51,9 +53,11 @@ string generateUniqid();
 
 int main(int, const char *const *argv) {
 #ifdef _MSC_VER
-	// set a fixed console size (default is not wide enough)
-	setConsoleSize(150, 40, 2000);
+    // set a fixed console size (default is not wide enough)
+    setConsoleSize(150, 40, 2000);
 #endif
+
+    cout << getVersionStr() << endl << endl;
 
     CommandLineParser<OpenCLArguments> parser = buildCmdLineParser();
     OpenCLArguments args;
@@ -181,26 +185,26 @@ void printDeviceList() {
 #include <windows.h>
 
 int _gettimeofday(struct timeval* p, void* tz) {
-	ULARGE_INTEGER ul; // As specified on MSDN.
-	FILETIME ft;
+    ULARGE_INTEGER ul; // As specified on MSDN.
+    FILETIME ft;
 
-	// Returns a 64-bit value representing the number of
-	// 100-nanosecond intervals since January 1, 1601 (UTC).
-	GetSystemTimeAsFileTime(&ft);
+    // Returns a 64-bit value representing the number of
+    // 100-nanosecond intervals since January 1, 1601 (UTC).
+    GetSystemTimeAsFileTime(&ft);
 
-	// Fill ULARGE_INTEGER low and high parts.
-	ul.LowPart = ft.dwLowDateTime;
-	ul.HighPart = ft.dwHighDateTime;
-	// Convert to microseconds.
-	ul.QuadPart /= 10ULL;
-	// Remove Windows to UNIX Epoch delta.
-	ul.QuadPart -= 11644473600000000ULL;
-	// Modulo to retrieve the microseconds.
-	p->tv_usec = (long)(ul.QuadPart % 1000000LL);
-	// Divide to retrieve the seconds.
-	p->tv_sec = (long)(ul.QuadPart / 1000000LL);
+    // Fill ULARGE_INTEGER low and high parts.
+    ul.LowPart = ft.dwLowDateTime;
+    ul.HighPart = ft.dwHighDateTime;
+    // Convert to microseconds.
+    ul.QuadPart /= 10ULL;
+    // Remove Windows to UNIX Epoch delta.
+    ul.QuadPart -= 11644473600000000ULL;
+    // Modulo to retrieve the microseconds.
+    p->tv_usec = (long)(ul.QuadPart % 1000000LL);
+    // Divide to retrieve the seconds.
+    p->tv_sec = (long)(ul.QuadPart / 1000000LL);
 
-	return 0;
+    return 0;
 }
 
 string generateUniqid() {
