@@ -1,45 +1,43 @@
 
 # Arionum GPU Miner, Windows Edition #
-
 GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
+This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-miner/src), porting it to Windows
 
-This is a fork of Guli's initial miner, modified in order to make it compile/run on windows
-Original sources can be found here: https://bitbucket.org/guli13/arionum-gpu-miner/src
+## Compilation guide for Windows
+#### 1. Install Visual Studio 2015 or 2017 (Community)
+Get it at https://visualstudio.microsoft.com/fr/vs/community/
+If you install Visual Studio 2017 make sure you also install Windows 8.1 SDK (you can select it during the install)
+#### 2. Install CMake
+Get it at https://cmake.org/download/
+Make sure ```cmake.exe``` is in the system ```PATH```
+#### 3. Install CUDA
+Get it at https://developer.nvidia.com/cuda-downloads
+Note that this will also install OpenCL
+#### 4. Install Git / Git console
+Get it at https://git-scm.com/download/win
+**All commands from here need to be run from a Git for Windows console**
+#### 5. Clone miner repository
+    git clone https://bitbucket.org/cryptogone/arionum-gpu-miner.git
+    cd arionum-gpu-miner
+#### 6. Install dependencies 
+    Run only one of those, depending on your Visual Studio version
+    ./setup_libs.sh vs2015
+    ./setup_libs.sh vs2017
+#### 7. Init & patch submodules
+    ./setup_submodules.sh
+#### 8. Generate Visual Studio solution
+    Run only one of those, depending on your Visual Studio version
+    ./gen_prj.sh vs2015
+    ./gen_prj.sh vs2017
+#### 9. Build
+Open arionum-gpu-miner.sln with VS 2015 or 2017 then in the toolbar select "Release" / "x64" then "Build Menu" -> "Build Solution"
+#### 10. Binaries 
+After build succeeded, binaries can be found here:
 
-## Updates ##
+    Release/arionum-cuda-miner.exe
+    Release/arionum-opencl-miner.exe
 
-
-### 25/06/18 (cryptogone)
-
-* windows first working CUDA & OpenCL versions
-
-## Compilation guide for Windows ###
-    Install Visual Studio 2015 (or 2017), Community Edition
-    Install CMake for windows
-	  https://cmake.org/download/
-      add "C:\Program Files (x86)\Windows Kits\10\bin\10.0.17134.0" to path (https://github.com/Microsoft/vcpkg/issues/1689)
-      make sure cmake.exe is in the path
-    Install CUDA
-      https://developer.nvidia.com/cuda-downloads (this also installs OpenCL)
-    Install Github for Windows
-       all commands below need to be run from a git for Windows console
-       git clone https://cryptogone@bitbucket.org/cryptogone/arionum-gpu-miner.git
-	   cd arionum-gpu-miner
-    Install vcpkg
-      ./setup_vcpkg.sh
-    Install dependencies
-      ./setup_libs.sh
-    Init & patch submodules
-      ./init_submodules.sh
-    Generate Visual Studio solution
-      ./gen_prj_vs2015.sh or ./gen_prj_vs2017.sh depending on your visual studio version
-    Build
-      Open arionum-gpu-miner.sln with visual studio 2015 or 2017
-	  In the toolbars, select Release and x64
-	  Build Menu -> Build Solution
-	  Binaries can be found in the Release/ folder (arionum-cuda-miner.exe / arionum-opencl-miner.exe)
-
-### Start miner ###
+## Start miner
 
 #### For CUDA
 
@@ -51,7 +49,6 @@ Original sources can be found here: https://bitbucket.org/guli13/arionum-gpu-min
     
 #### Options
 
-    Options:
     -l, --list-devices                list all available devices and exit
     -u, --use-all-devices             use all available devices
     -a, --address=ADDRESS             public arionum address [default: 4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL]

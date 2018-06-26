@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+echo
+echo "- INSTALL VCPKG -"
+
 rm -rf vcpkg
 
 git clone https://github.com/Microsoft/vcpkg
