@@ -8,7 +8,7 @@ This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-mi
 #### 1. Install Visual Studio 2015 or 2017 (Community)
 Get it at https://visualstudio.microsoft.com/fr/vs/community/
 
-If you install Visual Studio 2017 make sure you also install Windows 8.1 SDK (you can select it during the install)
+If you install Visual Studio 2017 make sure you also install ```Windows 8.1 SDK``` (you can select it during the install)
 
 #### 2. Install CMake
 Get it at https://cmake.org/download/
@@ -16,7 +16,7 @@ Get it at https://cmake.org/download/
 Make sure ```cmake.exe``` is in the system ```PATH```
 
 #### 3. Install CUDA
-Get it at https://developer.nvidia.com/cuda-downloads (this also installs OpenCL)
+Get it at https://developer.nvidia.com/cuda-downloads (this also installs ``OpenCL``)
 
 #### 4. Install Git / Git console
 Get it at https://git-scm.com/download/win
@@ -30,6 +30,7 @@ Get it at https://git-scm.com/download/win
 #### 6. Install dependencies 
 Run only one of those, depending on your Visual Studio version
 
+
     ./setup_libs.sh vs2015
     ./setup_libs.sh vs2017
 	
@@ -38,6 +39,7 @@ Run only one of those, depending on your Visual Studio version
 	
 #### 8. Generate Visual Studio solution
 Run only one of those, depending on your Visual Studio version
+
 
     ./gen_prj.sh vs2015
     ./gen_prj.sh vs2017
