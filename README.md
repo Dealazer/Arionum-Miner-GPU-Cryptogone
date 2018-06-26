@@ -1,38 +1,52 @@
 
 # Arionum GPU Miner, Windows Edition #
 GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
+
 This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-miner/src), porting it to Windows
 
 ## Compilation guide for Windows
 #### 1. Install Visual Studio 2015 or 2017 (Community)
 Get it at https://visualstudio.microsoft.com/fr/vs/community/
+
 If you install Visual Studio 2017 make sure you also install Windows 8.1 SDK (you can select it during the install)
+
 #### 2. Install CMake
 Get it at https://cmake.org/download/
+
 Make sure ```cmake.exe``` is in the system ```PATH```
+
 #### 3. Install CUDA
-Get it at https://developer.nvidia.com/cuda-downloads
-Note that this will also install OpenCL
+Get it at https://developer.nvidia.com/cuda-downloads (this also installs OpenCL)
+
 #### 4. Install Git / Git console
 Get it at https://git-scm.com/download/win
+
 **All commands from here need to be run from a Git for Windows console**
+
 #### 5. Clone miner repository
     git clone https://bitbucket.org/cryptogone/arionum-gpu-miner.git
     cd arionum-gpu-miner
+	
 #### 6. Install dependencies 
-    Run only one of those, depending on your Visual Studio version
+Run only one of those, depending on your Visual Studio version
     ./setup_libs.sh vs2015
     ./setup_libs.sh vs2017
+	
 #### 7. Init & patch submodules
     ./setup_submodules.sh
+	
 #### 8. Generate Visual Studio solution
-    Run only one of those, depending on your Visual Studio version
+Run only one of those, depending on your Visual Studio version
     ./gen_prj.sh vs2015
     ./gen_prj.sh vs2017
+	
 #### 9. Build
-Open arionum-gpu-miner.sln with VS 2015 or 2017 then in the toolbar select "Release" / "x64" then "Build Menu" -> "Build Solution"
+Open arionum-gpu-miner.sln with Visual Studio 2015 or 2017 
+
+In the toolbar select ```Release / x64``` then ```Build Menu -> Build Solution```
+
 #### 10. Binaries 
-After build succeeded, binaries can be found here:
+After a succesfull build, binaries can be found here:
 
     Release/arionum-cuda-miner.exe
     Release/arionum-opencl-miner.exe
@@ -64,7 +78,9 @@ After build succeeded, binaries can be found here:
 * -u use all GPU devices available
 
 -b and -t are the most important settings, you need to test different values and find the pair giving the best hashrate.
-For me it was -b 128 -t 4 !
+For Guli it was -b 128 -t 4, Cryptogone tested on a GTX960 and uses -b 6 -t 1
+
+If miner crashes at launch this is probably because batch size or number of threads are too big relative to your GPU RAM size.
 
 ## Developers Donation
 
