@@ -4,6 +4,13 @@ GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 
 This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-miner/src), porting it to Windows
 
+## Updates
+
+#### Version 1.1.0 (06/27/2018)
+* fix CUDA multi gpu support (-d & -u parameters)
+* add -k parameter, allows to specify a list of gpu devices to use, ex: -k 0,3,7
+* show error message when out of memory during CUDA kernel creation
+
 ## Latest Binaries
 If you do not want to compile the poject yourself, you can find up to date binaries at this address :
 https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/
@@ -70,7 +77,6 @@ After a succesfull build, binaries can be found here:
 #### Options
 
     -l, --list-devices                list all available devices and exit
-    -k, --device-list                 use list of devices (comma separated, ex: -k 0,2,3)
     -u, --use-all-devices             use all available devices
     -a, --address=ADDRESS             public arionum address [default: 4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL]
     -p, --pool=POOL_URL               pool URL [default: http://aropool.com]
