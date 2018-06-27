@@ -4,6 +4,10 @@ GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 
 This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-miner/src), porting it to Windows
 
+## Latest Binaries
+If you do not want to compile the poject yourself, you can find up to date binaries at this address :
+https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/
+
 ## Compilation guide for Windows
 #### 1. Install Visual Studio 2015 or 2017 (Community)
 Get it at https://visualstudio.microsoft.com/fr/vs/community/
@@ -75,12 +79,12 @@ After a succesfull build, binaries can be found here:
     -?, --help                        show this help and exit
 
 * -b define number of nonces to be hashed in the same batch
-* -t define the number of CPU thread for aa GPU device
+* -t define the number of CPU threads for GPU device(s)
 * -d allow specifying a GPU device
 * -u use all GPU devices available
 
 -b and -t are the most important settings, you need to test different values and find the pair giving the best hashrate.
-For Guli it was -b 128 -t 4 (GPU unknown), Cryptogone tested on a GTX960 and uses -b 6 -t 1 (6.9 H/s)
+Cryptogone tested on a GTX960 with -b 6 -t 1 and gets 6.9 H/s
 
 If miner crashes at launch this is probably because batch size or number of threads are too big relative to your GPU RAM size.
 
