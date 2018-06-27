@@ -15,6 +15,8 @@
 #include <iomanip>
 #include "../../include/simplecudaminer.h"
 
+#include <boost/algorithm/string.hpp>
+
 #ifdef _MSC_VER
 #include "../../include/win_tools.h"
 #endif
@@ -37,6 +39,7 @@ struct OpenCLArguments {
     bool listDevices = false;
     bool allDevices = false;
     size_t deviceIndex = 0;
+    std::vector<int> deviceIndexList;
     size_t batchSize = 1;
     string address = "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL";
     string poolUrl = "http://aropool.com";
@@ -87,6 +90,7 @@ int main(int, const char *const *argv) {
 
     thread t(&Updater::start, updater);
 
+    // -u option
     if (args.allDevices) {
         cout << "Use all Devices" << endl;
         cuda::GlobalContext global;
@@ -98,9 +102,25 @@ int main(int, const char *const *argv) {
             }
         }
 
-    } else {
+    } 
+    // -k option
+    else if (args.deviceIndexList.size() > 0) {
+        auto global = new argon2::cuda::GlobalContext();
+        auto &devices = global->getAllDevices();
+        for (const auto &it : args.deviceIndexList) {
+            if (it >= devices.size())
+                continue;
+            size_t deviceIndex = it;
+            cout << "--- start using device #" << deviceIndex << " (-k)" << endl;
+            for (int j = 0; j < args.threadsPerDevice; ++j) {
+                Miner *miner = new CudaMiner(stats, &settings, updater, &deviceIndex);
+                miners.push_back(miner);
+            }
+        }
+    } // -d option
+    else {
         size_t deviceIndex = args.deviceIndex;
-        cout << "start using device #" << deviceIndex << endl;
+        cout << "--- start using device #" << deviceIndex << " (-d)" << endl;
         for (int j = 0; j < args.threadsPerDevice; ++j) {
             Miner *miner = new CudaMiner(stats, &settings, updater, &deviceIndex);
             miners.push_back(miner);
@@ -127,6 +147,30 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                     [](OpenCLArguments &state) { state.listDevices = true; },
                     "list-devices", 'l', "list all available devices and exit"),
 
+            new ArgumentOption<OpenCLArguments>(
+                    makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t index) {
+                        state.deviceIndex = (std::size_t) index;
+                    }), "device", 'd', "use device with index INDEX", "0", "INDEX"),
+
+            new ArgumentOption<OpenCLArguments>(
+                    [](OpenCLArguments &state, const string deviceList) {
+                        std::vector<string> indicesStr;
+                        boost::split(indicesStr, deviceList, boost::is_any_of(","));
+                        for (auto& it : indicesStr) {
+                            auto idStr = boost::trim_left_copy(it);
+                            int id;
+                            auto count = sscanf_s(idStr.c_str(), "%d", &id);
+                            if (count == 1) {
+                                state.deviceIndexList.push_back(id);
+                            }
+                            else {
+                                cout << "Error parsing device-list parameter (-k), ignoring it..." << endl;
+                                state.deviceIndexList.clear();
+                                break;
+                            }
+                        }
+                    }, "device-list", 'k', "use list of devices (comma separated, ex: -k 0,2,3)", "DEVICE LIST"),
+
             new FlagOption<OpenCLArguments>(
                     [](OpenCLArguments &state) { state.allDevices = true; },
                     "use-all-devices", 'u', "use all available devices"),
@@ -145,11 +189,6 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                     makeNumericHandler<OpenCLArguments, double>([](OpenCLArguments &state, double devFee) {
                         state.d = devFee <= 0.5 ? 1 : devFee;
                     }), "dev-donation", 'D', "developer donation", "0.5", "PERCENTAGE"),
-
-            new ArgumentOption<OpenCLArguments>(
-                    makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t index) {
-                        state.deviceIndex = (std::size_t) index;
-                    }), "device", 'd', "use device with index INDEX", "0", "INDEX"),
 
             new ArgumentOption<OpenCLArguments>(
                     makeNumericHandler<OpenCLArguments, std::size_t>(

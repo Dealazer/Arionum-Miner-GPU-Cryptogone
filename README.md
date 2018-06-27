@@ -70,6 +70,7 @@ After a succesfull build, binaries can be found here:
 #### Options
 
     -l, --list-devices                list all available devices and exit
+    -k, --device-list                 use list of devices (comma separated, ex: -k 0,2,3)
     -u, --use-all-devices             use all available devices
     -a, --address=ADDRESS             public arionum address [default: 4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL]
     -p, --pool=POOL_URL               pool URL [default: http://aropool.com]
