@@ -4,7 +4,14 @@ GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 
 This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-miner/src), porting it to Windows
 
+Please make sure you install latest Nvidia drivers if you use the CUDA miner !
+
 ## Updates
+
+#### Version 1.2.0 (07/02/2018)
+* fix OpenCL miner (kernel file was missing in release zip)
+* -k parameter now also works for the OpenCL miner
+* show error message and stack trace whenever a CUDA or OpenCL exception occurs (will help fixing future issues)
 
 #### Version 1.1.0 (06/27/2018)
 * fix CUDA multi gpu support (-d & -u parameters)

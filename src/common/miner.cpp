@@ -27,24 +27,47 @@ void Miner::mine() {
 
     gMiningStarted = true;
 
-    while (true) {
-        if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
-            data = updater->getData();
-            limit.set_str(*data->getLimit(), 10);
-            diff.set_str(*data->getDifficulty(), 10);
+    const char* steps[] = {
+        "getData",
+        "buildBatch",
+        "computeHash",
+        "checkArgon",
+        "unknown",
+        "unknown",
+    };
+
+    int stepID = 0;
+    bool stop = false;
+    while (!stop) {
+        try {
+            stepID = 0;
+            if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
+                data = updater->getData();
+                limit.set_str(*data->getLimit(), 10);
+                diff.set_str(*data->getDifficulty(), 10);
+            }
+            nonces.clear();
+            bases.clear();
+            argons.clear();
+
+            stepID++;
+            buildBatch();
+
+            stepID++;
+            computeHash();
+
+            stepID++;
+            for (int j = 0; j < *settings->getBatchSize(); ++j) {
+                checkArgon(&bases[j], &argons[j], &nonces[j]);
+            }
+            stats->addHashes((long)(*settings->getBatchSize()));
         }
-        nonces.clear();
-        bases.clear();
-        argons.clear();
-
-        buildBatch();
-
-        computeHash();
-
-        for (int j = 0; j < *settings->getBatchSize(); ++j) {
-            checkArgon(&bases[j], &argons[j], &nonces[j]);
+        catch (exception e) {
+            printf("Exception in a miner thread: |%s|, at step %s, stopping the thread\n", 
+                e.what() ? e.what() : "no exception msg",
+                steps[stepID]);
+            stop = true;
         }
-        stats->addHashes((long)(*settings->getBatchSize()));
     }
 }
 

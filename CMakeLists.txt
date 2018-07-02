@@ -50,7 +50,12 @@ add_executable(arionum-opencl-miner
         include/minersettings.h
         src/common/minersettings.cpp
         src/common/miner.cpp
-        src/common/win_tools.cpp)
+        src/common/win_tools.cpp
+        include/main_common.h)
+
+if(MSVC)
+    set_property(TARGET arionum-opencl-miner APPEND PROPERTY LINK_FLAGS /pdbaltpath:arionum-opencl-miner.pdb)
+endif()
 
 target_link_libraries(
         arionum-opencl-miner
@@ -75,9 +80,12 @@ add_executable(arionum-cuda-miner
         include/minersettings.h
         src/common/minersettings.cpp
         src/common/miner.cpp
-        include/simplecudaminer.h
-        src/common/simplecudaminer.cpp
-        src/common/win_tools.cpp)
+        src/common/win_tools.cpp
+        include/main_common.h)
+
+if(MSVC)
+    set_property(TARGET arionum-cuda-miner APPEND PROPERTY LINK_FLAGS /pdbaltpath:arionum-cuda-miner.pdb)
+endif()
 
 target_link_libraries(
         arionum-cuda-miner

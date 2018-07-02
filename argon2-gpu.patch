@@ -106,6 +106,37 @@ index 3dd95ba..15fb786 100644
 -    DESTINATION ${BINARY_INSTALL_DIR}
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
+diff --git a/include/argon2-cuda/cudaexception.h b/include/argon2-cuda/cudaexception.h
+index ebc8460..bc54d1d 100644
+--- a/include/argon2-cuda/cudaexception.h
++++ b/include/argon2-cuda/cudaexception.h
+@@ -6,6 +6,11 @@
+ #endif
+ 
+ #include <exception>
++#include <stdio.h>
++#ifndef __CUDACC__
++#include <boost/stacktrace.hpp>
++#endif
++#include <iostream>
+ 
+ namespace argon2 {
+ namespace cuda {
+@@ -27,6 +32,14 @@ public:
+     static void check(cudaError_t res)
+     {
+         if (res != cudaSuccess) {
++            printf("CUDA exception => |%s|\n", cudaGetErrorString(res));
++#ifndef __CUDACC__
++            std::cout << std::endl;
++            std::cout << "---- STACK TRACE ----" << std::endl;
++            std::cout << boost::stacktrace::stacktrace() << std::endl;
++#else
++            std::cout << "cannot show stack trace (.cu source)" << std::endl;
++#endif
+             throw CudaException(res);
+         }
+     }
 diff --git a/include/argon2-gpu-common/argon2-common.h b/include/argon2-gpu-common/argon2-common.h
 index fbcf67c..7a849bb 100644
 --- a/include/argon2-gpu-common/argon2-common.h
@@ -119,6 +150,43 @@ index fbcf67c..7a849bb 100644
  namespace argon2 {
  
  enum {
+diff --git a/include/argon2-opencl/cl.hpp b/include/argon2-opencl/cl.hpp
+index ced34f5..1328b58 100644
+--- a/include/argon2-opencl/cl.hpp
++++ b/include/argon2-opencl/cl.hpp
+@@ -142,6 +142,12 @@
+  * \endcode
+  *
+  */
++
++#define NOMINMAX
++#include <windows.h>
++#include <boost/stacktrace.hpp>
++#include <iostream>
++
+ #ifndef CL_HPP_
+ #define CL_HPP_
+ 
+@@ -318,7 +324,6 @@ public:
+ #define __ERR_STR(x) NULL
+ #endif // __CL_ENABLE_EXCEPTIONS
+ 
+-
+ namespace detail
+ {
+ #if defined(__CL_ENABLE_EXCEPTIONS)
+@@ -327,6 +332,11 @@ static inline cl_int errHandler (
+     const char * errStr = NULL)
+ {
+     if (err != CL_SUCCESS) {
++        printf("OpenCL error: errCode=%d str=%s\n", err, errStr ? errStr: "none");
++
++        std::cout << std::endl;
++        std::cout << "---- STACK TRACE ----" << std::endl;
++        std::cout << boost::stacktrace::stacktrace() << std::endl;
+         throw Error(err, errStr);
+     }
+     return err;
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
 index 79fb767..5aa8538 100644
 --- a/lib/argon2-cuda/kernels.cu
