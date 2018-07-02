@@ -188,7 +188,7 @@ index ced34f5..1328b58 100644
      }
      return err;
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
-index 79fb767..5aa8538 100644
+index 79fb767..6f1f98e 100644
 --- a/lib/argon2-cuda/kernels.cu
 +++ b/lib/argon2-cuda/kernels.cu
 @@ -49,8 +49,8 @@ __device__ uint64_t u64_shuffle(uint64_t v, uint32_t thread)
@@ -201,6 +201,19 @@ index 79fb767..5aa8538 100644
 +    hi = __shfl_sync(0xFFFFFFFF, hi, thread);
      return u64_build(hi, lo);
  }
+ 
+@@ -769,10 +769,8 @@ KernelRunner::KernelRunner(uint32_t type, uint32_t version, uint32_t passes,
+     size_t memorySize = static_cast<size_t>(lanes) * segmentBlocks
+             * ARGON2_SYNC_POINTS * ARGON2_BLOCK_SIZE * batchSize;
+ 
+-#ifndef NDEBUG
+-        std::cerr << "[INFO] Allocating " << memorySize << " bytes for memory..."
+-                  << std::endl;
+-#endif
++    std::cout << "[INFO] Allocating " << memorySize << " bytes for memory..."
++                << std::endl;
+ 
+     CudaException::check(cudaMalloc(&memory, memorySize));
  
 diff --git a/lib/argon2-cuda/processingunit.cpp b/lib/argon2-cuda/processingunit.cpp
 index 7768427..45a6fcf 100644

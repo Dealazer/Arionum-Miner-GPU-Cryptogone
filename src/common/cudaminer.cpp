@@ -48,14 +48,54 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     }
 }
 
+#include <chrono>
+using std::chrono::high_resolution_clock;
+
+struct TTimer {
+    void start();
+    void end(float &tgt);
+    std::chrono::time_point<std::chrono::high_resolution_clock> startT, endT;
+};
+
+void TTimer::start()
+{
+    startT = high_resolution_clock::now();
+}
+
+void TTimer::end(float &tgt)
+{
+    endT = high_resolution_clock::now();
+    std::chrono::duration<float> duration = endT - startT;
+    tgt = duration.count();
+    assert(tgt >= 0.f);
+}
+
 void CudaMiner::computeHash() {
+    TTimer t;
+
+    //
+    t.start();
     size_t size = *settings->getBatchSize();
     for (size_t j = 0; j < size; ++j) {
         std::string data = bases.at(j);
         unit->setPassword(j, data.data(), data.length());
     }
+    float setPasswordT;
+    t.end(setPasswordT);
+
+    //
+    t.start();
     unit->beginProcessing();
+    float endProcessingT;
+    t.end(endProcessingT);
+
+    t.start();
     unit->endProcessing();
+    float beginProcessingT;
+    t.end(beginProcessingT);
+
+    //
+    t.start();
     auto buffer = std::unique_ptr<std::uint8_t[]>(new std::uint8_t[32]);
     for (size_t j = 0; j < size; ++j) {
         unit->getHash(j, buffer.get());
@@ -63,4 +103,12 @@ void CudaMiner::computeHash() {
         string encodedArgon(openClEnc);
         argons.push_back(encodedArgon);
     }
+    float encodeT;
+    t.end(encodeT);
+
+    printf("   => setPassword: %.2fms,  begin: %.2fms, end: %.2fms, encode: %.2fms\n",
+        setPasswordT*1000.f,
+        beginProcessingT*1000.f,
+        endProcessingT*1000.f,
+        encodeT*1000.f);
 }

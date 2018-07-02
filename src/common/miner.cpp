@@ -10,6 +10,7 @@
 #include <thread>
 
 #include "../../include/miner.h"
+#include "../../include/timer.h"
 
 using namespace std;
 
@@ -40,6 +41,8 @@ void Miner::mine() {
     bool stop = false;
     while (!stop) {
         try {
+            Timer t;
+            t.start();
             stepID = 0;
             if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
                 data = updater->getData();
@@ -54,12 +57,24 @@ void Miner::mine() {
             buildBatch();
 
             stepID++;
+            float duration1Ms = 0;
+            t.end(duration1Ms);
+            printf("\nloop start took %.2fms\n", duration1Ms*1000.f);
+
+            t.start();
             computeHash();
+            float duration3Ms = 0;
+            t.end(duration3Ms);
+            printf("computeHash took %.2fms\n", duration3Ms*1000.f);
 
             stepID++;
+            t.start();
             for (int j = 0; j < *settings->getBatchSize(); ++j) {
                 checkArgon(&bases[j], &argons[j], &nonces[j]);
             }
+            float duration2Ms = 0;
+            t.end(duration2Ms);
+            printf("checkArgon took %.2fms\n", duration2Ms*1000.f);
             stats->addHashes((long)(*settings->getBatchSize()));
         }
         catch (exception e) {
