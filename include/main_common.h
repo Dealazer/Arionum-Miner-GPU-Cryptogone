@@ -201,6 +201,8 @@ string generateUniqid() {
     return ss.str();
 }
 
+extern bool gMiningStarted;
+
 template <class CONTEXT, class MINER>
 int commonMain(const char *const *argv) {
 #ifdef _MSC_VER
@@ -245,17 +247,60 @@ int commonMain(const char *const *argv) {
     vector<Miner *> miners;
     parseDeviceArgs<CONTEXT, MINER>(args, miners, stats, updater, settings);
 
-    // launch miner threads
-    vector<thread> threads;
-    for (auto const &miner : miners) {
-        thread minerT(&Miner::mine, miner);
-        threads.push_back(std::move(minerT));
-    }
+#if 0 // naive main loop, only efficient if all Miners have the same perf, otherwise perf bound by the slowest one ...
+    //int count = 20;
+    gMiningStarted = true;
+    while (true /*count > 0*/) {
+        for (int i = 0; i < miners.size(); i++) {
+            miners[i]->hostPrepareTaskData();
+            miners[i]->deviceUploadTaskDataAsync();
+            miners[i]->deviceLaunchTaskAsync();
+            miners[i]->deviceFetchTaskResultAsync();
+        }
 
-    // wait for miner threads to end
-    for (auto &thread : threads) {
-        thread.join();
+        for (int i = 0; i < miners.size(); i++) {
+            miners[i]->deviceWaitForResults();
+            miners[i]->hostProcessResults();
+        }
+        //count--;
     }
+#else // more efficient main loop, but uses a fixed sleep time ... not ideal
+    vector<bool> minerIdle(miners.size(), true);
+    gMiningStarted = true;
+    while (true) {
+        for (int i = 0; i < miners.size(); i++) {
+            if (minerIdle[i]) {
+                minerIdle[i] = false;
+                miners[i]->hostPrepareTaskData();
+                miners[i]->deviceUploadTaskDataAsync();
+                miners[i]->deviceLaunchTaskAsync();
+                miners[i]->deviceFetchTaskResultAsync();
+            }
+        }
+
+        for (int i = 0; i < miners.size(); i++) {
+            if (!minerIdle[i]) {
+                if (miners[i]->deviceResultsReady()) {
+                    miners[i]->hostProcessResults();
+                    minerIdle[i] = true;
+                }
+            }
+        }
+
+        int nIdle = 0;
+        for (int i = 0; i < miners.size(); i++) {
+            if (minerIdle[i]) {
+                nIdle++;
+            }
+        }
+
+        if (nIdle == 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
+#endif
+
+    //exit(0);
 
     // wait for updater thread to end
     t.join();

@@ -109,15 +109,19 @@ public:
         cout << "SALT=" << salt << endl;
     };
 
-    void mine();
-
     void to_base64(char *dst, size_t dst_len, const void *src, size_t src_len);
 
     void generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buffer_size);
 
     void buildBatch();
 
-    virtual void computeHash() = 0;
+    virtual void hostPrepareTaskData() = 0;
+    virtual void deviceUploadTaskDataAsync() = 0;
+    virtual void deviceLaunchTaskAsync() = 0;
+    virtual void deviceFetchTaskResultAsync() = 0;
+    virtual void deviceWaitForResults() = 0;
+    virtual bool deviceResultsReady() = 0;
+    virtual void hostProcessResults() = 0;
 
     void checkArgon(string *base, string *argon, string *nonce);
 

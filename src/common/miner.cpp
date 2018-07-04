@@ -24,68 +24,6 @@ static int b64_byte_to_char(unsigned x) {
 // to fix mixed up messages at start
 bool gMiningStarted = false;
 
-void Miner::mine() {
-
-    gMiningStarted = true;
-
-    const char* steps[] = {
-        "getData",
-        "buildBatch",
-        "computeHash",
-        "checkArgon",
-        "unknown",
-        "unknown",
-    };
-
-    int stepID = 0;
-    bool stop = false;
-    while (!stop) {
-        try {
-            Timer t;
-            t.start();
-            stepID = 0;
-            if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
-                data = updater->getData();
-                limit.set_str(*data->getLimit(), 10);
-                diff.set_str(*data->getDifficulty(), 10);
-            }
-            nonces.clear();
-            bases.clear();
-            argons.clear();
-
-            stepID++;
-            buildBatch();
-
-            stepID++;
-            float duration1Ms = 0;
-            t.end(duration1Ms);
-            printf("\nloop start took %.2fms\n", duration1Ms*1000.f);
-
-            t.start();
-            computeHash();
-            float duration3Ms = 0;
-            t.end(duration3Ms);
-            printf("computeHash took %.2fms\n", duration3Ms*1000.f);
-
-            stepID++;
-            t.start();
-            for (int j = 0; j < *settings->getBatchSize(); ++j) {
-                checkArgon(&bases[j], &argons[j], &nonces[j]);
-            }
-            float duration2Ms = 0;
-            t.end(duration2Ms);
-            printf("checkArgon took %.2fms\n", duration2Ms*1000.f);
-            stats->addHashes((long)(*settings->getBatchSize()));
-        }
-        catch (exception e) {
-            printf("Exception in a miner thread: |%s|, at step %s, stopping the thread\n", 
-                e.what() ? e.what() : "no exception msg",
-                steps[stepID]);
-            stop = true;
-        }
-    }
-}
-
 void Miner::to_base64(char *dst, size_t dst_len, const void *src, size_t src_len) {
     size_t olen;
     const unsigned char *buf;

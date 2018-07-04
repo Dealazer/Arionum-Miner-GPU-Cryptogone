@@ -34,6 +34,8 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     cout << "using device " << *deviceIndex << " - " << device->getName() << endl;
     cout << "using salt " << salt << endl;
 
+    // we MUST set device here
+    // when creating ProcessingUnit, cudaMalloc & cudaStreamCreate are called and they will operate on the current device
     setCudaDevice(device->getDeviceIndex());
 
     progCtx = new argon2::cuda::ProgramContext(global, {*device}, type, version);
@@ -45,6 +47,15 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     catch (const std::exception& e) {
         cout << "Error: exception while creating cudaminer unit: " << e.what() << ", try to reduce batch size (-b parameter), exiting now :-(" << endl;
         exit(1);
+    }
+
+    resultBuffers.resize(*settings->getBatchSize());
+    for (int i = 0; i < *settings->getBatchSize(); i++) {
+        cudaError_t status = cudaMallocHost((void**)&(resultBuffers[i]), 1024 /*ARGON2_BLOCK_SIZE*/);
+        if (status != cudaSuccess) {
+            std::cout << "Error allocating pinned host memory" << std::endl;
+            exit(1);
+        }
     }
 }
 
@@ -70,45 +81,73 @@ void TTimer::end(float &tgt)
     assert(tgt >= 0.f);
 }
 
-void CudaMiner::computeHash() {
-    TTimer t;
+void CudaMiner::hostPrepareTaskData() {
+    // see if block changed
+    if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
+        data = updater->getData();
+        limit.set_str(*data->getLimit(), 10);
+        diff.set_str(*data->getDifficulty(), 10);
+    }
 
-    //
-    t.start();
+    // clear previous round data
+    nonces.clear();
+    bases.clear();
+    argons.clear();
+
+    // build new round data
+    buildBatch();
+}
+
+void CudaMiner::deviceUploadTaskDataAsync() {
+    // upload to GPU
     size_t size = *settings->getBatchSize();
     for (size_t j = 0; j < size; ++j) {
         std::string data = bases.at(j);
         unit->setPassword(j, data.data(), data.length());
     }
-    float setPasswordT;
-    t.end(setPasswordT);
+}
 
-    //
-    t.start();
+void CudaMiner::deviceLaunchTaskAsync() {
     unit->beginProcessing();
-    float endProcessingT;
-    t.end(endProcessingT);
+}
 
-    t.start();
-    unit->endProcessing();
-    float beginProcessingT;
-    t.end(beginProcessingT);
-
-    //
-    t.start();
-    auto buffer = std::unique_ptr<std::uint8_t[]>(new std::uint8_t[32]);
+void CudaMiner::deviceFetchTaskResultAsync() {
+    // only get result data, do not process it yet
+    // (this is supposed to be async)
+    size_t size = *settings->getBatchSize();
     for (size_t j = 0; j < size; ++j) {
-        unit->getHash(j, buffer.get());
-        char *openClEnc = encode(buffer.get(), 32);
+        unit->fetchResultAsync(j, resultBuffers[j]);
+    }
+}
+
+bool CudaMiner::deviceResultsReady() {
+    return unit->streamOperationsComplete();
+}
+
+void CudaMiner::deviceWaitForResults()
+{
+    unit->syncStream();
+}
+
+void CudaMiner::hostProcessResults() {
+    // not needed for CUDA ... but need to check for OpenCL version
+    //unit->endProcessing();
+
+    // now that we are synced, encode the argon results
+    size_t size = *settings->getBatchSize();
+    uint8_t buffer[32];
+    for (size_t j = 0; j < size; ++j) {
+        unit->processResult(resultBuffers[j], buffer);
+        char *openClEnc = encode(buffer, 32);
         string encodedArgon(openClEnc);
         argons.push_back(encodedArgon);
     }
-    float encodeT;
-    t.end(encodeT);
 
-    printf("   => setPassword: %.2fms,  begin: %.2fms, end: %.2fms, encode: %.2fms\n",
-        setPasswordT*1000.f,
-        beginProcessingT*1000.f,
-        endProcessingT*1000.f,
-        encodeT*1000.f);
+    // now check each one (to see if we need to submit it or not)
+    for (int j = 0; j < *settings->getBatchSize(); ++j) {
+        checkArgon(&bases[j], &argons[j], &nonces[j]);
+    }
+
+    // update stats
+    stats->addHashes((long)(*settings->getBatchSize()));
 }
