@@ -16,6 +16,10 @@
 #include <codecvt>
 #include <string>
 
+// enabling this will always use same pass/salt/nonce and exit(1) if result not matching reference
+// (of course will also not submit anything)
+//#define TEST_MINER_RESULTS
+
 #include "stats.h"
 #include "minersettings.h"
 #include "minerdata.h"
@@ -85,6 +89,8 @@ protected:
     argon2::Version version = argon2::ARGON2_VERSION_13;
     argon2::Argon2Params *params;
 
+    std::vector<uint8_t*> resultBuffers;
+
 public:
     explicit Miner(Stats *s, MinerSettings *ms, Updater *u) : stats(s),
                                                               settings(ms),
@@ -99,14 +105,22 @@ public:
         utility::seconds timeout(2);
         config.set_timeout(timeout);
 
-		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-		std::wstring poolAddressW = converter.from_bytes(*(ms->getPoolAddress()));
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        std::wstring poolAddressW = converter.from_bytes(*(ms->getPoolAddress()));
 
         client = new http_client(poolAddressW, config);
         generator = std::mt19937(device());
         distribution = std::uniform_int_distribution<int>(0, 255);
         salt = randomStr(16);
+
+#ifdef TEST_MINER_RESULTS
+        salt = "0123456789012345";
+#endif
         cout << "SALT=" << salt << endl;
+
+        // prepare array of gpu task results buffers
+        auto count = *settings->getBatchSize();
+        resultBuffers.resize(count);
     };
 
     void to_base64(char *dst, size_t dst_len, const void *src, size_t src_len);
@@ -115,13 +129,14 @@ public:
 
     void buildBatch();
 
-    virtual void hostPrepareTaskData() = 0;
+    void hostPrepareTaskData();
+    void hostProcessResults();
+
     virtual void deviceUploadTaskDataAsync() = 0;
     virtual void deviceLaunchTaskAsync() = 0;
     virtual void deviceFetchTaskResultAsync() = 0;
     virtual void deviceWaitForResults() = 0;
     virtual bool deviceResultsReady() = 0;
-    virtual void hostProcessResults() = 0;
 
     void checkArgon(string *base, string *argon, string *nonce);
 

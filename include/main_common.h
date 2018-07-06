@@ -34,6 +34,7 @@ struct OpenCLArguments {
     bool showHelp = false;
     bool listDevices = false;
     bool allDevices = false;
+    bool alternateSync = false;
     size_t deviceIndex = 0;
     std::vector<int> deviceIndexList;
     size_t batchSize = 1;
@@ -94,27 +95,27 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
 
         new ArgumentOption<OpenCLArguments>(
             makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t index) {
-        state.deviceIndex = (std::size_t) index;
-    }), "device", 'd', "use device with index INDEX", "0", "INDEX"),
+                state.deviceIndex = (std::size_t) index;
+            }), "device", 'd', "use device with index INDEX", "0", "INDEX"),
 
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const string deviceList) {
-        std::vector<string> indicesStr;
-        boost::split(indicesStr, deviceList, boost::is_any_of(","));
-        for (auto& it : indicesStr) {
-            auto idStr = boost::trim_left_copy(it);
-            int id;
-            auto count = sscanf_s(idStr.c_str(), "%d", &id);
-            if (count == 1) {
-                state.deviceIndexList.push_back(id);
+            std::vector<string> indicesStr;
+            boost::split(indicesStr, deviceList, boost::is_any_of(","));
+            for (auto& it : indicesStr) {
+                auto idStr = boost::trim_left_copy(it);
+                int id;
+                auto count = sscanf_s(idStr.c_str(), "%d", &id);
+                if (count == 1) {
+                    state.deviceIndexList.push_back(id);
+                }
+                else {
+                    cout << "Error parsing device-list parameter (-k), ignoring it..." << endl;
+                    state.deviceIndexList.clear();
+                    break;
+                }
             }
-            else {
-                cout << "Error parsing device-list parameter (-k), ignoring it..." << endl;
-                state.deviceIndexList.clear();
-                break;
-            }
-        }
-    }, "device-list", 'k', "use list of devices (comma separated, ex: -k 0,2,3)", "DEVICE LIST"),
+        }, "device-list", 'k', "use list of devices (comma separated, ex: -k 0,2,3)", "DEVICE LIST"),
 
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.allDevices = true; },
@@ -132,23 +133,27 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
 
         new ArgumentOption<OpenCLArguments>(
             makeNumericHandler<OpenCLArguments, double>([](OpenCLArguments &state, double devFee) {
-        state.d = devFee <= 0.5 ? 1 : devFee;
-    }), "dev-donation", 'D', "developer donation", "0.5", "PERCENTAGE"),
+                state.d = devFee <= 0.5 ? 1 : devFee;
+            }), "dev-donation", 'D', "developer donation", "0.5", "PERCENTAGE"),
 
         new ArgumentOption<OpenCLArguments>(
             makeNumericHandler<OpenCLArguments, std::size_t>(
                 [](OpenCLArguments &state, std::size_t threadsPerDevice) {
-        state.threadsPerDevice = (std::size_t) threadsPerDevice;
-    }), "threads-per-device", 't', "thread to use per device", "1", "THREADS"),
+                    state.threadsPerDevice = (std::size_t) threadsPerDevice;
+                }), "threads-per-device", 't', "thread to use per device", "1", "THREADS"),
 
         new ArgumentOption<OpenCLArguments>(
             makeNumericHandler<OpenCLArguments, size_t>([](OpenCLArguments &state, size_t index) {
-        state.batchSize = index;
-    }), "batchSize", 'b', "batch size", "1", "SIZE"),
+                state.batchSize = index;
+            }), "batchSize", 'b', "batch size", "1", "SIZE"),
+
+        new FlagOption<OpenCLArguments>(
+            [](OpenCLArguments &state) { state.alternateSync = true; },
+            "heterogeneous-gpu-sync", 'h', "use alternate GPU sync method (recommended if you mine with heterogeneous GPUs)"),
 
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.showHelp = true; },
-            "help", '?', "show this help and exit")
+                "help", '?', "show this help and exit")
     };
 
     return CommandLineParser<OpenCLArguments>(
@@ -210,7 +215,12 @@ int commonMain(const char *const *argv) {
     setConsoleSize(150, 40, 2000);
 #endif
 
+    // show version
     cout << getVersionStr() << endl << endl;
+
+#ifdef TEST_MINER_RESULTS
+    cout << endl << "-------------- TEST MODE ----------------\n" << endl << endl;
+#endif
 
     // parse CLI args
     CommandLineParser<OpenCLArguments> parser = buildCmdLineParser();
@@ -247,62 +257,64 @@ int commonMain(const char *const *argv) {
     vector<Miner *> miners;
     parseDeviceArgs<CONTEXT, MINER>(args, miners, stats, updater, settings);
 
-#if 0 // naive main loop, only efficient if all Miners have the same perf, otherwise perf bound by the slowest one ...
-    //int count = 20;
+    // notify updater that mining started
     gMiningStarted = true;
-    while (true /*count > 0*/) {
-        for (int i = 0; i < miners.size(); i++) {
-            miners[i]->hostPrepareTaskData();
-            miners[i]->deviceUploadTaskDataAsync();
-            miners[i]->deviceLaunchTaskAsync();
-            miners[i]->deviceFetchTaskResultAsync();
-        }
 
-        for (int i = 0; i < miners.size(); i++) {
-            miners[i]->deviceWaitForResults();
-            miners[i]->hostProcessResults();
+    // ---- main loop ALTERNATE
+    if (args.alternateSync) {
+        vector<bool> minerIdle(miners.size(), true);
+        while (true) {
+            // find idle miners and launch async GPU tasks for them
+            for (int i = 0; i < miners.size(); i++) {
+                if (minerIdle[i] == true) {
+                    minerIdle[i] = false;
+                    miners[i]->hostPrepareTaskData();
+                    miners[i]->deviceUploadTaskDataAsync();
+                    miners[i]->deviceLaunchTaskAsync();
+                    miners[i]->deviceFetchTaskResultAsync();
+                }
+            }
+
+            // find miners which have finished work, process results & mark them idle
+            int nIdle = 0;
+            for (int i = 0; i < miners.size(); i++) {
+                if (minerIdle[i] == false) {
+                    if (miners[i]->deviceResultsReady()) {
+                        miners[i]->hostProcessResults();
+                        minerIdle[i] = true;
+                    }
+                }
+                if (minerIdle[i]) {
+                    nIdle++;
+                }
+            }
+
+            // if no miner is idle, wait a bit, to avoid polling too much GPUs about tasks status
+            if (nIdle == 0) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
         }
-        //count--;
     }
-#else // more efficient main loop, but uses a fixed sleep time ... not ideal
-    vector<bool> minerIdle(miners.size(), true);
-    gMiningStarted = true;
-    while (true) {
-        for (int i = 0; i < miners.size(); i++) {
-            if (minerIdle[i]) {
-                minerIdle[i] = false;
+    // ---- main loop DEFAULT
+    else {
+        while (true) {
+            // setup & launch GPU async tasks
+            for (int i = 0; i < miners.size(); i++) {
                 miners[i]->hostPrepareTaskData();
                 miners[i]->deviceUploadTaskDataAsync();
                 miners[i]->deviceLaunchTaskAsync();
                 miners[i]->deviceFetchTaskResultAsync();
             }
-        }
 
-        for (int i = 0; i < miners.size(); i++) {
-            if (!minerIdle[i]) {
-                if (miners[i]->deviceResultsReady()) {
-                    miners[i]->hostProcessResults();
-                    minerIdle[i] = true;
-                }
+            // blocking wait, then process results
+            for (int i = 0; i < miners.size(); i++) {
+                miners[i]->deviceWaitForResults();
+                miners[i]->hostProcessResults();
             }
-        }
-
-        int nIdle = 0;
-        for (int i = 0; i < miners.size(); i++) {
-            if (minerIdle[i]) {
-                nIdle++;
-            }
-        }
-
-        if (nIdle == 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
     }
-#endif
 
-    //exit(0);
-
-    // wait for updater thread to end
+    // wait for updater thread to end (actually this will never happen ...)
     t.join();
 
     return true;

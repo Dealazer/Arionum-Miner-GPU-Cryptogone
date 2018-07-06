@@ -67,8 +67,17 @@ void Miner::generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buf
     to_base64(dst, dst_len, buffer, buffer_size);
 }
 
+#ifdef TEST_MINER_RESULTS
+const string REF_NONCE = "aGCnfb3iYTIyB499URw9JlTOiN8MypukTukbu2R0";
+const string REF_BASE = "PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD-aGCnfb3iYTIyB499URw9JlTOiN8MypukTukbu2R0-2WHXQLvu2GXbRBC1MvU5gjxwo4SPNwcePUurFms6gBNj6R9TJD7hBUJPnExzyp9JB4H358f9nUA7z5eogkrn5dwk-36081876";
+#endif
+
 void Miner::buildBatch() {
     for (int j = 0; j < *settings->getBatchSize(); ++j) {
+#ifdef TEST_MINER_RESULTS
+        nonces.push_back(REF_NONCE);
+        bases.push_back(REF_BASE);
+#else
         generateBytes(nonceBase64, 64, byteBuffer, 32);
         std::string nonce(nonceBase64);
 
@@ -82,6 +91,7 @@ void Miner::buildBatch() {
 
         nonces.push_back(nonce);
         bases.push_back(base);
+#endif
     }
 }
 
@@ -111,6 +121,19 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     string duration = x.str();
 
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
+
+#ifdef TEST_MINER_RESULTS
+    const string REF_RESULT = "6722718026801782164";
+    if (duration != REF_RESULT) {
+        static bool errShown = false;
+        if (!errShown) {
+            std::cout << std::endl << "-------------- invalid result: " << duration << " / " << REF_RESULT << std::endl;
+            errShown = true;
+            exit(1);
+        }
+        duration = "10000000000000000000";
+    }
+#endif
 
     result.set_str(duration, 10);
     mpz_tdiv_q(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
@@ -208,3 +231,49 @@ char *Miner::encode(void *res, size_t reslen) {
     return cstr;
 }
 
+void Miner::hostPrepareTaskData() {
+    // see if block changed
+    if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
+        data = updater->getData();
+        if (data == nullptr) {
+            while (data == nullptr) {
+                std::cout << "--------------------------------------------------" << std::endl;
+                std::cout << "Warning: cannot get pool info, maybe it is down ?" << std::endl;
+                std::cout << "Hashrate will be zero until pool back online..." << std::endl;
+                std::cout << "--------------------------------------------------" << std::endl;
+                std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
+                data = updater->getData();
+            }
+        }
+        limit.set_str(*data->getLimit(), 10);
+        diff.set_str(*data->getDifficulty(), 10);
+    }
+
+    // clear previous round data
+    nonces.clear();
+    bases.clear();
+    argons.clear();
+
+    // build new round data
+    buildBatch();
+}
+
+void Miner::hostProcessResults() {
+    // now that we are synced, encode the argon results
+    size_t size = *settings->getBatchSize();
+    uint8_t buffer[32];
+    for (size_t j = 0; j < size; ++j) {
+        this->params->finalize(buffer, resultBuffers[j]);
+        char *openClEnc = encode(buffer, 32);
+        string encodedArgon(openClEnc);
+        argons.push_back(encodedArgon);
+    }
+
+    // now check each one (to see if we need to submit it or not)
+    for (int j = 0; j < *settings->getBatchSize(); ++j) {
+        checkArgon(&bases[j], &argons[j], &nonces[j]);
+    }
+
+    // update stats
+    stats->addHashes((long)(*settings->getBatchSize()));
+}

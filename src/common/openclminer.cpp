@@ -25,21 +25,35 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *device
         cout << "Error: exception while creating opencl unit: " << e.what() << ", try to reduce batch size (-b parameter), exiting now :-(" << endl;
         exit(1);
     }
+
+    for (int i = 0; i < *settings->getBatchSize(); i++) {
+        resultBuffers[i] = new uint8_t[1024 /*ARGON2_BLOCK_SIZE*/];
+    }
 }
 
-void OpenClMiner::computeHash() {
+void OpenClMiner::deviceUploadTaskDataAsync() {
     size_t size = *settings->getBatchSize();
     for (size_t j = 0; j < size; ++j) {
         std::string data = bases.at(j);
         unit->setPassword(j, data.data(), data.length());
     }
-    unit->beginProcessing();
-    unit->endProcessing();
-    auto buffer = std::unique_ptr<std::uint8_t[]>(new std::uint8_t[32]);
+}
+
+void OpenClMiner::deviceLaunchTaskAsync() {
+    unit->runKernelAsync();
+}
+
+void OpenClMiner::deviceFetchTaskResultAsync() {
+    size_t size = *settings->getBatchSize();
     for (size_t j = 0; j < size; ++j) {
-        unit->getHash(j, buffer.get());
-        char *openClEnc = encode(buffer.get(), 32);
-        string encodedArgon(openClEnc);
-        argons.push_back(encodedArgon);
-    }
+        unit->fetchResultAsync(j, resultBuffers[j]);
+    }    
+}
+
+void OpenClMiner::deviceWaitForResults() {
+    unit->waitForResults();
+}
+
+bool OpenClMiner::deviceResultsReady() {
+    return unit->resultsReady();
 }
