@@ -24,16 +24,13 @@ private:
 
 public:
     
-   void hostPrepareTaskData();
    void deviceUploadTaskDataAsync();
    void deviceLaunchTaskAsync();
    void deviceFetchTaskResultAsync();
    bool deviceResultsReady();
-   void hostProcessResults();
    void deviceWaitForResults();
 
     explicit CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceIndex);
-    std::vector<uint8_t*> resultBuffers;
 };
 
 #endif //ARIONUM_GPU_MINER_CUDAMINER_H

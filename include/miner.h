@@ -85,6 +85,8 @@ protected:
     argon2::Version version = argon2::ARGON2_VERSION_13;
     argon2::Argon2Params *params;
 
+    std::vector<uint8_t*> resultBuffers;
+
 public:
     explicit Miner(Stats *s, MinerSettings *ms, Updater *u) : stats(s),
                                                               settings(ms),
@@ -106,7 +108,15 @@ public:
         generator = std::mt19937(device());
         distribution = std::uniform_int_distribution<int>(0, 255);
         salt = randomStr(16);
+
+// reproductible results ...
+        salt = "0123456789012345";
+// reproductible results ...
+
         cout << "SALT=" << salt << endl;
+
+        auto count = *settings->getBatchSize();
+        resultBuffers.resize(count);
     };
 
     void to_base64(char *dst, size_t dst_len, const void *src, size_t src_len);
@@ -115,13 +125,14 @@ public:
 
     void buildBatch();
 
-    virtual void hostPrepareTaskData() = 0;
+    void hostPrepareTaskData();
+    void hostProcessResults();
+
     virtual void deviceUploadTaskDataAsync() = 0;
     virtual void deviceLaunchTaskAsync() = 0;
     virtual void deviceFetchTaskResultAsync() = 0;
     virtual void deviceWaitForResults() = 0;
     virtual bool deviceResultsReady() = 0;
-    virtual void hostProcessResults() = 0;
 
     void checkArgon(string *base, string *argon, string *nonce);
 

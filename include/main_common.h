@@ -265,12 +265,19 @@ int commonMain(const char *const *argv) {
         //count--;
     }
 #else // more efficient main loop, but uses a fixed sleep time ... not ideal
+    int nRuns = 20;
+
+//#define LIMIT_RUNS
+
     vector<bool> minerIdle(miners.size(), true);
     gMiningStarted = true;
     while (true) {
+#if 0
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+#else
         for (int i = 0; i < miners.size(); i++) {
-            if (minerIdle[i]) {
-                minerIdle[i] = false;
+            if (minerIdle[i] && nRuns > 0) {
+                //minerIdle[i] = false;
                 miners[i]->hostPrepareTaskData();
                 miners[i]->deviceUploadTaskDataAsync();
                 miners[i]->deviceLaunchTaskAsync();
@@ -279,28 +286,55 @@ int commonMain(const char *const *argv) {
         }
 
         for (int i = 0; i < miners.size(); i++) {
-            if (!minerIdle[i]) {
-                if (miners[i]->deviceResultsReady()) {
-                    miners[i]->hostProcessResults();
-                    minerIdle[i] = true;
-                }
-            }
+            miners[i]->deviceWaitForResults();
         }
 
-        int nIdle = 0;
         for (int i = 0; i < miners.size(); i++) {
-            if (minerIdle[i]) {
-                nIdle++;
-            }
+            miners[i]->hostProcessResults();
+
+            // to remove, testing
+            //std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
 
-        if (nIdle == 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+#ifdef LIMIT_RUNS
+        nRuns--;
+#endif
+
+//        for (int i = 0; i < miners.size(); i++) {
+//            if (!minerIdle[i]) {
+//                if (miners[i]->deviceResultsReady()) {
+//                    miners[i]->hostProcessResults();
+//                    minerIdle[i] = true;
+//#ifdef LIMIT_RUNS
+//                    nRuns--;
+//                    if (nRuns % 10 == 0) {
+//                        std::cout << "nRuns: " << nRuns << std::endl;
+//                    }
+//#endif
+//                }
+//            }
+//        }
+//
+        //int nIdle = 0;
+        //for (int i = 0; i < miners.size(); i++) {
+        //    if (minerIdle[i]) {
+        //        nIdle++;
+        //    }
+        //}
+
+        //if (nIdle == 0) {
+        //    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        //}
+        if (nRuns <= 0) {
+            break;
         }
+#endif
     }
 #endif
 
-    //exit(0);
+#ifdef LIMIT_RUNS
+    exit(0);
+#endif
 
     // wait for updater thread to end
     t.join();

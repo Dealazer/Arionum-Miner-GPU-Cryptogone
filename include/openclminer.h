@@ -21,8 +21,12 @@ private:
     const argon2::opencl::Device *device;
 
 public:
-    void computeHash();
 
+    void deviceUploadTaskDataAsync();
+    void deviceLaunchTaskAsync();
+    void deviceFetchTaskResultAsync();
+    void deviceWaitForResults();
+    bool deviceResultsReady();
     OpenClMiner(Stats *s, MinerSettings *ms, Updater *pUpdater, size_t *deviceIndex);
 };
 

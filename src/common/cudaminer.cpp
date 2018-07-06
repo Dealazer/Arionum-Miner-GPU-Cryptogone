@@ -48,8 +48,7 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
         cout << "Error: exception while creating cudaminer unit: " << e.what() << ", try to reduce batch size (-b parameter), exiting now :-(" << endl;
         exit(1);
     }
-
-    resultBuffers.resize(*settings->getBatchSize());
+    
     for (int i = 0; i < *settings->getBatchSize(); i++) {
         cudaError_t status = cudaMallocHost((void**)&(resultBuffers[i]), 1024 /*ARGON2_BLOCK_SIZE*/);
         if (status != cudaSuccess) {
@@ -81,23 +80,6 @@ void TTimer::end(float &tgt)
     assert(tgt >= 0.f);
 }
 
-void CudaMiner::hostPrepareTaskData() {
-    // see if block changed
-    if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
-        data = updater->getData();
-        limit.set_str(*data->getLimit(), 10);
-        diff.set_str(*data->getDifficulty(), 10);
-    }
-
-    // clear previous round data
-    nonces.clear();
-    bases.clear();
-    argons.clear();
-
-    // build new round data
-    buildBatch();
-}
-
 void CudaMiner::deviceUploadTaskDataAsync() {
     // upload to GPU
     size_t size = *settings->getBatchSize();
@@ -112,8 +94,6 @@ void CudaMiner::deviceLaunchTaskAsync() {
 }
 
 void CudaMiner::deviceFetchTaskResultAsync() {
-    // only get result data, do not process it yet
-    // (this is supposed to be async)
     size_t size = *settings->getBatchSize();
     for (size_t j = 0; j < size; ++j) {
         unit->fetchResultAsync(j, resultBuffers[j]);
@@ -129,25 +109,3 @@ void CudaMiner::deviceWaitForResults()
     unit->syncStream();
 }
 
-void CudaMiner::hostProcessResults() {
-    // not needed for CUDA ... but need to check for OpenCL version
-    //unit->endProcessing();
-
-    // now that we are synced, encode the argon results
-    size_t size = *settings->getBatchSize();
-    uint8_t buffer[32];
-    for (size_t j = 0; j < size; ++j) {
-        unit->processResult(resultBuffers[j], buffer);
-        char *openClEnc = encode(buffer, 32);
-        string encodedArgon(openClEnc);
-        argons.push_back(encodedArgon);
-    }
-
-    // now check each one (to see if we need to submit it or not)
-    for (int j = 0; j < *settings->getBatchSize(); ++j) {
-        checkArgon(&bases[j], &argons[j], &nonces[j]);
-    }
-
-    // update stats
-    stats->addHashes((long)(*settings->getBatchSize()));
-}
