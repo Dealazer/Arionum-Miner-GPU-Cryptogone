@@ -29,6 +29,7 @@ public:
    void deviceFetchTaskResultAsync();
    bool deviceResultsReady();
    void deviceWaitForResults();
+   void printInfo();
 
     explicit CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceIndex);
 };

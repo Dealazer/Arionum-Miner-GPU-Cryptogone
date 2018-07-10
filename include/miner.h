@@ -116,7 +116,6 @@ public:
 #ifdef TEST_MINER_RESULTS
         salt = "0123456789012345";
 #endif
-        cout << "SALT=" << salt << endl;
 
         // prepare array of gpu task results buffers
         auto count = *settings->getBatchSize();
@@ -137,14 +136,13 @@ public:
     virtual void deviceFetchTaskResultAsync() = 0;
     virtual void deviceWaitForResults() = 0;
     virtual bool deviceResultsReady() = 0;
+    virtual void printInfo() = 0;
 
     void checkArgon(string *base, string *argon, string *nonce);
 
     void submit(string *argon, string *nonce, bool d);
 
     char *encode(void *res, size_t reslen);
-
-
 };
 
 

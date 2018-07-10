@@ -3,6 +3,7 @@
 //
 
 #include <iostream>
+#include <iomanip>
 #include "../../include/cudaminer.h"
 #include "../../argon2-gpu/include/argon2-cuda/processingunit.h"
 #include "../../argon2-gpu/include/argon2-cuda/programcontext.h"
@@ -19,6 +20,14 @@ static void setCudaDevice(int deviceIndex)
     if (currentIndex != deviceIndex) {
         argon2::cuda::CudaException::check(cudaSetDevice(deviceIndex));
     }
+}
+
+void CudaMiner::printInfo() {
+    auto batchSize = *settings->getBatchSize();
+    cout << "Device       : " << device->getName() << endl;
+    cout << "Batch size   : " << batchSize << endl;
+    cout << "Memory usage : " << std::fixed << std::setprecision(1) << (batchSize*0.5f) << " GB" << endl;
+    cout << "Salt         : " << salt << endl;
 }
 
 CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceIndex) : Miner(s, ms, u) {

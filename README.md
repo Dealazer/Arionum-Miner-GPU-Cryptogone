@@ -8,6 +8,16 @@ Please make sure you install latest Nvidia drivers if you use the CUDA miner !
 
 ## Updates
 
+#### Version 1.3.0 (07/10/2018)
+* switched to a single thread managing all GPUs (improves stability)
+* can now set batch size & thread count per device, for example:
+*  -d 0 -t 1 -b 6
+*  -d 0,1,2 -t 1 -b 6
+*  -d 0,1,2 -t 1,2,1 -b 6,3,6
+* -k parameter removed
+* updated README.md with information on how to get the most out of your GPU(s)
+* fixed more OpenCL issues
+
 #### Version 1.2.0 (07/02/2018)
 * fix OpenCL miner (kernel file was missing in release zip)
 * -k parameter now also works for the OpenCL miner
@@ -98,7 +108,10 @@ After a succesfull build, binaries can be found here:
 * -u use all GPU devices available
 
 -b and -t are the most important settings, you need to test different values and find the pair giving the best hashrate.
-Cryptogone tested on a GTX960 with -b 6 -t 1 and gets 6.9 H/s
+Here are some examples:
+  1080Ti, 12GB: -b -t 1 => ?
+  GTX960, 8GB: -b 6 -t 1 => 6.9 H/s
+  VEGA64, 8GB: -b 7 -t 2 => 6.8 H/s
 
 If miner crashes at launch this is probably because batch size or number of threads are too big relative to your GPU RAM size.
 

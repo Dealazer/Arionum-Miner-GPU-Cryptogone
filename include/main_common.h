@@ -34,54 +34,91 @@ struct OpenCLArguments {
     bool showHelp = false;
     bool listDevices = false;
     bool allDevices = false;
-    bool alternateSync = false;
-    size_t deviceIndex = 0;
-    std::vector<int> deviceIndexList;
-    size_t batchSize = 1;
+    std::vector<size_t> deviceIndexList = { 0 };
+    std::vector<size_t> threadsPerDeviceList = { 1 };
+    std::vector<size_t> batchSizePerDeviceList = { 1 };
     string address = "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL";
     string poolUrl = "http://aropool.com";
-    size_t threadsPerDevice = 1;
     double d = 1;
 };
 
 template <class CONTEXT, class MINER>
-void parseDeviceArgs(const OpenCLArguments &args, vector<Miner *> &miners, Stats* stats, Updater *updater, MinerSettings& settings) {
+void spawnMiners(OpenCLArguments &args, vector<Miner *> &miners, Stats* stats, Updater *updater, MinerSettings& settings) {
+    
+    auto global = new CONTEXT();
+    auto &devices = global->getAllDevices();
+
     // -u option
     if (args.allDevices) {
-        cout << "Use all Devices" << endl;
-        CONTEXT global;
-        auto &devices = global.getAllDevices();
-        for (size_t i = 0; i < devices.size(); ++i) {
-            for (int j = 0; j < args.threadsPerDevice; ++j) {
-                Miner *miner = new MINER(stats, &settings, updater, &i);
-                miners.push_back(miner);
-            }
+        args.deviceIndexList.clear();
+        for (int i = 0; i < devices.size(); ++i) {
+            args.deviceIndexList.push_back(i);
+        }
+    }
+
+    //
+    if (args.deviceIndexList.size() == 0) {
+        std::cout << "Error: no device found, aborting" << std::endl;
+        exit(1);
+    }
+
+    // create miners
+    int deviceListItem = -1;
+    for (const auto &it : args.deviceIndexList) {
+        deviceListItem++;
+        if (it >= devices.size()) {
+            std::cout << std::endl;
+            std::cout << "--- Device " << it << " does not exist, skipping it" << std::endl;
+            continue;
+        }
+#ifdef OPENCL_MINER
+        auto devInfo = devices[it].getInfo();
+        if (devInfo.find("Type: GPU") == std::string::npos) {
+            std::cout << std::endl;
+            std::cout << "--- Device " << it << " is not a GPU, skipping it" << std::endl << devices[it].getName() << std::endl;
+            continue;
+        }
+#endif
+        size_t deviceIndex = it;
+        size_t nThreads = args.threadsPerDeviceList.back();
+        if (deviceListItem < args.threadsPerDeviceList.size()) {
+            nThreads = args.threadsPerDeviceList[deviceListItem];
         }
 
-    }
-    // -k option
-    else if (args.deviceIndexList.size() > 0) {
-        auto global = new CONTEXT();
-        auto &devices = global->getAllDevices();
-        for (const auto &it : args.deviceIndexList) {
-            if (it >= devices.size())
-                continue;
-            size_t deviceIndex = it;
-            cout << "--- start using device #" << deviceIndex << " (-k)" << endl;
-            for (int j = 0; j < args.threadsPerDevice; ++j) {
-                Miner *miner = new MINER(stats, &settings, updater, &deviceIndex);
-                miners.push_back(miner);
+        for (int j = 0; j < nThreads; ++j) {
+            // choose batch size
+            MinerSettings* pNewSettings = new MinerSettings(settings);
+            pNewSettings->batchSize = &args.batchSizePerDeviceList.back();
+            if (deviceListItem < args.batchSizePerDeviceList.size()) {
+                pNewSettings->batchSize = &args.batchSizePerDeviceList[deviceListItem];
             }
-        }
-    } // -d option
-    else {
-        size_t deviceIndex = args.deviceIndex;
-        cout << "--- start using device #" << deviceIndex << " (-d)" << endl;
-        for (int j = 0; j < args.threadsPerDevice; ++j) {
-            Miner *miner = new MINER(stats, &settings, updater, &deviceIndex);
+
+            // create the miner
+            std::cout << std::endl;
+            cout << "--- Device " << deviceIndex << ", Thread " << j << endl;
+            Miner *miner = new MINER(stats, pNewSettings, updater, &deviceIndex);
             miners.push_back(miner);
+            miner->printInfo();
         }
     }
+}
+
+bool parseIntList(const std::string &s, std::vector<size_t> &ol) {
+    std::vector<string> ls;
+    boost::split(ls, s, boost::is_any_of(","));
+    ol.clear();
+    for (auto& it : ls) {
+        size_t id;
+        auto idStr = boost::trim_left_copy(it);
+        auto count = sscanf_s(idStr.c_str(), "%llu", &id);
+        if (count == 1) {
+            ol.push_back(id);
+        }
+        else {
+            return false;
+        }
+    }
+    return true;
 }
 
 CommandLineParser<OpenCLArguments> buildCmdLineParser() {
@@ -94,32 +131,16 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
             "list-devices", 'l', "list all available devices and exit"),
 
         new ArgumentOption<OpenCLArguments>(
-            makeNumericHandler<OpenCLArguments, std::size_t>([](OpenCLArguments &state, std::size_t index) {
-                state.deviceIndex = (std::size_t) index;
-            }), "device", 'd', "use device with index INDEX", "0", "INDEX"),
-
-        new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const string deviceList) {
-            std::vector<string> indicesStr;
-            boost::split(indicesStr, deviceList, boost::is_any_of(","));
-            for (auto& it : indicesStr) {
-                auto idStr = boost::trim_left_copy(it);
-                int id;
-                auto count = sscanf_s(idStr.c_str(), "%d", &id);
-                if (count == 1) {
-                    state.deviceIndexList.push_back(id);
+                if (!parseIntList(deviceList, state.deviceIndexList)) {
+                    cout << "Error parsing -d parameter, will use -d 0" << endl;
+                    state.deviceIndexList = { 0 };
                 }
-                else {
-                    cout << "Error parsing device-list parameter (-k), ignoring it..." << endl;
-                    state.deviceIndexList.clear();
-                    break;
-                }
-            }
-        }, "device-list", 'k', "use list of devices (comma separated, ex: -k 0,2,3)", "DEVICE LIST"),
+        }, "device(s)", 'd', "GPU devices to use, examples: -d 0 / -d 1 / -d 0,1,3,5", "DEVICE LIST"),
 
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.allDevices = true; },
-            "use-all-devices", 'u', "use all available devices"),
+            "use-all-devices", 'u', "use all available GPU devices"),
 
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const string address) { state.address = address; }, "address", 'a',
@@ -137,19 +158,20 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
             }), "dev-donation", 'D', "developer donation", "0.5", "PERCENTAGE"),
 
         new ArgumentOption<OpenCLArguments>(
-            makeNumericHandler<OpenCLArguments, std::size_t>(
-                [](OpenCLArguments &state, std::size_t threadsPerDevice) {
-                    state.threadsPerDevice = (std::size_t) threadsPerDevice;
-                }), "threads-per-device", 't', "thread to use per device", "1", "THREADS"),
+            [](OpenCLArguments &state, const string threadsList) {
+                if (!parseIntList(threadsList, state.threadsPerDeviceList)) {
+                    cout << "Error parsing -t parameter, will use -t 1" << endl;
+                    state.threadsPerDeviceList = { 1 };
+                }
+        }, "threads-per-device", 't', "number of threads to use per device, examples: -t 1 / -t 6,3", "THREADS"),
 
         new ArgumentOption<OpenCLArguments>(
-            makeNumericHandler<OpenCLArguments, size_t>([](OpenCLArguments &state, size_t index) {
-                state.batchSize = index;
-            }), "batchSize", 'b', "batch size", "1", "SIZE"),
-
-        new FlagOption<OpenCLArguments>(
-            [](OpenCLArguments &state) { state.alternateSync = true; },
-            "heterogeneous-gpu-sync", 'h', "use alternate GPU sync method (recommended if you mine with heterogeneous GPUs)"),
+            [](OpenCLArguments &state, const string batchSizesList) {
+                if (!parseIntList(batchSizesList, state.batchSizePerDeviceList)) {
+                    cout << "Error parsing -b parameter, will use -b 1" << endl;
+                    state.batchSizePerDeviceList = { 1 };
+                }
+        }, "batch-per-device", 'b', "number of batches to use per device, examples: -b 6 / -t 6,3", "THREADS"),
 
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.showHelp = true; },
@@ -165,6 +187,11 @@ template <class CONTEXT>
 void printDeviceList() {
     CONTEXT global;
     auto &devices = global.getAllDevices();
+    if (!devices.size()) {
+        cout << "No device found !" << endl;
+        return;
+    }
+
     for (size_t i = 0; i < devices.size(); i++) {
         auto &device = devices[i];
         cout << "Device #" << i << ": " << device.getName()
@@ -219,8 +246,23 @@ int commonMain(const char *const *argv) {
     cout << getVersionStr() << endl << endl;
 
 #ifdef TEST_MINER_RESULTS
-    cout << endl << "-------------- TEST MODE ----------------\n" << endl << endl;
+    cout << endl << "-------------- TEST MODE ----------------" << endl << endl;
 #endif
+
+    // basic check to see if CUDA / OpenCL is supported
+    try {
+#ifdef OPENCL_MINER
+        std::cout << "Initializing OpenCL" << "(if it crashes here, try install latest GPU drivers)" << std::endl;
+#else
+        std::cout << "Initializing CUDA" << std::endl;
+#endif
+        CONTEXT global;
+        auto &devices = global.getAllDevices();
+    }
+    catch (exception e) {
+        std::cout << "Exception: " << e.what() << std::endl;
+        exit(1);
+    }
 
     // parse CLI args
     CommandLineParser<OpenCLArguments> parser = buildCmdLineParser();
@@ -241,8 +283,9 @@ int commonMain(const char *const *argv) {
     }
 
     // initialize settings
+    size_t dummy = 0;
     string uniqid = generateUniqid();
-    MinerSettings settings(&args.poolUrl, &args.address, &uniqid, &args.batchSize);
+    MinerSettings settings(&args.poolUrl, &args.address, &uniqid, &dummy);
     auto *stats = new Stats(args.d);
 
     // show launch settings in console
@@ -255,62 +298,42 @@ int commonMain(const char *const *argv) {
 
     // chooses GPU devices to run on & create miners
     vector<Miner *> miners;
-    parseDeviceArgs<CONTEXT, MINER>(args, miners, stats, updater, settings);
+    spawnMiners<CONTEXT, MINER>(args, miners, stats, updater, settings);
 
     // notify updater that mining started
     gMiningStarted = true;
 
     // ---- main loop ALTERNATE
-    if (args.alternateSync) {
-        vector<bool> minerIdle(miners.size(), true);
-        while (true) {
-            // find idle miners and launch async GPU tasks for them
-            for (int i = 0; i < miners.size(); i++) {
-                if (minerIdle[i] == true) {
-                    minerIdle[i] = false;
-                    miners[i]->hostPrepareTaskData();
-                    miners[i]->deviceUploadTaskDataAsync();
-                    miners[i]->deviceLaunchTaskAsync();
-                    miners[i]->deviceFetchTaskResultAsync();
-                }
-            }
-
-            // find miners which have finished work, process results & mark them idle
-            int nIdle = 0;
-            for (int i = 0; i < miners.size(); i++) {
-                if (minerIdle[i] == false) {
-                    if (miners[i]->deviceResultsReady()) {
-                        miners[i]->hostProcessResults();
-                        minerIdle[i] = true;
-                    }
-                }
-                if (minerIdle[i]) {
-                    nIdle++;
-                }
-            }
-
-            // if no miner is idle, wait a bit, to avoid polling too much GPUs about tasks status
-            if (nIdle == 0) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            }
-        }
-    }
-    // ---- main loop DEFAULT
-    else {
-        while (true) {
-            // setup & launch GPU async tasks
-            for (int i = 0; i < miners.size(); i++) {
+    vector<bool> minerIdle(miners.size(), true);
+    while (true) {
+        // find idle miners and launch async GPU tasks for them
+        for (int i = 0; i < miners.size(); i++) {
+            if (minerIdle[i] == true) {
+                minerIdle[i] = false;
                 miners[i]->hostPrepareTaskData();
                 miners[i]->deviceUploadTaskDataAsync();
                 miners[i]->deviceLaunchTaskAsync();
                 miners[i]->deviceFetchTaskResultAsync();
             }
+        }
 
-            // blocking wait, then process results
-            for (int i = 0; i < miners.size(); i++) {
-                miners[i]->deviceWaitForResults();
-                miners[i]->hostProcessResults();
+        // find miners which have finished work, process results & mark them idle
+        int nIdle = 0;
+        for (int i = 0; i < miners.size(); i++) {
+            if (minerIdle[i] == false) {
+                if (miners[i]->deviceResultsReady()) {
+                    miners[i]->hostProcessResults();
+                    minerIdle[i] = true;
+                }
             }
+            if (minerIdle[i]) {
+                nIdle++;
+            }
+        }
+
+        // if no miner is idle, wait a bit, to avoid polling too much GPUs about tasks status
+        if (nIdle == 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
     }
 

@@ -3,17 +3,25 @@
 //
 
 #include <iostream>
+#include <iomanip>
+
 #include "../../include/openclminer.h"
 
 using namespace std;
+
+void OpenClMiner::printInfo() {
+    auto batchSize = *settings->getBatchSize();
+    cout << "Device       : " << device->getName() << endl;
+    cout << "Batch size   : " << batchSize << endl;
+    cout << "Memory usage : " << std::fixed << std::setprecision(1) << (batchSize*0.5f) << " GB" << endl;
+    cout << "Salt         : " << salt << endl;
+}
 
 OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceIndex)
         : Miner(s, ms, u) {
     global = new argon2::opencl::GlobalContext();
     auto &devices = global->getAllDevices();
     device = &devices[*deviceIndex];
-    cout << "using device #" << *deviceIndex << " - " << device->getName() << endl;
-    cout << "using salt " << salt << endl;
     progCtx = new argon2::opencl::ProgramContext(global, {*device}, type, version,
                                                  const_cast<char *>("./argon2-gpu/data/kernels/"));
     params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 1, 524288, 1);

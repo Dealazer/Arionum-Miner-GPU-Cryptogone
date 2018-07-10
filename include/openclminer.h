@@ -27,6 +27,8 @@ public:
     void deviceFetchTaskResultAsync();
     void deviceWaitForResults();
     bool deviceResultsReady();
+    void printInfo();
+
     OpenClMiner(Stats *s, MinerSettings *ms, Updater *pUpdater, size_t *deviceIndex);
 };
 
