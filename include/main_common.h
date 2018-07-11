@@ -136,11 +136,11 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                     cout << "Error parsing -d parameter, will use -d 0" << endl;
                     state.deviceIndexList = { 0 };
                 }
-        }, "device(s)", 'd', "GPU devices to use, examples: -d 0 / -d 1 / -d 0,1,3,5", "DEVICE LIST"),
+        }, "device(s)", 'd', "GPU devices to use, examples: -d 0 / -d 1 / -d 0,1,3,5", "0", "DEVICES"),
 
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.allDevices = true; },
-            "use-all-devices", 'u', "use all available GPU devices"),
+            "use-all-devices", 'u', "use all available GPU devices (overrides -d)"),
 
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const string address) { state.address = address; }, "address", 'a',
@@ -155,7 +155,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
         new ArgumentOption<OpenCLArguments>(
             makeNumericHandler<OpenCLArguments, double>([](OpenCLArguments &state, double devFee) {
                 state.d = devFee <= 0.5 ? 1 : devFee;
-            }), "dev-donation", 'D', "developer donation", "0.5", "PERCENTAGE"),
+            }), "dev-donation", 'D', "developer donation", "1", "PERCENTAGE"),
 
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const string threadsList) {
@@ -163,7 +163,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                     cout << "Error parsing -t parameter, will use -t 1" << endl;
                     state.threadsPerDeviceList = { 1 };
                 }
-        }, "threads-per-device", 't', "number of threads to use per device, examples: -t 1 / -t 6,3", "THREADS"),
+        }, "threads-per-device", 't', "number of threads to use per device, examples: -t 1 / -t 6,3", "1", "THREADS"),
 
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const string batchSizesList) {
@@ -171,7 +171,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                     cout << "Error parsing -b parameter, will use -b 1" << endl;
                     state.batchSizePerDeviceList = { 1 };
                 }
-        }, "batch-per-device", 'b', "number of batches to use per device, examples: -b 6 / -t 6,3", "THREADS"),
+        }, "batch-per-device", 'b', "number of batches to use per device, examples: -b 6 / -b 6,3", "1", "BATCHES"),
 
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.showHelp = true; },
@@ -252,10 +252,11 @@ int commonMain(const char *const *argv) {
     // basic check to see if CUDA / OpenCL is supported
     try {
 #ifdef OPENCL_MINER
-        std::cout << "Initializing OpenCL" << "(if it crashes here, try install latest GPU drivers)" << std::endl;
+        std::cout << "Initializing OpenCL";
 #else
-        std::cout << "Initializing CUDA" << std::endl;
+        std::cout << "Initializing CUDA";
 #endif
+        std::cout << "(if it crashes here, try install latest GPU drivers)" << std::endl;
         CONTEXT global;
         auto &devices = global.getAllDevices();
     }
