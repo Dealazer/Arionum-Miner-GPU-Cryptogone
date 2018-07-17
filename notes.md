@@ -1,3 +1,6 @@
+# TODO
+* use https://gitlab.com/omos/argon2-gpu, warp-shuffle branch, faster cuda kernel
+
 # Notes about random crashes when using multiple GPUs:
 We get this exception: "the launch timed out and was terminated"
 https://devtalk.nvidia.com/default/topic/459869/cuda-programming-and-performance/-quot-display-driver-stopped-responding-and-has-recovered-quot-wddm-timeout-detection-and-recovery-/2
