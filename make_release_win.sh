@@ -30,6 +30,7 @@ echo "-- Building arionum-gpu-miner Win64 $VERSION --"
 
 # Cleanup
 mkdir -p rel
+rm -rf RelWithDebInfo
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
@@ -60,7 +61,7 @@ mkdir "$OUT_DIR/argon2-gpu"
 mkdir "$OUT_DIR/argon2-gpu/data"
 mkdir "$OUT_DIR/argon2-gpu/data/kernels"
 cp "argon2-gpu/data/kernels/argon2_kernel.cl" "$OUT_DIR/argon2-gpu/data/kernels/argon2_kernel.cl"
-
+cp sample_batch_files/*.bat "$OUT_DIR"
 "$SEVEN_ZIP" a -tzip "$ZIP_PATH" "./$OUT_DIR/*"
 
 # all done !

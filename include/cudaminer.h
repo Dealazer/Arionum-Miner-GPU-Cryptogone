@@ -23,7 +23,13 @@ private:
     const argon2::cuda::Device *device;
 
 public:
-    void computeHash();
+    
+   void deviceUploadTaskDataAsync();
+   void deviceLaunchTaskAsync();
+   void deviceFetchTaskResultAsync();
+   bool deviceResultsReady();
+   void deviceWaitForResults();
+   void printInfo();
 
     explicit CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceIndex);
 };

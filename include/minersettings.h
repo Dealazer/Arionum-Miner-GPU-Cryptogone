@@ -16,6 +16,7 @@ private:
     string *poolAddress;
     string *privateKey;
     string *uniqid;
+public:
     size_t *batchSize;
 
 public:

@@ -54,10 +54,16 @@ void Updater::update() {
             .wait();
 }
 
+extern bool gMiningStarted;
+
 void Updater::start() {
     while (true) {
-        stats->newRound();
-        cout << *stats << endl;
+        if (gMiningStarted) {
+            stats->newRound();
+            if (stats->getRounds() > 1) {
+                cout << *stats << endl;
+            }
+        }
         update();
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     }
@@ -83,7 +89,9 @@ void Updater::processResponse(const json::value *value) {
                 std::string narrow_public_key = converter.to_bytes(public_key);
                 if (data == NULL || data->isNewBlock(&narrow_block)) {
                     data = new MinerData(narrow_status, narrow_diff, limitAsString, narrow_block, narrow_public_key);
-                    cout << endl << "-- NEW BLOCK FOUND --" << endl << *data << endl;
+                    if (gMiningStarted) {
+                        cout << endl << "-- NEW BLOCK FOUND --" << endl << *data << endl;
+                    }
                     stats->blockChange();
                 }
             }

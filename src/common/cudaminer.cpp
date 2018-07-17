@@ -3,6 +3,7 @@
 //
 
 #include <iostream>
+#include <iomanip>
 #include "../../include/cudaminer.h"
 #include "../../argon2-gpu/include/argon2-cuda/processingunit.h"
 #include "../../argon2-gpu/include/argon2-cuda/programcontext.h"
@@ -21,6 +22,14 @@ static void setCudaDevice(int deviceIndex)
     }
 }
 
+void CudaMiner::printInfo() {
+    auto batchSize = *settings->getBatchSize();
+    cout << "Device       : " << device->getName() << endl;
+    cout << "Batch size   : " << batchSize << endl;
+    cout << "Memory usage : " << std::fixed << std::setprecision(1) << (batchSize*0.5f) << " GB" << endl;
+    cout << "Salt         : " << salt << endl;
+}
+
 CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceIndex) : Miner(s, ms, u) {
     global = new argon2::cuda::GlobalContext();
     auto &devices = global->getAllDevices();
@@ -34,6 +43,8 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     cout << "using device " << *deviceIndex << " - " << device->getName() << endl;
     cout << "using salt " << salt << endl;
 
+    // we MUST set device here
+    // when creating ProcessingUnit, cudaMalloc & cudaStreamCreate are called and they will operate on the current device
     setCudaDevice(device->getDeviceIndex());
 
     progCtx = new argon2::cuda::ProgramContext(global, {*device}, type, version);
@@ -46,21 +57,42 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
         cout << "Error: exception while creating cudaminer unit: " << e.what() << ", try to reduce batch size (-b parameter), exiting now :-(" << endl;
         exit(1);
     }
+    
+    for (int i = 0; i < *settings->getBatchSize(); i++) {
+        cudaError_t status = cudaMallocHost((void**)&(resultBuffers[i]), 1024 /*ARGON2_BLOCK_SIZE*/);
+        if (status != cudaSuccess) {
+            std::cout << "Error allocating pinned host memory" << std::endl;
+            exit(1);
+        }
+    }
 }
 
-void CudaMiner::computeHash() {
+void CudaMiner::deviceUploadTaskDataAsync() {
+    // upload to GPU
     size_t size = *settings->getBatchSize();
     for (size_t j = 0; j < size; ++j) {
         std::string data = bases.at(j);
         unit->setPassword(j, data.data(), data.length());
     }
+}
+
+void CudaMiner::deviceLaunchTaskAsync() {
     unit->beginProcessing();
-    unit->endProcessing();
-    auto buffer = std::unique_ptr<std::uint8_t[]>(new std::uint8_t[32]);
+}
+
+void CudaMiner::deviceFetchTaskResultAsync() {
+    size_t size = *settings->getBatchSize();
     for (size_t j = 0; j < size; ++j) {
-        unit->getHash(j, buffer.get());
-        char *openClEnc = encode(buffer.get(), 32);
-        string encodedArgon(openClEnc);
-        argons.push_back(encodedArgon);
+        unit->fetchResultAsync(j, resultBuffers[j]);
     }
 }
+
+bool CudaMiner::deviceResultsReady() {
+    return unit->streamOperationsComplete();
+}
+
+void CudaMiner::deviceWaitForResults()
+{
+    unit->syncStream();
+}
+

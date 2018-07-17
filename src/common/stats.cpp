@@ -93,10 +93,20 @@ void Stats::newDl(long dl) {
 
 void Stats::newRound() {
     std::lock_guard<std::mutex> lg(mutex);
-    updateHashRate();
+    // let CUDA / CL warmup the kernels before measuring hashrate
+    if (rounds >= 1) { 
+        updateHashRate();
+    }
+
     rounds++;
     roundStart = std::chrono::system_clock::now();
     roundHashes = 0;
+
+    // let CUDA / CL warmup the kernels before measuring hashrate
+    if (rounds == 1) {
+        start = std::chrono::system_clock::now();
+        hashes = 0;
+    }
 }
 
 void Stats::updateHashRate() {
@@ -111,14 +121,10 @@ void Stats::updateHashRate() {
         avgHashRate = (hashes * 1000.0) / duration;
 }
 
-extern bool gMiningStarted;
+
 #pragma warning(disable:4996)
 
 ostream &operator<<(ostream &os, const Stats &settings) {
-    if (!gMiningStarted) {
-        return os;
-    }
-
     static unsigned long r = -1;
     r++;
     if (r % 10 == 0) {
