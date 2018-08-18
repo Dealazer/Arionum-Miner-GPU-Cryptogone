@@ -537,7 +537,7 @@ index 22949f3..927a44d 100644
          throw;
      }
 diff --git a/lib/argon2-opencl/kernelrunner.cpp b/lib/argon2-opencl/kernelrunner.cpp
-index 9fe39b4..5b22d05 100644
+index 9fe39b4..50e7db2 100644
 --- a/lib/argon2-opencl/kernelrunner.cpp
 +++ b/lib/argon2-opencl/kernelrunner.cpp
 @@ -1,16 +1,57 @@
@@ -709,7 +709,7 @@ index 9fe39b4..5b22d05 100644
  }
  
  void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
-@@ -160,37 +231,52 @@ void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
+@@ -160,36 +231,51 @@ void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
      cl::NDRange globalRange { THREADS_PER_LANE * lanes, batchSize };
      cl::NDRange localRange { THREADS_PER_LANE * lanesPerBlock, jobsPerBlock };
  
@@ -775,9 +775,6 @@ index 9fe39b4..5b22d05 100644
  }
  
  } // namespace opencl
--} // namespace argon2
-+} // namespace argon2
-\ No newline at end of file
 diff --git a/lib/argon2-opencl/processingunit.cpp b/lib/argon2-opencl/processingunit.cpp
 index 598ced7..4c65835 100644
 --- a/lib/argon2-opencl/processingunit.cpp
