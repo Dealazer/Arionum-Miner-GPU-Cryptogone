@@ -1,9 +1,9 @@
 //
 // Created by guli on 01/02/18.
 //
-#define DD "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL"
+#define DD "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK"
 
-#include <boost/algorithm/string/replace.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <iomanip>
 #include <openssl/sha.h>
@@ -67,14 +67,20 @@ void Miner::generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buf
     to_base64(dst, dst_len, buffer, buffer_size);
 }
 
-#ifdef TEST_MINER_RESULTS
-const string REF_NONCE = "aGCnfb3iYTIyB499URw9JlTOiN8MypukTukbu2R0";
-const string REF_BASE = "PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD-aGCnfb3iYTIyB499URw9JlTOiN8MypukTukbu2R0-2WHXQLvu2GXbRBC1MvU5gjxwo4SPNwcePUurFms6gBNj6R9TJD7hBUJPnExzyp9JB4H358f9nUA7z5eogkrn5dwk-36081876";
+#ifdef TEST_GPU_BLOCK
+// GPU block test
+const string REF_NONCE = "swGetfIyLrh8XYHcL7cM5kEElAJx3XkSrgTGveDN2w";
+//$base = $this->publicKey."-".$nonce."-".$this->block."-".$this->difficulty;
+const string REF_BASE =
+    string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") + // publicKey
+    REF_NONCE  + string("-") + // nonce
+    string("6327pZD7RSArjnD9wiVM6eUKkNck4Q5uCErh5M2H4MK2PQhgPmFTSmnYHANEVxHB82aVv6FZvKdmyUKkCoAhCXDy") + string("-") + // block
+    string("10614838");  // difficulty
 #endif
 
 void Miner::buildBatch() {
     for (int j = 0; j < *settings->getBatchSize(); ++j) {
-#ifdef TEST_MINER_RESULTS
+#ifdef TEST_GPU_BLOCK
         nonces.push_back(REF_NONCE);
         bases.push_back(REF_BASE);
 #else
@@ -85,7 +91,7 @@ void Miner::buildBatch() {
         boost::replace_all(nonce, "+", "");
 
         std::stringstream ss;
-        ss << *data->getPublic_key() << "-" << nonce << "-" << *data->getBlock() << "-" << *data->getDifficulty();
+        ss << *data.getPublic_key() << "-" << nonce << "-" << *data.getBlock() << "-" << *data.getDifficulty();
         //cout << ss.str() << endl;
         std::string base = ss.str();
 
@@ -122,12 +128,14 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
 
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
-#ifdef TEST_MINER_RESULTS
-    const string REF_RESULT = "6722718026801782164";
-    if (duration != REF_RESULT) {
+#ifdef TEST_GPU_BLOCK
+    const string REF_DURATION = "491522547412523425129";
+
+    if (duration != REF_DURATION) {
         static bool errShown = false;
         if (!errShown) {
-            std::cout << std::endl << "-------------- invalid result: " << duration << " / " << REF_RESULT << std::endl;
+            std::cout << std::endl << "-------------- TEST_GPU_BLOCK: invalid duration: " << duration << " / " << REF_DURATION << std::endl;
+            std::cout << std::endl << "argon=" << *argon << std::endl;
             errShown = true;
             exit(1);
         }
@@ -135,20 +143,37 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     }
 #endif
 
+    bool submitted = false;
     result.set_str(duration, 10);
     mpz_tdiv_q(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
+        submitted = true;
         bool d = mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
         gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
         submit(argon, nonce, d);
     }
-    long si = rest.get_si();
-    stats->newDl(si);
+
+    mpz_class maxLong = LONG_MAX;
+    if (mpz_cmp(rest.get_mpz_t(), maxLong.get_mpz_t()) < 0) {
+        long si = rest.get_si();
+        stats->newDl(si);
+    }
+
+
     x.clear();
 }
 
 void Miner::submit(string *argon, string *nonce, bool d) {
-    string argonTail = argon->substr(30);
+    
+    // node only needs $salt$hash
+    std::vector<std::string> parts;
+    boost::split(parts, *argon, boost::is_any_of("$"));
+    if (parts.size() < 6) {
+        std::cout << "Problem computing argonTail, cannot submit share" << std::endl;
+        return;
+    }
+    string argonTail = "$" + parts[4] + "$" + parts[5];
+
     stringstream body;
     boost::replace_all(*nonce, "+", "%2B");
     boost::replace_all(argonTail, "+", "%2B");
@@ -160,7 +185,7 @@ void Miner::submit(string *argon, string *nonce, bool d) {
          << "&argon=" << argonTail
          << "&nonce=" << *nonce
          << "&private_key=" << (d ? DD : *settings->getPrivateKey())
-         << "&public_key=" << *data->getPublic_key();
+         << "&public_key=" << *data.getPublic_key();
     http_request req(methods::POST);
     req.set_request_uri(_XPLATSTR("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
@@ -215,10 +240,11 @@ char *Miner::encode(void *res, size_t reslen) {
     ss << params->getLanes();
     ss << "$";
     auto salt = new char[32];
-    to_base64(salt, 32, params->getSalt(), params->getSaltLength());
+    const char *saltRaw = (const char *)params->getSalt();
+    to_base64(salt, 32, saltRaw, params->getSaltLength());
     ss << salt;
-    auto hash = new char[64];
-    to_base64(hash, 64, res, reslen);
+    auto hash = new char[512];
+    to_base64(hash, 512, res, reslen);
     ss << "$";
     ss << hash;
 
@@ -233,20 +259,19 @@ char *Miner::encode(void *res, size_t reslen) {
 
 void Miner::hostPrepareTaskData() {
     // see if block changed
-    if (data == nullptr || data->isNewBlock(updater->getData()->getBlock())) {
+    if (!data.isValid() || data.isNewBlock(updater->getData().getBlock())) {
         data = updater->getData();
-        if (data == nullptr) {
-            while (data == nullptr) {
-                std::cout << "--------------------------------------------------" << std::endl;
-                std::cout << "Warning: cannot get pool info, maybe it is down ?" << std::endl;
-                std::cout << "Hashrate will be zero until pool back online..." << std::endl;
-                std::cout << "--------------------------------------------------" << std::endl;
-                std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
-                data = updater->getData();
-            }
+        while (!data.isValid()) {
+            std::cout << "--------------------------------------------------" << std::endl;
+            std::cout << "Warning: cannot get pool info, maybe it is down ?" << std::endl;
+            std::cout << "Hashrate will be zero until pool back online..." << std::endl;
+            std::cout << "--------------------------------------------------" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
+            data = updater->getData();
         }
-        limit.set_str(*data->getLimit(), 10);
-        diff.set_str(*data->getDifficulty(), 10);
+
+        limit.set_str(*data.getLimit(), 10);
+        diff.set_str(*data.getDifficulty(), 10);
     }
 
     // clear previous round data

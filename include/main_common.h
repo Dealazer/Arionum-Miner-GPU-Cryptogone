@@ -37,7 +37,7 @@ struct OpenCLArguments {
     std::vector<size_t> deviceIndexList = { 0 };
     std::vector<size_t> threadsPerDeviceList = { 1 };
     std::vector<size_t> batchSizePerDeviceList = { 1 };
-    string address = "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL";
+    string address = "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK";
     string poolUrl = "http://aropool.com";
     double d = 1;
 };
@@ -145,7 +145,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const string address) { state.address = address; }, "address", 'a',
             "public arionum address",
-            "4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL",
+            "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK",
             "ADDRESS"),
 
         new ArgumentOption<OpenCLArguments>(
@@ -235,6 +235,8 @@ string generateUniqid() {
 
 extern bool gMiningStarted;
 
+Updater* s_pUpdater = nullptr;
+
 template <class CONTEXT, class MINER>
 int commonMain(const char *const *argv) {
 #ifdef _MSC_VER
@@ -245,7 +247,7 @@ int commonMain(const char *const *argv) {
     // show version
     cout << getVersionStr() << endl << endl;
 
-#ifdef TEST_MINER_RESULTS
+#ifdef TEST_GPU_BLOCK
     cout << endl << "-------------- TEST MODE ----------------" << endl << endl;
 #endif
 
@@ -294,6 +296,7 @@ int commonMain(const char *const *argv) {
 
     // launch updater thread
     auto *updater = new Updater(stats, &settings);
+    s_pUpdater = updater;
     updater->update();
     thread t(&Updater::start, updater);
 
@@ -307,14 +310,23 @@ int commonMain(const char *const *argv) {
     // ---- main loop ALTERNATE
     vector<bool> minerIdle(miners.size(), true);
     while (true) {
+        //
+        bool cpuBlock = false;
+
         // find idle miners and launch async GPU tasks for them
         for (int i = 0; i < miners.size(); i++) {
             if (minerIdle[i] == true) {
-                minerIdle[i] = false;
-                miners[i]->hostPrepareTaskData();
-                miners[i]->deviceUploadTaskDataAsync();
-                miners[i]->deviceLaunchTaskAsync();
-                miners[i]->deviceFetchTaskResultAsync();
+                auto data = updater->getData();
+                if (data.getType() == BLOCK_GPU) {
+                    minerIdle[i] = false;
+                    miners[i]->hostPrepareTaskData();
+                    miners[i]->deviceUploadTaskDataAsync();
+                    miners[i]->deviceLaunchTaskAsync();
+                    miners[i]->deviceFetchTaskResultAsync();
+                }
+                else {
+                    cpuBlock = true;
+                }
             }
         }
 
@@ -333,7 +345,8 @@ int commonMain(const char *const *argv) {
         }
 
         // if no miner is idle, wait a bit, to avoid polling too much GPUs about tasks status
-        if (nIdle == 0) {
+        // same thing during a cpu block
+        if (nIdle == 0 || cpuBlock) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
     }

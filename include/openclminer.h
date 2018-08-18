@@ -1,5 +1,5 @@
 //
-// Created by guli on 31/01/18.
+// Created by guli on 31/01/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
 
 #ifndef ARIONUM_GPU_MINER_OPENCLMINER_H

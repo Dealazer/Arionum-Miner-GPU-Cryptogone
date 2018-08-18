@@ -1,8 +1,9 @@
 //
-// Created by guli on 31/01/18.
+// Created by guli on 31/01/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
 #include <iostream>
 #include "../../include/stats.h"
+#include "../../include/updater.h"
 #include <iomanip>
 
 using namespace std;
@@ -124,35 +125,40 @@ void Stats::updateHashRate() {
 
 #pragma warning(disable:4996)
 
+extern Updater* s_pUpdater;
+
 ostream &operator<<(ostream &os, const Stats &settings) {
     static unsigned long r = -1;
     r++;
     if (r % 10 == 0) {
         cout << endl
              << setw(20) << left << "Date"
-             << setw(16) << left << "Avg hash/s"
+             << setw(12) << left << "Height"
+             << setw(12) << left << "Block Type"
              << setw(16) << left << "Hash/s"
-             << setw(20) << left << "Total hashes"
              << setw(8) << left << "Shares"
              << setw(8) << left << "Blocks"
              << setw(8) << left << "Reject"
-             << setw(22) << left << "Block best DL"
-             << setw(22) << left << "Ever best DL"
-             << endl;
+             << setw(18) << left << "Block best DL"
+             << setw(18) << left << "Ever best DL"
+             << setw(18) << left << "Pool min DL"
+            << endl;
     }
 
     auto roundStart = settings.getRoundStart();
     auto t = std::chrono::system_clock::to_time_t(roundStart);
     
+    auto data = s_pUpdater->getData();
     cout << setw(20) << left << std::put_time(std::localtime(&t), "%D %T   ")
-         << setw(16) << left << settings.getAvgHashRate()
+         << setw(12) << left << (s_pUpdater ? data.getHeight() : (-1))
+         << setw(12) << left << (s_pUpdater ? blockTypeName(data.getType()) : "??")
          << setw(16) << left << settings.getHashRate()
-         << setw(20) << left << settings.getHashes()
          << setw(8) << left << settings.getShares()
          << setw(8) << left << settings.getBlocks()
          << setw(8) << left << settings.getRejections()
-         << setw(22) << left << settings.getBlockBestDl()
-         << setw(22) << left << settings.getBestDl();
+         << setw(18) << left << settings.getBlockBestDl()
+         << setw(18) << left << settings.getBestDl()
+         << setw(18) << left << *data.getLimit();
     return os;
 }
 

@@ -1,5 +1,5 @@
 //
-// Created by guli on 31/01/18.
+// Created by guli on 31/01/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
 
 #ifndef ARIONUM_GPU_MINER_MINER_H
@@ -18,7 +18,7 @@
 
 // enabling this will always use same pass/salt/nonce and exit(1) if result not matching reference
 // (of course will also not submit anything)
-//#define TEST_MINER_RESULTS
+//#define TEST_GPU_BLOCK
 
 #include "stats.h"
 #include "minersettings.h"
@@ -68,7 +68,7 @@ protected:
 
     Stats *stats;
     MinerSettings *settings;
-    MinerData *data = nullptr;
+    MinerData data;
     http_client *client;
 
     Updater *updater;
@@ -113,8 +113,9 @@ public:
         distribution = std::uniform_int_distribution<int>(0, 255);
         salt = randomStr(16);
 
-#ifdef TEST_MINER_RESULTS
-        salt = "0123456789012345";
+#ifdef TEST_GPU_BLOCK
+        // from_base64("Y2lmRTJySzRudm1iVmdRdQ") -> "cifE2rK4nvmbVgQu"
+        salt = "cifE2rK4nvmbVgQu";
 #endif
 
         // prepare array of gpu task results buffers

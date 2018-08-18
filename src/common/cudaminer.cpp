@@ -1,5 +1,5 @@
 //
-// Created by guli on 31/01/18.
+// Created by guli on 31/01/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
 
 #include <iostream>
@@ -26,7 +26,8 @@ void CudaMiner::printInfo() {
     auto batchSize = *settings->getBatchSize();
     cout << "Device       : " << device->getName() << endl;
     cout << "Batch size   : " << batchSize << endl;
-    cout << "Memory usage : " << std::fixed << std::setprecision(1) << (batchSize*0.5f) << " GB" << endl;
+    cout << "VRAM usage   : " << std::fixed << std::setprecision(2) <<
+        (float)(batchSize * params->getMemorySize()) / (1024.f*1024.f*1024.f) << " GB" << endl;
     cout << "Salt         : " << salt << endl;
 }
 
@@ -48,7 +49,7 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     setCudaDevice(device->getDeviceIndex());
 
     progCtx = new argon2::cuda::ProgramContext(global, {*device}, type, version);
-    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 1, 524288, 1);
+    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 4, 16384, 4);
 
     try {
         unit = new argon2::cuda::ProcessingUnit(progCtx, params, device, *settings->getBatchSize(), false, false);

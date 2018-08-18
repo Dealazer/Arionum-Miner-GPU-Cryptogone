@@ -1,5 +1,5 @@
 //
-// Created by guli on 31/01/18.
+// Created by guli on 31/01/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
 
 #include <iostream>
@@ -13,7 +13,8 @@ void OpenClMiner::printInfo() {
     auto batchSize = *settings->getBatchSize();
     cout << "Device       : " << device->getName() << endl;
     cout << "Batch size   : " << batchSize << endl;
-    cout << "Memory usage : " << std::fixed << std::setprecision(1) << (batchSize*0.5f) << " GB" << endl;
+    cout << "VRAM usage   : " << std::fixed << std::setprecision(2) << 
+        (float)(batchSize * params->getMemorySize()) / (1024.f*1024.f*1024.f) << " GB" << endl;
     cout << "Salt         : " << salt << endl;
 }
 
@@ -24,7 +25,9 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *device
     device = &devices[*deviceIndex];
     progCtx = new argon2::opencl::ProgramContext(global, {*device}, type, version,
                                                  const_cast<char *>("./argon2-gpu/data/kernels/"));
-    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 1, 524288, 1);
+
+    auto nLanes = 4;
+    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 4, 16384, nLanes);
 
     try {
         unit = new argon2::opencl::ProcessingUnit(progCtx, params, device, *settings->getBatchSize(), false, false);
@@ -35,7 +38,7 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *device
     }
 
     for (int i = 0; i < *settings->getBatchSize(); i++) {
-        resultBuffers[i] = new uint8_t[1024 /*ARGON2_BLOCK_SIZE*/];
+        resultBuffers[i] = new uint8_t[nLanes * 1024 /*ARGON2_BLOCK_SIZE*/];
     }
 }
 

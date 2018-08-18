@@ -1,5 +1,5 @@
 //
-// Created by guli on 31/01/18.
+// Created by guli on 31/01/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
 #include <iostream>
 #include <thread>
@@ -87,10 +87,33 @@ void Updater::processResponse(const json::value *value) {
                 std::string narrow_block = converter.to_bytes(block);
                 std::string narrow_diff = converter.to_bytes(difficulty);
                 std::string narrow_public_key = converter.to_bytes(public_key);
+
+                uint32_t argon_memory = (uint32_t)jsonData.at(L"argon_mem").as_integer();
+                uint32_t argon_threads = (uint32_t)jsonData.at(L"argon_threads").as_integer();
+                uint32_t argon_time = (uint32_t)jsonData.at(L"argon_time").as_integer();
+                uint32_t height = jsonData.at(L"height").as_integer();
+
+                wstring recommendation = jsonData.at(L"recommendation").as_string();
+                std::string narrow_recommendation = converter.to_bytes(recommendation);
+                BLOCK_TYPE blockType;
+                if (narrow_recommendation != "mine") {
+                    blockType = BLOCK_MASTERNODE;
+                }
+                else {
+                    blockType = (argon_threads != 1) ? BLOCK_GPU : BLOCK_CPU;
+                }
+
                 if (data == NULL || data->isNewBlock(&narrow_block)) {
-                    data = new MinerData(narrow_status, narrow_diff, limitAsString, narrow_block, narrow_public_key);
+                    data = new MinerData(
+                        narrow_status, narrow_diff, limitAsString, narrow_block, narrow_public_key,
+                        height,
+                        argon_memory,
+                        argon_threads,
+                        argon_time,
+                        blockType
+                    );
                     if (gMiningStarted) {
-                        cout << endl << "-- NEW BLOCK FOUND --" << endl << *data << endl;
+                        cout << endl << "-- NEW BLOCK --" << endl << *data << endl;
                     }
                     stats->blockChange();
                 }
@@ -101,9 +124,9 @@ void Updater::processResponse(const json::value *value) {
     }
 }
 
-MinerData *Updater::getData() {
+MinerData Updater::getData() {
     std::lock_guard<std::mutex> lg(mutex);
-    return data;
+    return *data;
 }
 
 Updater::Updater(Stats *s, MinerSettings *ms) : stats(s), settings(ms) {
