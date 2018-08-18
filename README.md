@@ -90,7 +90,7 @@ Edit ``run_OpenCL.bat`` or ``run_CUDA.bat`` to your liking with Notepad, save an
     -l, --list-devices                list all available devices and exit
     -d, --device(s)=DEVICES           GPU devices to use, examples: -d 0 / -d 1 / -d 0,1,3,5 [default: 0]
     -u, --use-all-devices             use all available GPU devices (overrides -d)
-    -a, --address=ADDRESS             public arionum address [default: 4hDFRqgFDTjy5okh2A7JwQ3MZM7fGyaqzSZPEKUdgwSM8sKLPEgs8Awpdgo3R54uo1kGMnxujQQpF94qV6SxEjRL]
+    -a, --address=ADDRESS             public arionum address [default: 419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK]
     -p, --pool=POOL_URL               pool URL [default: http://aropool.com]
     -D, --dev-donation=PERCENTAGE     developer donation [default: 1]
     -t, --threads-per-device=THREADS  number of threads to use per device, ex: -t 1 / -t 6,3 [default: 1]
