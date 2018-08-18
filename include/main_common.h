@@ -317,7 +317,11 @@ int commonMain(const char *const *argv) {
         for (int i = 0; i < miners.size(); i++) {
             if (minerIdle[i] == true) {
                 auto data = updater->getData();
+#ifdef TEST_GPU_BLOCK
+                if (true) {
+#else
                 if (data.getType() == BLOCK_GPU) {
+#endif
                     minerIdle[i] = false;
                     miners[i]->hostPrepareTaskData();
                     miners[i]->deviceUploadTaskDataAsync();

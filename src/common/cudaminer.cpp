@@ -49,7 +49,9 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     setCudaDevice(device->getDeviceIndex());
 
     progCtx = new argon2::cuda::ProgramContext(global, {*device}, type, version);
-    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 4, 16384, 4);
+    
+    auto nLanes = 4;
+    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 4, 16384, nLanes);
 
     try {
         unit = new argon2::cuda::ProcessingUnit(progCtx, params, device, *settings->getBatchSize(), false, false);
@@ -60,7 +62,7 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     }
     
     for (int i = 0; i < *settings->getBatchSize(); i++) {
-        cudaError_t status = cudaMallocHost((void**)&(resultBuffers[i]), 1024 /*ARGON2_BLOCK_SIZE*/);
+        cudaError_t status = cudaMallocHost((void**)&(resultBuffers[i]), nLanes * 1024 /*ARGON2_BLOCK_SIZE*/);
         if (status != cudaSuccess) {
             std::cout << "Error allocating pinned host memory" << std::endl;
             exit(1);

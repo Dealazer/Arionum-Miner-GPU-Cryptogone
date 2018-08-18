@@ -4,6 +4,7 @@
 #include <iostream>
 #include "../../include/stats.h"
 #include "../../include/updater.h"
+#include "../../include/miner.h"
 #include <iomanip>
 
 using namespace std;
@@ -133,6 +134,10 @@ ostream &operator<<(ostream &os, const Stats &settings) {
     if (r % 10 == 0) {
         cout << endl
              << setw(20) << left << "Date"
+#ifdef TEST_GPU_BLOCK
+            << setw(12) << left << "Block Type"
+            << setw(16) << left << "Hash/s"
+#else
              << setw(12) << left << "Height"
              << setw(12) << left << "Block Type"
              << setw(16) << left << "Hash/s"
@@ -142,7 +147,8 @@ ostream &operator<<(ostream &os, const Stats &settings) {
              << setw(18) << left << "Block best DL"
              << setw(18) << left << "Ever best DL"
              << setw(18) << left << "Pool min DL"
-            << endl;
+#endif
+             << endl;
     }
 
     auto roundStart = settings.getRoundStart();
@@ -150,6 +156,10 @@ ostream &operator<<(ostream &os, const Stats &settings) {
     
     auto data = s_pUpdater->getData();
     cout << setw(20) << left << std::put_time(std::localtime(&t), "%D %T   ")
+#ifdef TEST_GPU_BLOCK
+         << setw(12) << left << "GPU TEST"
+         << setw(16) << left << settings.getHashRate();
+#else
          << setw(12) << left << (s_pUpdater ? data.getHeight() : (-1))
          << setw(12) << left << (s_pUpdater ? blockTypeName(data.getType()) : "??")
          << setw(16) << left << settings.getHashRate()
@@ -159,6 +169,7 @@ ostream &operator<<(ostream &os, const Stats &settings) {
          << setw(18) << left << settings.getBlockBestDl()
          << setw(18) << left << settings.getBestDl()
          << setw(18) << left << *data.getLimit();
+#endif
     return os;
 }
 
