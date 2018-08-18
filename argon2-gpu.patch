@@ -424,7 +424,7 @@ index 79fb767..bb9b206 100644
  
  } // cuda
 diff --git a/lib/argon2-cuda/processingunit.cpp b/lib/argon2-cuda/processingunit.cpp
-index 7768427..1f685d0 100644
+index 7768427..3a8f858 100644
 --- a/lib/argon2-cuda/processingunit.cpp
 +++ b/lib/argon2-cuda/processingunit.cpp
 @@ -24,6 +24,9 @@ static bool isPowerOfTwo(std::uint32_t x)
@@ -437,7 +437,7 @@ index 7768427..1f685d0 100644
  ProcessingUnit::ProcessingUnit(
          const ProgramContext *programContext, const Argon2Params *params,
          const Device *device, std::size_t batchSize, bool bySegment,
-@@ -36,8 +39,22 @@ ProcessingUnit::ProcessingUnit(
+@@ -36,18 +39,33 @@ ProcessingUnit::ProcessingUnit(
        bestLanesPerBlock(runner.getMinLanesPerBlock()),
        bestJobsPerBlock(runner.getMinJobsPerBlock())
  {
@@ -460,7 +460,99 @@ index 7768427..1f685d0 100644
      /* pre-fill first blocks with pseudo-random data: */
      for (std::size_t i = 0; i < batchSize; i++) {
          setPassword(i, NULL, 0);
-@@ -125,24 +142,28 @@ ProcessingUnit::ProcessingUnit(
+     }
+ 
++#if 0
+     if (runner.getMaxLanesPerBlock() > runner.getMinLanesPerBlock()
+             && isPowerOfTwo(runner.getMaxLanesPerBlock())) {
+-#ifndef NDEBUG
++//#ifndef NDEBUG
+         std::cerr << "[INFO] Tuning lanes per block..." << std::endl;
+-#endif
++//#endif
+ 
+         float bestTime = std::numeric_limits<float>::infinity();
+         for (std::uint32_t lpb = 1; lpb <= runner.getMaxLanesPerBlock();
+@@ -58,36 +76,36 @@ ProcessingUnit::ProcessingUnit(
+                 runner.run(lpb, bestJobsPerBlock);
+                 time = runner.finish();
+             } catch(CudaException &ex) {
+-#ifndef NDEBUG
++//#ifndef NDEBUG
+                 std::cerr << "[WARN]   CUDA error on " << lpb
+                           << " lanes per block: " << ex.what() << std::endl;
+-#endif
++//#endif
+                 break;
+             }
+ 
+-#ifndef NDEBUG
++//#ifndef NDEBUG
+             std::cerr << "[INFO]   " << lpb << " lanes per block: "
+                       << time << " ms" << std::endl;
+-#endif
++//#endif
+ 
+             if (time < bestTime) {
+                 bestTime = time;
+                 bestLanesPerBlock = lpb;
+             }
+         }
+-#ifndef NDEBUG
++//#ifndef NDEBUG
+         std::cerr << "[INFO] Picked " << bestLanesPerBlock
+                   << " lanes per block." << std::endl;
+-#endif
++//#endif
+     }
+ 
+     /* Only tune jobs per block if we hit maximum lanes per block: */
+     if (bestLanesPerBlock == runner.getMaxLanesPerBlock()
+             && runner.getMaxJobsPerBlock() > runner.getMinJobsPerBlock()
+             && isPowerOfTwo(runner.getMaxJobsPerBlock())) {
+-#ifndef NDEBUG
++//#ifndef NDEBUG
+         std::cerr << "[INFO] Tuning jobs per block..." << std::endl;
+-#endif
++//#endif
+ 
+         float bestTime = std::numeric_limits<float>::infinity();
+         for (std::uint32_t jpb = 1; jpb <= runner.getMaxJobsPerBlock();
+@@ -98,51 +116,56 @@ ProcessingUnit::ProcessingUnit(
+                 runner.run(bestLanesPerBlock, jpb);
+                 time = runner.finish();
+             } catch(CudaException &ex) {
+-#ifndef NDEBUG
++//#ifndef NDEBUG
+                 std::cerr << "[WARN]   CUDA error on " << jpb
+                           << " jobs per block: " << ex.what() << std::endl;
+-#endif
++//#endif
+                 break;
+             }
+ 
+-#ifndef NDEBUG
++//#ifndef NDEBUG
+             std::cerr << "[INFO]   " << jpb << " jobs per block: "
+                       << time << " ms" << std::endl;
+-#endif
++//#endif
+ 
+             if (time < bestTime) {
+                 bestTime = time;
+                 bestJobsPerBlock = jpb;
+             }
+         }
+-#ifndef NDEBUG
++//#ifndef NDEBUG
+         std::cerr << "[INFO] Picked " << bestJobsPerBlock
+                   << " jobs per block." << std::endl;
+-#endif
++//#endif
+     }
++#endif
+ }
+ 
  void ProcessingUnit::setPassword(std::size_t index, const void *pw,
                                   std::size_t pwSize)
  {
