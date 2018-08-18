@@ -20,5 +20,5 @@ echo "- INSTALL CPPREST -"
 ./vcpkg/vcpkg.exe install cpprestsdk:x64-windows
 
 echo
-echo "- INSTALL BOOST-ALGORITHM -"
-./vcpkg/vcpkg.exe install boost-algorithm:x64-windows
+echo "- INSTALL BOOST LIBS -"
+./vcpkg/vcpkg.exe install boost-algorithm:x64-windows boost-stacktrace:x64-windows

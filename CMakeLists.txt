@@ -25,7 +25,7 @@ if(CUDA_FOUND)
     include_directories(${CUDA_INCLUDE_DIRS})
 endif()
 
-find_package(cpprestsdk REQUIRED)
+find_package(cpprestsdk CONFIG REQUIRED)
 
 include_directories(mpir-3.0.0)
 include_directories("vcpkg/installed/x64-windows/include")
