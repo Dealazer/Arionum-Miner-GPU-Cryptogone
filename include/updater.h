@@ -10,10 +10,15 @@
 #include "minersettings.h"
 #include <cpprest/http_client.h>
 #include <mutex>
+#include <locale>
+#include <codecvt>
 
 using namespace web;
 using namespace web::http;
 using namespace web::http::client;
+
+std::string toString(const utility::string_t &s);
+utility::string_t toUtilityString(const std::string &s);
 
 class Updater {
 

@@ -207,13 +207,11 @@ void Miner::submit(string *argon, string *nonce, bool d) {
                 try {
                     json::value jvalue = previousTask.get();
                     if (!jvalue.is_null() && jvalue.is_object()) {
-                        wstring wstatus = jvalue.at(L"status").as_string();
-                        if (wstatus == L"ok") {
+                        auto status = toString(jvalue.at(L"status").as_string());
+                        if (status == "ok") {
                             cout << "nonce accepted by pool !!!!!" << endl;
                         } else {
                             cout << "nonce refused by pool :(:(:(" << endl;
-                            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-                            std::string status = converter.to_bytes(wstatus);
                             cout << status << endl;
                             stats->newRejection();
                         }

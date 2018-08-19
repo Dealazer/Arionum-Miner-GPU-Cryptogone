@@ -7,8 +7,6 @@
 
 using namespace std;
 
-#include <locale>
-#include <codecvt>
 #include <string>
 
 #pragma warning(disable:4715)
@@ -22,13 +20,7 @@ void Updater::update() {
     http_request req(methods::GET);
     req.headers().set_content_type(L"application/json");
 
-#ifdef _WIN32
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring _paths = converter.from_bytes(paths.str());
-#else
-    std::string _paths = paths.str();
-#endif
-
+    auto _paths = toUtilityString(paths.str());
     req.set_request_uri(_paths.data());
     
     client->request(req)
@@ -76,40 +68,35 @@ void Updater::start() {
 void Updater::processResponse(const json::value *value) {
     std::lock_guard<std::mutex> lg(mutex);
     if (!value->is_null() && value->is_object()) {
-        wstring status = value->at(L"status").as_string();
-        if (status == L"ok") {
-            json::value jsonData = value->at(L"data");
+        string status = toString(value->at(U("status")).as_string());
+        if (status == "ok") {
+            json::value jsonData = value->at(U("data"));
+
             if (jsonData.is_object()) {
-                wstring difficulty = jsonData.at(L"difficulty").as_string();
-                wstring block = jsonData.at(L"block").as_string();
-                wstring public_key = jsonData.at(L"public_key").as_string();
-                int limit = jsonData.at(L"limit").as_integer();
+                string difficulty = toString(jsonData.at(U("difficulty")).as_string());
+                string block = toString(jsonData.at(U("block")).as_string());
+                string public_key = toString(jsonData.at(U("public_key")).as_string());
+
+                int limit = jsonData.at(U("limit")).as_integer();
                 string limitAsString = std::to_string(limit);
 
-                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-                std::string narrow_status = converter.to_bytes(status);
-                std::string narrow_block = converter.to_bytes(block);
-                std::string narrow_diff = converter.to_bytes(difficulty);
-                std::string narrow_public_key = converter.to_bytes(public_key);
+                uint32_t argon_memory = (uint32_t)jsonData.at(U("argon_mem")).as_integer();
+                uint32_t argon_threads = (uint32_t)jsonData.at(U("argon_threads")).as_integer();
+                uint32_t argon_time = (uint32_t)jsonData.at(U("argon_time")).as_integer();
+                uint32_t height = jsonData.at(U("height")).as_integer();
 
-                uint32_t argon_memory = (uint32_t)jsonData.at(L"argon_mem").as_integer();
-                uint32_t argon_threads = (uint32_t)jsonData.at(L"argon_threads").as_integer();
-                uint32_t argon_time = (uint32_t)jsonData.at(L"argon_time").as_integer();
-                uint32_t height = jsonData.at(L"height").as_integer();
-
-                wstring recommendation = jsonData.at(L"recommendation").as_string();
-                std::string narrow_recommendation = converter.to_bytes(recommendation);
+                string recommendation = toString(jsonData.at(U("recommendation")).as_string());
                 BLOCK_TYPE blockType;
-                if (narrow_recommendation != "mine") {
+                if (recommendation != "mine") {
                     blockType = BLOCK_MASTERNODE;
                 }
                 else {
                     blockType = (argon_threads != 1) ? BLOCK_GPU : BLOCK_CPU;
                 }
 
-                if (data == NULL || data->isNewBlock(&narrow_block)) {
+                if (data == NULL || data->isNewBlock(&block)) {
                     data = new MinerData(
-                        narrow_status, narrow_diff, limitAsString, narrow_block, narrow_public_key,
+                        status, difficulty, limitAsString, block, public_key,
                         height,
                         argon_memory,
                         argon_threads,
@@ -138,12 +125,26 @@ Updater::Updater(Stats *s, MinerSettings *ms) : stats(s), settings(ms) {
     utility::seconds timeout(2);
     config.set_timeout(timeout);
 
-#ifdef _WIN32
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring _poolAddress = converter.from_bytes(*(ms->getPoolAddress()));
-#else
-    std::string _poolAddress = *ms->getPoolAddress();
-#endif
-
+    auto _poolAddress = toUtilityString(*ms->getPoolAddress());
     client = new http_client(_poolAddress, config);
 }
+
+#ifdef _WIN32
+std::string toString(const utility::string_t &s) {
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    return converter.to_bytes(s);
+}
+
+utility::string_t toUtilityString(const std::string &s) {
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    return converter.from_bytes(s);
+}
+#else
+std::string toString(const utility::string_t &s) {
+    return s;
+}
+
+utility::string_t toUtilityString(const std::string &s) {
+    return s;
+}
+#endif
