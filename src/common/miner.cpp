@@ -207,7 +207,7 @@ void Miner::submit(string *argon, string *nonce, bool d) {
                 try {
                     json::value jvalue = previousTask.get();
                     if (!jvalue.is_null() && jvalue.is_object()) {
-                        auto status = toString(jvalue.at(L"status").as_string());
+                        auto status = toString(jvalue.at(U("status")).as_string());
                         if (status == "ok") {
                             cout << "nonce accepted by pool !!!!!" << endl;
                         } else {
