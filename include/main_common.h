@@ -11,13 +11,14 @@
 #include <iomanip>
 #include <boost/algorithm/string.hpp>
 
-#ifdef _MSC_VER
+#ifdef _WIN32
+#include <windows.h>
 #include "../../include/win_tools.h"
+#else
+#define sscanf_s sscanf
 #endif
 
 #include "../../include/miner_version.h"
-
-#include <windows.h>
 
 // cpprest lib
 #pragma comment(lib, "cpprest_2_10")

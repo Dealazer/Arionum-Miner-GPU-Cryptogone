@@ -25,13 +25,16 @@ if(CUDA_FOUND)
     include_directories(${CUDA_INCLUDE_DIRS})
 endif()
 
-find_package(cpprestsdk CONFIG REQUIRED)
+if (MSVC)
+    find_package(cpprestsdk CONFIG REQUIRED)
+    include_directories(mpir-3.0.0)
+    include_directories("vcpkg/installed/x64-windows/include")
+    link_directories(mpir-3.0.0/lib/x64/Release)
+    link_directories("vcpkg/installed/x64-windows/lib")
+endif()
 
-include_directories(mpir-3.0.0)
-include_directories("vcpkg/installed/x64-windows/include")
-
-link_directories(mpir-3.0.0/lib/x64/Release)
-link_directories("vcpkg/installed/x64-windows/lib")
+if (UNIX)
+endif()
 
 add_subdirectory(argon2-gpu)
 

@@ -8,7 +8,11 @@
 #include <cpprest/http_client.h>
 #include <iostream>
 #include <gmp.h>
+#ifdef _WIN32
 #include <mpirxx.h>
+#else
+#include <gmpxx.h>
+#endif
 #include <argon2-gpu-common/argon2-common.h>
 #include <argon2-gpu-common/argon2params.h>
 
