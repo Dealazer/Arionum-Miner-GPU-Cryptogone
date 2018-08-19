@@ -32,9 +32,6 @@ if (MSVC)
     link_directories("vcpkg/installed/x64-windows/lib")
 endif()
 
-if (UNIX)
-endif()
-
 add_subdirectory(argon2-gpu)
 
 add_executable(arionum-opencl-miner
@@ -58,15 +55,26 @@ add_executable(arionum-opencl-miner
         src/common/timer.cpp)
 
 if(MSVC)
-    set_property(TARGET arionum-opencl-miner APPEND PROPERTY LINK_FLAGS)
-endif()
-
-target_link_libraries(
-        arionum-opencl-miner
+target_link_libraries(arionum-opencl-miner
         argon2-opencl
         argon2
         mpir
-        )
+)
+endif()
+
+if (UNIX)
+target_link_libraries(arionum-opencl-miner
+       	argon2-opencl
+       	-lOpenCL
+       	-lboost_system
+       	-lssl
+       	-lcrypto
+       	-lgmp
+       	-lpthread
+       	-lcpprest
+       	-largon2
+)
+endif()
 
 if(CUDA_FOUND)
 add_executable(arionum-cuda-miner
@@ -90,14 +98,25 @@ add_executable(arionum-cuda-miner
         src/common/timer.cpp)
 
 if(MSVC)
-    set_property(TARGET arionum-cuda-miner APPEND PROPERTY LINK_FLAGS)
-endif()
-
-target_link_libraries(
+target_link_libraries(arionum-cuda-miner
         arionum-cuda-miner
         argon2-cuda
         argon2
         mpir
-        )
+)
+endif()
+
+if (UNIX)
+target_link_libraries(arionum-cuda-miner
+       	argon2-cuda
+       	-lboost_system
+       	-lssl
+       	-lcrypto
+       	-lgmp
+       	-lpthread
+       	-lcpprest
+       	-largon2
+)
+endif()
 
 endif()

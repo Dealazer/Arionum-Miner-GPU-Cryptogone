@@ -1,3 +1,5 @@
+#ifdef _WIN32
+
 #include "../../include/win_tools.h"
 #include <windows.h>
 
@@ -37,3 +39,5 @@ bool setCtrlCHandler(ctrlCFnPtr_t pFn) {
 	s_ctrlcFn = pFn;
 	return true;
 }
+
+#endif

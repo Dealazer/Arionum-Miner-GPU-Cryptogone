@@ -10,7 +10,7 @@ elif [ "$1" = "linux" ]; then
   # maybe too much things here...
   sudo apt install gcc-6 g++-6 libgmp-dev python-dev libboost-dev libcpprest-dev cmake git make zlib1g-dev libssl-dev libargon2-0-dev -y
   # fix for cpprest not finding xlocale
-  sudo ln -s /usr/include/locale.h /usr/include/xlocale.h
+  sudo ln -sf /usr/include/locale.h /usr/include/xlocale.h
   exit 0
 else
   echo "Usage: setup_libs vs2015 / setup_libs vs2017 / setup_libs linux"

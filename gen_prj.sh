@@ -17,7 +17,7 @@ else
   exit 1
 fi
 
-mkdir build
+mkdir -p build
 cd build
 cmake -D"CMAKE_BUILD_TYPE=Release" $extra -G"$target" ../
 cd ..

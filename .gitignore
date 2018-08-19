@@ -28,4 +28,4 @@ RelWithDebInfo
 rel
 TODO.md
 build/
-
+test*.sh
