@@ -142,7 +142,7 @@ Updater::Updater(Stats *s, MinerSettings *ms) : stats(s), settings(ms) {
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     std::wstring _poolAddress = converter.from_bytes(*(ms->getPoolAddress()));
 #else
-    std::string _poolAddress = _poolAddress;
+    std::string _poolAddress = *_poolAddress;
 #endif
 
     client = new http_client(_poolAddress, config);

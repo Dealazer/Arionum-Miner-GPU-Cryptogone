@@ -113,7 +113,7 @@ public:
         std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
         std::wstring poolAddress = converter.from_bytes(*(ms->getPoolAddress()));
 #else
-        std::string poolAddress = ms->getPoolAddress();
+        std::string poolAddress = *ms->getPoolAddress();
 #endif
 
         client = new http_client(poolAddress, config);
