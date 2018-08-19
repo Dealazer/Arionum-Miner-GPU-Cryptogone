@@ -29,32 +29,31 @@ echo
 echo "-- Building arionum-gpu-miner Win64 $VERSION --"
 
 # Cleanup
-mkdir -p rel
-rm -rf RelWithDebInfo
+mkdir -p "rel"
+rm -rf "build/RelWithDebInfo"
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
 rm -f "$ZIP_PATH"
 
 # Clean and Build
-"$MSBUILD_VS2015" 'arionum-gpu-miner.sln' '//t:Clean' '//p:Configuration=RelWithDebInfo' '//p:Platform=x64'
-"$MSBUILD_VS2015" 'arionum-cuda-miner.vcxproj' '//t:Clean;Build' '//p:Configuration=RelWithDebInfo' '//p:Platform=x64'
-"$MSBUILD_VS2015" 'arionum-opencl-miner.vcxproj' '//t:Clean;Build' '//p:Configuration=RelWithDebInfo' '//p:Platform=x64'
+"$MSBUILD_VS2015" 'build/arionum-gpu-miner.sln' '//t:Clean' '//p:Configuration=Release' '//p:Platform=x64'
+"$MSBUILD_VS2015" 'build/arionum-cuda-miner.vcxproj' '//t:Clean;Build' '//p:Configuration=Release' '//p:Platform=x64'
+"$MSBUILD_VS2015" 'build/arionum-opencl-miner.vcxproj' '//t:Clean;Build' '//p:Configuration=Release' '//p:Platform=x64'
 
 # --------- X64: Copy to output folder & zip -------------
-if ! [ -f "RelWithDebInfo/arionum-cuda-miner.exe" ]; then
+if ! [ -f "build/Release/arionum-cuda-miner.exe" ]; then
 	echo "Cannot find CUDA miner exe, compilation probably failed..."
 	exit 1
 fi
 
-if ! [ -f "RelWithDebInfo/arionum-opencl-miner.exe" ]; then
+if ! [ -f "build/Release/arionum-opencl-miner.exe" ]; then
 	echo "Cannot find OPENCL miner exe, compilation probably failed..."
 	exit 1
 fi
 
-cp RelWithDebInfo/*.pdb "$OUT_DIR"
-cp RelWithDebInfo/*.exe "$OUT_DIR"
-cp RelWithDebInfo/*.dll "$OUT_DIR"
+cp build/Release/*.exe "$OUT_DIR"
+cp build/Release/*.dll "$OUT_DIR"
 unix2dos -n readme.md "$OUT_DIR/readme_${VERSION}.txt"
 
 mkdir "$OUT_DIR/argon2-gpu"
