@@ -107,33 +107,23 @@ index 3dd95ba..15fb786 100644
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
 diff --git a/include/argon2-cuda/cudaexception.h b/include/argon2-cuda/cudaexception.h
-index ebc8460..bc54d1d 100644
+index ebc8460..92d44b6 100644
 --- a/include/argon2-cuda/cudaexception.h
 +++ b/include/argon2-cuda/cudaexception.h
-@@ -6,6 +6,11 @@
+@@ -6,6 +6,8 @@
  #endif
  
  #include <exception>
 +#include <stdio.h>
-+#ifndef __CUDACC__
-+#include <boost/stacktrace.hpp>
-+#endif
 +#include <iostream>
  
  namespace argon2 {
  namespace cuda {
-@@ -27,6 +32,14 @@ public:
+@@ -27,6 +29,7 @@ public:
      static void check(cudaError_t res)
      {
          if (res != cudaSuccess) {
 +            printf("CUDA exception => |%s|\n", cudaGetErrorString(res));
-+#ifndef __CUDACC__
-+            std::cout << std::endl;
-+            std::cout << "---- STACK TRACE ----" << std::endl;
-+            std::cout << boost::stacktrace::stacktrace() << std::endl;
-+#else
-+            std::cout << "cannot show stack trace (.cu source)" << std::endl;
-+#endif
              throw CudaException(res);
          }
      }
