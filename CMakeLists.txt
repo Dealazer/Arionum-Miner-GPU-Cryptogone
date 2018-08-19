@@ -99,7 +99,6 @@ add_executable(arionum-cuda-miner
 
 if(MSVC)
 target_link_libraries(arionum-cuda-miner
-        arionum-cuda-miner
         argon2-cuda
         argon2
         mpir
