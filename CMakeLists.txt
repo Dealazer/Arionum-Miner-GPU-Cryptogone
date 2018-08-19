@@ -26,7 +26,6 @@ if(CUDA_FOUND)
 endif()
 
 if (MSVC)
-    find_package(cpprestsdk CONFIG REQUIRED)
     include_directories(mpir-3.0.0)
     include_directories("vcpkg/installed/x64-windows/include")
     link_directories(mpir-3.0.0/lib/x64/Release)

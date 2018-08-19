@@ -2,7 +2,9 @@
 
 set -e
 
-extra='-D"CMAKE_TOOLCHAIN_FILE=$pwd/vcpkg/scripts/buildsystems/vcpkg.cmake"'
+pwd=$(pwd)
+
+extra="-DCMAKE_TOOLCHAIN_FILE=$pwd/vcpkg/scripts/buildsystems/vcpkg.cmake"
 if [ "$1" = "vs2015" ]; then
   target="Visual Studio 14 2015 Win64"  
 elif [ "$1" = "vs2017" ]; then
@@ -15,8 +17,5 @@ else
   exit 1
 fi
 
-pwd=$(pwd)
-
-echo $extra
 cmake -D"CMAKE_BUILD_TYPE=Release" $extra -G"$target"
 

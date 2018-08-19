@@ -3,6 +3,6 @@
 set -e
 
 rm -rf CMakeFiles
-rm CMakeCache.txt
+rm -f CMakeCache.txt
 
 
