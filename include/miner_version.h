@@ -1,7 +1,7 @@
 #pragma once
 
-const std::string MINER_VERSION = "1.3.0";
+const std::string MINER_VERSION = "1.4.0";
 
 inline std::string getVersionStr() {
-	return std::string("Guli's gpu miner (Windows port by Cryptogone), version ") + MINER_VERSION;
+	return std::string("Guli Arionum GPU Miner (modified by Cryptogone), version ") + MINER_VERSION;
 }
