@@ -188,23 +188,25 @@ index fbcf67c..7a849bb 100644
  
  enum {
 diff --git a/include/argon2-opencl/cl.hpp b/include/argon2-opencl/cl.hpp
-index ced34f5..1328b58 100644
+index ced34f5..c03a742 100644
 --- a/include/argon2-opencl/cl.hpp
 +++ b/include/argon2-opencl/cl.hpp
-@@ -142,6 +142,12 @@
+@@ -142,6 +142,14 @@
   * \endcode
   *
   */
 +
++#ifdef _WIN32
 +#define NOMINMAX
 +#include <windows.h>
-+#include <boost/stacktrace.hpp>
++#endif
++
 +#include <iostream>
 +
  #ifndef CL_HPP_
  #define CL_HPP_
  
-@@ -318,7 +324,6 @@ public:
+@@ -318,7 +326,6 @@ public:
  #define __ERR_STR(x) NULL
  #endif // __CL_ENABLE_EXCEPTIONS
  
@@ -212,18 +214,16 @@ index ced34f5..1328b58 100644
  namespace detail
  {
  #if defined(__CL_ENABLE_EXCEPTIONS)
-@@ -327,6 +332,11 @@ static inline cl_int errHandler (
+@@ -327,7 +334,8 @@ static inline cl_int errHandler (
      const char * errStr = NULL)
  {
      if (err != CL_SUCCESS) {
+-        throw Error(err, errStr);
 +        printf("OpenCL error: errCode=%d str=%s\n", err, errStr ? errStr: "none");
-+
-+        std::cout << std::endl;
-+        std::cout << "---- STACK TRACE ----" << std::endl;
-+        std::cout << boost::stacktrace::stacktrace() << std::endl;
-         throw Error(err, errStr);
++	throw Error(err, errStr);
      }
      return err;
+ }
 diff --git a/include/argon2-opencl/kernelrunner.h b/include/argon2-opencl/kernelrunner.h
 index a1bba8b..96a5bba 100644
 --- a/include/argon2-opencl/kernelrunner.h
