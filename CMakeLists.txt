@@ -58,7 +58,7 @@ add_executable(arionum-opencl-miner
         src/common/timer.cpp)
 
 if(MSVC)
-    set_property(TARGET arionum-opencl-miner APPEND PROPERTY LINK_FLAGS /pdbaltpath:arionum-opencl-miner.pdb)
+    set_property(TARGET arionum-opencl-miner APPEND PROPERTY LINK_FLAGS)
 endif()
 
 target_link_libraries(
@@ -90,7 +90,7 @@ add_executable(arionum-cuda-miner
         src/common/timer.cpp)
 
 if(MSVC)
-    set_property(TARGET arionum-cuda-miner APPEND PROPERTY LINK_FLAGS /pdbaltpath:arionum-cuda-miner.pdb)
+    set_property(TARGET arionum-cuda-miner APPEND PROPERTY LINK_FLAGS)
 endif()
 
 target_link_libraries(
