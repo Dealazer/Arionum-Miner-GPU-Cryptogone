@@ -7,7 +7,6 @@
 #include "../../argon2-gpu/include/commandline/commandlineparser.h"
 #include "../../argon2-gpu/include/commandline/argumenthandlers.h"
 
-
 #include <iomanip>
 #include <boost/algorithm/string.hpp>
 
@@ -200,7 +199,8 @@ void printDeviceList() {
     }
 }
 
-int _gettimeofday(struct timeval* p, void* tz) {
+#ifdef _WIN32
+int gettimeofday(struct timeval* p, void* tz) {
     ULARGE_INTEGER ul; // As specified on MSDN.
     FILETIME ft;
 
@@ -222,10 +222,11 @@ int _gettimeofday(struct timeval* p, void* tz) {
 
     return 0;
 }
+#endif
 
 string generateUniqid() {
     struct timeval tv {};
-    _gettimeofday(&tv, nullptr);
+    gettimeofday(&tv, nullptr);
     auto sec = (int)tv.tv_sec;
     auto usec = (int)(tv.tv_usec % 0x100000);
     std::stringstream ss;
