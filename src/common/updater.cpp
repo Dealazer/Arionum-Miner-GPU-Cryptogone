@@ -22,10 +22,14 @@ void Updater::update() {
     http_request req(methods::GET);
     req.headers().set_content_type(L"application/json");
 
+#ifdef _WIN32
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring pathsw = converter.from_bytes(paths.str());
+    std::wstring _paths = converter.from_bytes(paths.str());
+#else
+    std::string _paths = paths.str();
+#endif
 
-    req.set_request_uri(pathsw.data());
+    req.set_request_uri(_paths.data());
     
     client->request(req)
             .then([](http_response response) {
@@ -134,8 +138,12 @@ Updater::Updater(Stats *s, MinerSettings *ms) : stats(s), settings(ms) {
     utility::seconds timeout(2);
     config.set_timeout(timeout);
 
+#ifdef _WIN32
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring poolAddressW = converter.from_bytes(*(ms->getPoolAddress()));
+    std::wstring _poolAddress = converter.from_bytes(*(ms->getPoolAddress()));
+#else
+    std::string _poolAddress = _poolAddress;
+#endif
 
-    client = new http_client(poolAddressW, config);
+    client = new http_client(_poolAddress, config);
 }

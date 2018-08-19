@@ -109,10 +109,14 @@ public:
         utility::seconds timeout(2);
         config.set_timeout(timeout);
 
+#ifdef _WIN32
         std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-        std::wstring poolAddressW = converter.from_bytes(*(ms->getPoolAddress()));
+        std::wstring poolAddress = converter.from_bytes(*(ms->getPoolAddress()));
+#else
+        std::string poolAddress = ms->getPoolAddress();
+#endif
 
-        client = new http_client(poolAddressW, config);
+        client = new http_client(poolAddress, config);
         generator = std::mt19937(device());
         distribution = std::uniform_int_distribution<int>(0, 255);
         salt = randomStr(16);
