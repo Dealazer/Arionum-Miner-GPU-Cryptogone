@@ -18,7 +18,7 @@ void Updater::update() {
           << "&hashrate=" << std::round(stats->getAvgHashRate());
 
     http_request req(methods::GET);
-    req.headers().set_content_type(L"application/json");
+    req.headers().set_content_type(U("application/json"));
 
     auto _paths = toUtilityString(paths.str());
     req.set_request_uri(_paths.data());
@@ -27,7 +27,7 @@ void Updater::update() {
             .then([](http_response response) {
                 try {
                     if (response.status_code() == status_codes::OK) {
-                        response.headers().set_content_type(L"application/json");
+                        response.headers().set_content_type(U("application/json"));
                         return response.extract_json();
                     }
                     return pplx::task_from_result(json::value());

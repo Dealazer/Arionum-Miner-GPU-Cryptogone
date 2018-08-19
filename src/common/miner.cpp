@@ -193,7 +193,7 @@ void Miner::submit(string *argon, string *nonce, bool d) {
             .then([this](http_response response) {
                 try {
                     if (response.status_code() == status_codes::OK) {
-                        response.headers().set_content_type(L"application/json");
+                        response.headers().set_content_type(U("application/json"));
                         return response.extract_json();
                     }
                 } catch (http_exception const &e) {
