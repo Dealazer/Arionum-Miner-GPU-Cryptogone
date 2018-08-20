@@ -120,12 +120,10 @@ See sections below for more information.
 3. **Choosing -b and -t**
     * for **CUDA** it is recommended to use ``-t 1``
     * for **OpenCL** it is recommended to use ``-t 2``
-    * choosing batch count (-b):
-
-        * total GPU mem usage of the miner is ~= ``nThreads * nBatches * 0.017``
-	* but since OS already uses some of your GPU memory you will not be able to use it all
-	* so you'll have to fiddle a bit to find the sweet spot 
-	* if mem usage is too high miner will crash at launch or show msg about memory
+    * for ``-b`` use an even value like 64,96,128, higher value means better perf but more GPU memory used    
+    * Total GPU mem usage of the miner is ~= ``nThreads * nBatches * 0.017 Gb`
+    * Usually, not all the memory is available to the miner, so you'll have to fiddle a bit to find the sweet spot for -b
+    * if mem usage (influenced by -b and -t) is too high, then miner will crash at launch or will produce bad shares
     * Examples:
         * ``AMD Vega64           8GB, Win10, OpenCL => -t 2 -b 208``
         * ``NVIDIA GTX960        4GB, Linux, CUDA   => -t 1 -b 232``
