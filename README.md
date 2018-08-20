@@ -1,9 +1,8 @@
 
-# Arionum GPU Miner, Cryptgone Edition #
-GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
+# Arionum GPU Miner, Cryptogone Edition #
+GPU miner for [Arionum](https://www.arionum.com/)
 
-This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-miner/src), 
-adding windows support and some performance & stability improvements.
+This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-miner/src), adding windows support and some performance & stability improvements.
 
 Please make sure you install latest Nvidia drivers if you use the CUDA miner !
 
@@ -36,6 +35,7 @@ Please make sure you install latest Nvidia drivers if you use the CUDA miner !
 
 ## Latest Binaries
 If you do not want to compile the poject yourself, you can find up to date binaries at this address :
+
 https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/
 
 ## Compilation guide
@@ -51,10 +51,12 @@ Make sure ```cmake.exe``` is in the system ```PATH```
 #### 3. Install CUDA
 Get it at https://developer.nvidia.com/cuda-downloads (this also installs ``OpenCL``)
 
-#### 4. (Windows) Install Git / Git console
-Get it at https://git-scm.com/download/win
+#### 4. Install Git / Git console (Windows)
+For Windows, get it at https://git-scm.com/download/win.
 
-**(Windows) All commands from here need to be run from a Git for Windows console**
+For Linux, ``sudo apt-get install git``
+
+**-- (Windows) All commands from here need to be run from a Git for Windows console --**
 
 #### 5. Clone miner repository
     git clone https://bitbucket.org/cryptogone/arionum-gpu-miner.git
@@ -106,22 +108,21 @@ See sections below for more information.
 ## How to tune options for a good hahsrate
 
 * First check the list of compute devices on your system
-  * For this, launch ``listDevices_CUDA.bat/.sh`` or ``listDevices_OpenCL.bat/.sh``
-  * If you see no devices, it means that CUDA / OpenCL drivers are not properly installed or that there are no CUDA/OPENCL devices available
+    * For this, launch ``listDevices_CUDA.bat/.sh`` or ``listDevices_OpenCL.bat/.sh``
+    * If you see no devices, it means that CUDA / OpenCL drivers are not properly installed or that there are no CUDA/OPENCL devices available
 * Now decide which GPU device(s) you want to use for mining
-  * Usually you want all devices, for that use -u parameter (miner will only use GPU devices, skipping CPU devices)
-  * If you want to only use specific devices, list them with -d parameter (ex: -d 0,3 mines only on devices 0 and 3)
-  * On laptops combinining a gaming GPU with an Integrated GPU, only mine on the gaming GPU (usually -d 0)
-* Now let's see how to choose -b and -t
-  * for CUDA it is recommended to use -t 1
-  * for OpenCL it is recommended to use -t 2
-  * choosing batch count (-b):
-    * total GPU mem usage of the miner is ~= ``nThreads * nBatches * 0.017``
+    * Usually you want all devices, for that use -u parameter (miner will only use GPU devices, skipping CPU devices)
+    * If you want to only use specific devices, list them with -d parameter (ex: -d 0,3 mines only on devices 0 and 3)
+    * On laptops combinining a gaming GPU with an Integrated GPU, only mine on the gaming GPU (usually -d 0)
+* **Now let's see how to choose -b and -t**
+    * for CUDA it is recommended to use -t 1
+    * for OpenCL it is recommended to use -t 2
+    * choosing batch count (-b):
+        * total GPU mem usage of the miner is ~= ``nThreads * nBatches * 0.017``
 	* but since OS already uses some of your GPU memory you will not be able to use it all
 	* so you'll have to fiddle a bit to find the sweet spot 
 	* if mem usage is too high miner will crash at launch or show msg about memory
-  * Examples:
-	* ``AMD Vega64           8GB, Win10, OpenCL => -t 2 -b 208``
-    * ``NVIDIA GTX960        4GB, Linux, CUDA   => -t 1 -b 232``
-	* ``NVIDIA Quadro M500M, 2GB, Win10, CUDA   => -t 1 -b 96``
-
+    * Examples:
+        * ``AMD Vega64           8GB, Win10, OpenCL => -t 2 -b 208``
+        * ``NVIDIA GTX960        4GB, Linux, CUDA   => -t 1 -b 232``
+        * ``NVIDIA Quadro M500M, 2GB, Win10, CUDA   => -t 1 -b 96``
