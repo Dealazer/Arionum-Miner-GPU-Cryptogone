@@ -117,11 +117,11 @@ See sections below for more information.
     * Usually you want all devices, for that use -u parameter (miner will only use GPU devices, skipping CPU devices)
     * If you want to only use specific devices, list them with -d parameter (ex: -d 0,3 mines only on devices 0 and 3)
     * On laptops combinining a gaming GPU with an Integrated GPU, only mine on the gaming GPU (usually -d 0)
-3. Choosing -b and -t
-    * for CUDA it is recommended to use -t 1
-    * for OpenCL it is recommended to use -t 2
+3. **Choosing -b and -t**
+    * for **CUDA** it is recommended to use ``-t 1``
+    * for **OpenCL** it is recommended to use ``-t 2``
     * choosing batch count (-b):
-        * total GPU mem usage of the miner is ~= ``nThreads * nBatches * 0.017``
+        * total GPU mem usage of the miner is ~= nThreads * nBatches * 0.017
 	* but since OS already uses some of your GPU memory you will not be able to use it all
 	* so you'll have to fiddle a bit to find the sweet spot 
 	* if mem usage is too high miner will crash at launch or show msg about memory
