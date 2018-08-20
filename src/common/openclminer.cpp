@@ -13,7 +13,7 @@ void OpenClMiner::printInfo() {
     auto batchSize = *settings->getBatchSize();
     cout << "Device       : " << device->getName() << endl;
     cout << "Batch size   : " << batchSize << endl;
-    cout << "VRAM usage   : " << std::fixed << std::setprecision(2) << 
+    cout << "VRAM usage   : " << std::fixed << std::setprecision(3) << 
         (float)(batchSize * params->getMemorySize()) / (1024.f*1024.f*1024.f) << " GB" << endl;
     cout << "Salt         : " << salt << endl;
 }
