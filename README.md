@@ -1,5 +1,5 @@
 
-# Arionum GPU Miner, Windows Edition #
+# Arionum GPU Miner, Cryptgone Edition #
 GPU miner for arionum coin : [Arionum](https://www.arionum.com/)
 
 This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-miner/src), 
@@ -11,6 +11,7 @@ Please make sure you install latest Nvidia drivers if you use the CUDA miner !
 
 #### Version 1.4.0 (08/20/2018)
 * block 80k fork support, only mines GPUS blocks, idle during CPU ones
+* Linux support
 * see the [FAQ](https://bitbucket.org/cryptogone/rionum-gpu-miner/faq.md) for more info
 
 #### Version 1.3.0 (07/11/2018)
