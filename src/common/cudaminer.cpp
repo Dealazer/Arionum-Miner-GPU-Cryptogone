@@ -41,8 +41,6 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     }
 
     device = &devices[*deviceIndex];
-    cout << "using device " << *deviceIndex << " - " << device->getName() << endl;
-    cout << "using salt " << salt << endl;
 
     // we MUST set device here
     // when creating ProcessingUnit, cudaMalloc & cudaStreamCreate are called and they will operate on the current device

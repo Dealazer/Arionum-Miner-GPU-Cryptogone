@@ -135,8 +135,8 @@ ostream &operator<<(ostream &os, const Stats &settings) {
         cout << endl
              << setw(20) << left << "Date"
 #ifdef TEST_GPU_BLOCK
-            << setw(12) << left << "Block Type"
-            << setw(16) << left << "Hash/s"
+             << setw(12) << left << "Block Type"
+             << setw(16) << left << "Hash/s"
 #else
              << setw(12) << left << "Height"
              << setw(12) << left << "Block Type"
@@ -155,21 +155,47 @@ ostream &operator<<(ostream &os, const Stats &settings) {
     auto t = std::chrono::system_clock::to_time_t(roundStart);
     
     auto data = s_pUpdater->getData();
+    bool isMining = data.getType() == BLOCK_GPU;
+
     cout << setw(20) << left << std::put_time(std::localtime(&t), "%D %T   ")
 #ifdef TEST_GPU_BLOCK
          << setw(12) << left << "GPU TEST"
          << setw(16) << left << settings.getHashRate();
 #else
          << setw(12) << left << (s_pUpdater ? data.getHeight() : (-1))
-         << setw(12) << left << (s_pUpdater ? blockTypeName(data.getType()) : "??")
-         << setw(16) << left << settings.getHashRate()
-         << setw(8) << left << settings.getShares()
-         << setw(8) << left << settings.getBlocks()
-         << setw(8) << left << settings.getRejections()
-         << setw(18) << left << settings.getBlockBestDl()
-         << setw(18) << left << settings.getBestDl()
-         << setw(18) << left << *data.getLimit();
+         << setw(12) << left << (s_pUpdater ? blockTypeName(data.getType()) : "??");
 #endif
+
+    if (isMining) {
+        cout << setw(16) << left << settings.getHashRate()
+             << setw(8) << left << settings.getShares()
+             << setw(8) << left << settings.getBlocks()
+             << setw(8) << left << settings.getRejections()
+             << setw(18) << left << settings.getBlockBestDl();
+    }
+    else {
+        cout << setw(16) << left << "not mining"
+             << setw(8) << left << settings.getShares()
+             << setw(8) << left << settings.getBlocks()
+             << setw(8) << left << settings.getRejections()
+             << setw(18) << left << "N/A";
+    }
+
+    long best = settings.getBestDl();
+    if (best == LONG_MAX) {
+        cout << setw(18) << left << "N/A";
+    }
+    else {
+        cout << setw(18) << left << best;
+    }
+
+    if (isMining) {
+        cout << setw(18) << left << *data.getLimit();
+    }
+    else {
+        cout << setw(18) << left << "N/A";
+    }
+
     return os;
 }
 
