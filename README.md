@@ -83,6 +83,7 @@ Run **only one** of those, depending on your Visual Studio version
     
 #### 9. Build
 On Windows, open ```arionum-gpu-miner.sln``` with Visual Studio 2015 or 2017, then in the toolbar select ```Release / x64``` then ```Build Menu -> Build Solution```.
+
 You can also build from commandline: ``./make_release_win.sh``
 
 On Linux: ``./make_release_linux.sh``.
@@ -90,7 +91,9 @@ On Linux: ``./make_release_linux.sh``.
 ## Starting the miner using sample scripts
 
 Edit ``run_OpenCL.bat`` or ``run_CUDA.bat`` to your liking with Notepad, save and double click to launch.
-(on Linux same, but with ``run_OpenCL.sh`` or ``run_CUDA.sh``)
+
+On Linux same, but with ``run_OpenCL.sh`` or ``run_CUDA.sh``.
+
 See sections below for more information.
 
 ## Commandline Options
@@ -107,14 +110,14 @@ See sections below for more information.
 
 ## How to tune options for a good hahsrate
 
-* First check the list of compute devices on your system
+1. First check the list of compute devices on your system
     * For this, launch ``listDevices_CUDA.bat/.sh`` or ``listDevices_OpenCL.bat/.sh``
     * If you see no devices, it means that CUDA / OpenCL drivers are not properly installed or that there are no CUDA/OPENCL devices available
-* Now decide which GPU device(s) you want to use for mining
+2. Now decide which GPU device(s) you want to use for mining
     * Usually you want all devices, for that use -u parameter (miner will only use GPU devices, skipping CPU devices)
     * If you want to only use specific devices, list them with -d parameter (ex: -d 0,3 mines only on devices 0 and 3)
     * On laptops combinining a gaming GPU with an Integrated GPU, only mine on the gaming GPU (usually -d 0)
-* **Now let's see how to choose -b and -t**
+3. Choosing -b and -t
     * for CUDA it is recommended to use -t 1
     * for OpenCL it is recommended to use -t 2
     * choosing batch count (-b):
