@@ -121,7 +121,8 @@ See sections below for more information.
     * for **CUDA** it is recommended to use ``-t 1``
     * for **OpenCL** it is recommended to use ``-t 2``
     * choosing batch count (-b):
-        * total GPU mem usage of the miner is ~= nThreads * nBatches * 0.017
+
+        * total GPU mem usage of the miner is ~= ``nThreads * nBatches * 0.017``
 	* but since OS already uses some of your GPU memory you will not be able to use it all
 	* so you'll have to fiddle a bit to find the sweet spot 
 	* if mem usage is too high miner will crash at launch or show msg about memory
