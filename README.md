@@ -110,7 +110,7 @@ See sections below for more information.
 
 ## How to tune options for a good hahsrate
 
-First check the list of compute devices on your system
+First check the list of compute devices on your system:
 
 * For this, launch `listDevices_CUDA.bat/.sh` or `listDevices_OpenCL.bat/.sh`
 * If you see no devices, it means that CUDA / OpenCL drivers are not properly installed or that there are no compatible GPU devices available
@@ -121,7 +121,7 @@ Now decide which GPU device(s) you want to use for mining
 * If you want to only use specific devices, list them with -d parameter (ex: -d 0,3 mines only on devices 0 and 3)
 * On laptops combinining a gaming GPU with an Integrated GPU, only mine on the gaming GPU (usually -d 0)
 
-**Choosing -b and -t**
+Choosing -b and -t:
 
 * for **CUDA** it is recommended to use `-t 1`
 * for **OpenCL** it is recommended to use `-t 2`
@@ -130,6 +130,8 @@ Now decide which GPU device(s) you want to use for mining
 * Usually, not all the memory is available to the miner, so you'll have to fiddle a bit to find the sweet spot for `-b`
 * if mem usage (influenced by -b and -t) is too high, then miner will crash at launch or will produce bad shares
 * Examples -b and -t values:
+
+## Example -b / -t values
 
     AMD Vega64,          8GB, Win10, OpenCL => -t 2 -b 208
     NVIDIA GTX960,       4GB, Linux, CUDA   => -t 1 -b 232
