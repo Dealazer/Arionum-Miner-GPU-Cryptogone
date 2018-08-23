@@ -39,13 +39,13 @@ Yes you can run any other CPU miner at the same time, just make sure it doesn no
 
 If you use a combined cpu / gpu miner like ariominer it is recommended to configure it to not mine with GPU (``--gpu-intensity 0``).
 
-If you ever want to use ariominer to mine CPU blocks with your GPU in parallel of arionum-gpu-miner then reduce the -b value to free some GPU memory for it)
+If you ever want to use ariominer to mine CPU blocks with your GPU in parallel of arionum-gpu-miner then reduce the `-b` value to free some GPU memory for it)
 
 ### Can I solo mine with arionum-gpu-miner ?
 
-The only way to solo mine for now is by using https://aro.hashpi.com/.
+The only way to solo mine using arionum-gpu-miner for now is by using https://aro.hashpi.com/.
 
-But be aware that because of the 1% fee, there is 1 chance on 100 that your block reward will be taken as fees
+But be aware that because of the 1% fee, each time you find a block there is 1 chance on 100 that the full reward will be taken as fees
 
 I have plans to implement proper solo mining to your own node and with a better fee system in the future.
 
@@ -62,7 +62,7 @@ Now that the fork is stabilized the final rules are :
 
 A CPU block is exactly the same as the blocks before the fork.
 
-More precisely a CPU block uses `argon2i` hashing with parameters: `time=1,mem=524288,lanes=1`
+More precisely a CPU block uses `argon2i` hashing with parameters: `time=1, mem=524288, lanes=1`
 
 It can be mined with either a GPU or a CPU.
 
@@ -74,7 +74,7 @@ So it is recommended, but not mandatory to mine CPU blocks with CPUs
 
 ### What is a GPU block ?
 
-A GPU block uses `argon2i` hashing with parameters: `time=4,mem=16384,lanes=4`
+A GPU block uses `argon2i` hashing with parameters: `time=4, mem=16384, lanes=4`
 
 It can be mined with either a CPU or a GPU.
 
