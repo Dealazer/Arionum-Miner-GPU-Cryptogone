@@ -126,8 +126,7 @@ See sections below for more information.
     * if mem usage (influenced by -b and -t) is too high, then miner will crash at launch or will produce bad shares
     * Examples -b and -t values:
 
-        ```
-        AMD Vega64,          8GB, Win10, OpenCL => -t 2 -b 208
-        NVIDIA GTX960,       4GB, Linux, CUDA   => -t 1 -b 232
-        NVIDIA Quadro M500M, 2GB, Win10, CUDA   => -t 1 -b 96
-        ```
+    AMD Vega64,          8GB, Win10, OpenCL => -t 2 -b 208
+    NVIDIA GTX960,       4GB, Linux, CUDA   => -t 1 -b 232
+    NVIDIA Quadro M500M, 2GB, Win10, CUDA   => -t 1 -b 96
+
