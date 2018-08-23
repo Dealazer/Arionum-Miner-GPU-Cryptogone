@@ -129,7 +129,6 @@ Choosing -b and -t:
 * Total GPU mem usage of the miner is ~= `nThreads * nBatches * 0.017 Gb`
 * Usually, not all the memory is available to the miner, so you'll have to fiddle a bit to find the sweet spot for `-b`
 * if mem usage (influenced by -b and -t) is too high, then miner will crash at launch or will produce bad shares
-* Examples -b and -t values:
 
 ## Example -b / -t values
 
