@@ -125,6 +125,7 @@ See sections below for more information.
     * Usually, not all the memory is available to the miner, so you'll have to fiddle a bit to find the sweet spot for `-b`
     * if mem usage (influenced by -b and -t) is too high, then miner will crash at launch or will produce bad shares
     * Examples -b and -t values:
+
         ```
         AMD Vega64,          8GB, Win10, OpenCL => -t 2 -b 208
         NVIDIA GTX960,       4GB, Linux, CUDA   => -t 1 -b 232
