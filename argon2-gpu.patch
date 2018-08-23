@@ -1,13 +1,7 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 3dd95ba..f5130e0 100644
+index 3dd95ba..15fb786 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -1,4 +1,4 @@
--cmake_minimum_required(VERSION 3.7)
-+cmake_minimum_required(VERSION 3.5)
- 
- project(argon2-gpu CXX)
- set(BINARY_INSTALL_DIR /usr/local/bin)
 @@ -28,9 +28,17 @@ if(CUDA_FOUND)
      )
  endif()
