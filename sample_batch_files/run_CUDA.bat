@@ -1,7 +1,13 @@
 @echo OFF
-REM change pool & address to yours
-REM adjust -b & -t value as described in the README
-REM -u means use all device, you can also use -d to specify list of devices (ex: -d 0,2,5)
-arionum-cuda-miner.exe -u -b 1 -t 1 -p http://aro.cool -a 4bb66RkoTCz63XPBvMyHfWRE1vWif21j77m1kNVNRd7o4YtJdEQWY7BsRVxAYoTdMexSVFGFaekrc3UATTSERwmQ
-pause
 
+REM please change pool & wallet address to yours
+REM adjust -b & -t value as described in the README and FAQ
+set pool="http://aro.cool"
+set wallet="4bb66RkoTCz63XPBvMyHfWRE1vWif21j77m1kNVNRd7o4YtJdEQWY7BsRVxAYoTdMexSVFGFaekrc3UATTSERwmQ"
+set threads="1"
+set batches="48"
+
+REM -u means use all device, you can also use -d to specify list of devices (ex: -d 0,2,5)
+arionum-cuda-miner.exe -u -b %batches% -t %threads% -p %pool% -a %wallet%
+
+pause
