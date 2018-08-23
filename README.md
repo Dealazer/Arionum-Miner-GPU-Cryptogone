@@ -42,19 +42,19 @@ https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/
 #### 1. (Windows) Install Visual Studio 2015 or 2017 (Community is sufficient)
 Get it at https://visualstudio.microsoft.com/fr/vs/community/
 
-If you install Visual Studio 2017 make sure you also install ```Windows 8.1 SDK``` (you can select it during the install)
+If you install Visual Studio 2017 make sure you also install `Windows 8.1 SDK` (you can select it during the install)
 
 #### 2. (Windows) Install CMake
 Get it at https://cmake.org/download/
-Make sure ```cmake.exe``` is in the system ```PATH```
+Make sure `cmake.exe` is in the system `PATH`
 
 #### 3. Install CUDA
-Get it at https://developer.nvidia.com/cuda-downloads (this also installs ``OpenCL``)
+Get it at https://developer.nvidia.com/cuda-downloads (this also installs `OpenCL`)
 
 #### 4. Install Git / Git console (Windows)
 For Windows, get it at https://git-scm.com/download/win.
 
-For Linux, ``sudo apt-get install git``
+For Linux, `sudo apt-get install git`
 
 **-- (Windows) All commands from here need to be run from a Git for Windows console --**
 
@@ -69,7 +69,7 @@ Run **only one** of those, depending on your system
     ./setup_libs.sh vs2017
     ./setup_libs.sh linux
 
-Note that on linux this will use ``sudo`` to call ``apt-get`` and so ask for your password for installing packages.
+Note that on linux this will use `sudo` to call `apt-get` and so ask for your password for installing packages.
 
 #### 7. Init & patch submodules
     ./setup_submodules.sh
@@ -82,17 +82,17 @@ Run **only one** of those, depending on your Visual Studio version
     ./gen_prj.sh linux
     
 #### 9. Build
-On Windows, open ```arionum-gpu-miner.sln``` with Visual Studio 2015 or 2017, then in the toolbar select ```Release / x64``` then ```Build Menu -> Build Solution```.
+On Windows, open `arionum-gpu-miner.sln` with Visual Studio 2015 or 2017, then in the toolbar select `Release / x64` then `Build Menu -> Build Solution`.
 
-You can also build from commandline: ``./make_release_win.sh``
+You can also build from commandline: `./make_release_win.sh`
 
-On Linux: ``./make_release_linux.sh``.
+On Linux: `./make_release_linux.sh`.
 
 ## Starting the miner using sample scripts
 
-Edit ``run_OpenCL.bat`` or ``run_CUDA.bat`` to your liking with Notepad, save and double click to launch.
+Edit `run_OpenCL.bat` or `run_CUDA.bat` to your liking with Notepad, save and double click to launch.
 
-On Linux same, but with ``run_OpenCL.sh`` or ``run_CUDA.sh``.
+On Linux same, but with `run_OpenCL.sh` or `run_CUDA.sh`.
 
 See sections below for more information.
 
@@ -111,21 +111,22 @@ See sections below for more information.
 ## How to tune options for a good hahsrate
 
 1. First check the list of compute devices on your system
-    * For this, launch ``listDevices_CUDA.bat/.sh`` or ``listDevices_OpenCL.bat/.sh``
-    * If you see no devices, it means that CUDA / OpenCL drivers are not properly installed or that there are no CUDA/OPENCL devices available
+    * For this, launch `listDevices_CUDA.bat/.sh` or `listDevices_OpenCL.bat/.sh`
+    * If you see no devices, it means that CUDA / OpenCL drivers are not properly installed or that there are no compatible GPU devices available
 2. Now decide which GPU device(s) you want to use for mining
     * Usually you want all devices, for that use -u parameter (miner will only use GPU devices, skipping CPU devices)
     * If you want to only use specific devices, list them with -d parameter (ex: -d 0,3 mines only on devices 0 and 3)
     * On laptops combinining a gaming GPU with an Integrated GPU, only mine on the gaming GPU (usually -d 0)
 3. **Choosing -b and -t**
-    * for **CUDA** it is recommended to use ``-t 1``
-    * for **OpenCL** it is recommended to use ``-t 2``
-    * for ``-b`` use an even value like 64, 96, 128, ... (higher value means better perf but more GPU memory used)
-    * Total GPU mem usage of the miner is ~= ``nThreads * nBatches * 0.017 Gb``
-    * Usually, not all the memory is available to the miner, so you'll have to fiddle a bit to find the sweet spot for -b
+    * for **CUDA** it is recommended to use `-t 1`
+    * for **OpenCL** it is recommended to use `-t 2`
+    * for `-b` use an even value like 64, 96, 128, ... (higher value means better perf but more GPU memory used)
+    * Total GPU mem usage of the miner is ~= `nThreads * nBatches * 0.017 Gb`
+    * Usually, not all the memory is available to the miner, so you'll have to fiddle a bit to find the sweet spot for `-b`
     * if mem usage (influenced by -b and -t) is too high, then miner will crash at launch or will produce bad shares
-
-Examples -b and -t values:
-    AMD Vega64           8GB, Win10, OpenCL => -t 2 -b 208
-    NVIDIA GTX960        4GB, Linux, CUDA   => -t 1 -b 232
-    NVIDIA Quadro M500M, 2GB, Win10, CUDA   => -t 1 -b 96
+    * Examples -b and -t values:
+        ```
+        AMD Vega64,          8GB, Win10, OpenCL => -t 2 -b 208
+        NVIDIA GTX960,       4GB, Linux, CUDA   => -t 1 -b 232
+        NVIDIA Quadro M500M, 2GB, Win10, CUDA   => -t 1 -b 96
+        ```
