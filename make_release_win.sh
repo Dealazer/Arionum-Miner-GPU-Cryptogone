@@ -55,7 +55,7 @@ fi
 cp build/Release/*.exe "$OUT_DIR"
 cp build/Release/*.dll "$OUT_DIR"
 unix2dos -n readme.md "$OUT_DIR/readme_${VERSION}.txt"
-unix2dos -n faq.md "$OUT_DIR/readme_${VERSION}.txt"
+unix2dos -n faq.md "$OUT_DIR/FAQ_${VERSION}.txt"
 
 mkdir "$OUT_DIR/argon2-gpu"
 mkdir "$OUT_DIR/argon2-gpu/data"
