@@ -110,21 +110,26 @@ See sections below for more information.
 
 ## How to tune options for a good hahsrate
 
-1. First check the list of compute devices on your system
-    * For this, launch `listDevices_CUDA.bat/.sh` or `listDevices_OpenCL.bat/.sh`
-    * If you see no devices, it means that CUDA / OpenCL drivers are not properly installed or that there are no compatible GPU devices available
-2. Now decide which GPU device(s) you want to use for mining
-    * Usually you want all devices, for that use -u parameter (miner will only use GPU devices, skipping CPU devices)
-    * If you want to only use specific devices, list them with -d parameter (ex: -d 0,3 mines only on devices 0 and 3)
-    * On laptops combinining a gaming GPU with an Integrated GPU, only mine on the gaming GPU (usually -d 0)
-3. **Choosing -b and -t**
-    * for **CUDA** it is recommended to use `-t 1`
-    * for **OpenCL** it is recommended to use `-t 2`
-    * for `-b` use an even value like 64, 96, 128, ... (higher value means better perf but more GPU memory used)
-    * Total GPU mem usage of the miner is ~= `nThreads * nBatches * 0.017 Gb`
-    * Usually, not all the memory is available to the miner, so you'll have to fiddle a bit to find the sweet spot for `-b`
-    * if mem usage (influenced by -b and -t) is too high, then miner will crash at launch or will produce bad shares
-    * Examples -b and -t values:
+First check the list of compute devices on your system
+
+* For this, launch `listDevices_CUDA.bat/.sh` or `listDevices_OpenCL.bat/.sh`
+* If you see no devices, it means that CUDA / OpenCL drivers are not properly installed or that there are no compatible GPU devices available
+
+Now decide which GPU device(s) you want to use for mining
+
+* Usually you want all devices, for that use -u parameter (miner will only use GPU devices, skipping CPU devices)
+* If you want to only use specific devices, list them with -d parameter (ex: -d 0,3 mines only on devices 0 and 3)
+* On laptops combinining a gaming GPU with an Integrated GPU, only mine on the gaming GPU (usually -d 0)
+
+**Choosing -b and -t**
+
+* for **CUDA** it is recommended to use `-t 1`
+* for **OpenCL** it is recommended to use `-t 2`
+* for `-b` use an even value like 64, 96, 128, ... (higher value means better perf but more GPU memory used)
+* Total GPU mem usage of the miner is ~= `nThreads * nBatches * 0.017 Gb`
+* Usually, not all the memory is available to the miner, so you'll have to fiddle a bit to find the sweet spot for `-b`
+* if mem usage (influenced by -b and -t) is too high, then miner will crash at launch or will produce bad shares
+* Examples -b and -t values:
 
     AMD Vega64,          8GB, Win10, OpenCL => -t 2 -b 208
     NVIDIA GTX960,       4GB, Linux, CUDA   => -t 1 -b 232
