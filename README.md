@@ -9,9 +9,9 @@ Please make sure you install latest Nvidia drivers if you use the CUDA miner !
 ## Updates
 
 #### Version 1.4.0 (08/20/2018)
-* block 80k fork support, only mines GPUS blocks, idle during CPU ones
+* block 80k fork support, only mines GPU blocks, idle during CPU ones
 * Linux support
-* see the [FAQ](https://bitbucket.org/cryptogone/rionum-gpu-miner/faq.md) for more info
+* see the [FAQ](https://bitbucket.org/cryptogone/arionum-gpu-miner/faq.md) for more info
 
 #### Version 1.3.0 (07/11/2018)
 * fixed more OpenCL issues
