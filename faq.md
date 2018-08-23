@@ -1,16 +1,20 @@
-## How does arionum-gpu-miner v1.4.0 handle the fork ?
+## How does arionum-gpu-miner v1.4.0 handles the fork ?
 
 For simplicity and stability and in order to release a version in a reasonable time, v1.4.0 behaves like this:
   * during GPU blocks, it will mine at full speed
   * during CPU blocks, it will NOT mine
 
+## Will you implement GPU mining of CPU blocks ?
+
+Yes, but not ETA for now, I will release it when ready, no need to ping me about this on Discord or other social networks.
+
 ## What are the strengths of arionum-gpu-miner v1.4.0 ?
 
 Here are the main features:
-  * High performance
-  * Low CPU usage
+  * High GPU mining performance
+  * Low CPU usage (only 1 thread to manage all GPU jobs)
   * CUDA and OpenCL support
-  * Uses cpprestsdk for reliable http requests
+  * Uses cpprestsdk (supports http / https pools)
   * Linux and Windows 10 support
 
 ## What is the performance versus Ariominer (Bogdanadnan's miner) ?
@@ -34,11 +38,13 @@ It is important to note that **CPU mining was disabled in ariominer** (--cpu-int
 
 Yes you can run any other CPU miner at the same time, just make sure it doesn not uses 100% of your CPU (leave 1 or 2 cores for arionum-pu-miner)
 If you use a combined cpu / gpu miner like Ariominer it is recommended to configure it to not mine with GPU (``--gpu-intensity 0``).
-If you want to use Ariominer to mine CPU blocks with your GPU in parallel of arionum-gpu-miner then reduce the -b value to free some GPU memory for it)
+If you ever want to use Ariominer to mine CPU blocks with your GPU in parallel of arionum-gpu-miner then reduce the -b value to free some GPU memory for it)
 
-## Will you implement GPU mining of CPU blocks ?
+## Can I solo mine with arionum-gpu-miner ?
 
-Yes, but not ETA for now, I will release it when ready, no need to ping me about this on Discord or other social networks.
+The only way to solo mine for now is by using https://aro.hashpi.com/ (which is currently not working)
+But be aware that because of the 1% fee, there is 1 chance on 100 that your block reward will be taken as fees
+I have plans to implement proper solo mining to your own node and with a better fee system in the future.
 
 ## What happened with the Arionum fork ?
 
