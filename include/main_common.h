@@ -260,7 +260,7 @@ int commonMain(const char *const *argv) {
 #else
         std::cout << "Initializing CUDA";
 #endif
-        std::cout << "(if it crashes here, try install latest GPU drivers)" << std::endl;
+        std::cout << " (if it crashes here, try install latest GPU drivers)" << std::endl;
         CONTEXT global;
         auto &devices = global.getAllDevices();
     }
