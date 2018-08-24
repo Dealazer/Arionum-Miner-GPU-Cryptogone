@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.7)
 project(arionum-gpu-miner)
 
 set(BINARY_INSTALL_DIR /usr/local/bin)
@@ -72,7 +72,6 @@ target_link_libraries(arionum-opencl-miner
        	-lgmp
        	-lpthread
        	-lcpprest
-       	-largon2
 )
 endif()
 
@@ -114,7 +113,6 @@ target_link_libraries(arionum-cuda-miner
        	-lgmp
        	-lpthread
        	-lcpprest
-       	-largon2
 )
 endif()
 
