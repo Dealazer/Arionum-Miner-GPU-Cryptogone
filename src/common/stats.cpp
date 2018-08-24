@@ -6,6 +6,7 @@
 #include "../../include/updater.h"
 #include "../../include/miner.h"
 #include <iomanip>
+#include <random>
 
 using namespace std;
 
@@ -64,9 +65,16 @@ void Stats::addHashes(long newHashes) {
 }
 
 bool Stats::newShare() {
-    std::lock_guard<std::mutex> lg(mutex);
-    shares++;
-    return (shares % rate) == 0;
+    {
+        std::lock_guard<std::mutex> lg(mutex);
+        shares++;
+    }
+
+    mt19937::result_type seed = time(0);
+    auto dice_rand = std::bind(std::uniform_int_distribution<int>(0, 99), mt19937(seed));
+    auto n = dice_rand();
+    //std::cout << "dice => " << n << std::endl;
+    return n == 0;
 }
 
 void Stats::blockChange() {
