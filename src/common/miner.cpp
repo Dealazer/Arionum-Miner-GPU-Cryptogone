@@ -149,7 +149,9 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
         submitted = true;
         bool d = mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
-        gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
+        if (d == false) {
+            gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
+        }
         submit(argon, nonce, d);
     }
 
@@ -190,7 +192,7 @@ void Miner::submit(string *argon, string *nonce, bool d) {
     req.set_request_uri(_XPLATSTR("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
     client->request(req)
-            .then([this](http_response response) {
+            .then([this,d](http_response response) {
                 try {
                     if (response.status_code() == status_codes::OK) {
                         response.headers().set_content_type(U("application/json"));
@@ -203,10 +205,10 @@ void Miner::submit(string *argon, string *nonce, bool d) {
                 }
                 return pplx::task_from_result(json::value());
             })
-            .then([this](pplx::task<json::value> previousTask) {
+            .then([this,d](pplx::task<json::value> previousTask) {
                 try {
                     json::value jvalue = previousTask.get();
-                    if (!jvalue.is_null() && jvalue.is_object()) {
+                    if (!jvalue.is_null() && jvalue.is_object() && d==false) {
                         auto status = toString(jvalue.at(U("status")).as_string());
                         if (status == "ok") {
                             cout << "nonce accepted by pool !!!!!" << endl;

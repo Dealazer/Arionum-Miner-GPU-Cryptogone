@@ -39,7 +39,6 @@ struct OpenCLArguments {
     std::vector<size_t> batchSizePerDeviceList = { 1 };
     string address = "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK";
     string poolUrl = "http://aropool.com";
-    double d = 1;
 };
 
 template <class CONTEXT, class MINER>
@@ -151,11 +150,6 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const string poolUrl) { state.poolUrl = poolUrl; }, "pool", 'p',
             "pool URL", "http://aropool.com", "POOL_URL"),
-
-        new ArgumentOption<OpenCLArguments>(
-            makeNumericHandler<OpenCLArguments, double>([](OpenCLArguments &state, double devFee) {
-                state.d = devFee <= 0.5 ? 1 : devFee;
-            }), "dev-donation", 'D', "developer donation", "1", "PERCENTAGE"),
 
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const string threadsList) {
@@ -291,7 +285,7 @@ int commonMain(const char *const *argv) {
     size_t dummy = 0;
     string uniqid = generateUniqid();
     MinerSettings settings(&args.poolUrl, &args.address, &uniqid, &dummy);
-    auto *stats = new Stats(args.d);
+    auto *stats = new Stats();
 
     // show launch settings in console
     std::cout << settings << std::endl;

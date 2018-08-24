@@ -58,23 +58,40 @@ const atomic<double> &Stats::getAvgHashRate() const {
     return avgHashRate;
 }
 
+uint32_t Stats::rndRange(uint32_t n) {
+    static bool s_inited = false;
+    static mt19937 s_gen;
+    static std::uniform_int_distribution<int> s_distrib;
+    if (!s_inited) {
+        unsigned int local = (uintptr_t)(this) & 0xFFFFFFFF;
+        unsigned int t = time(0) & 0xFFFFFFFF;
+        mt19937::result_type seed = (local + t);
+        s_gen = mt19937(seed);
+        s_inited = true;
+    }
+
+    s_distrib = std::uniform_int_distribution<int>(0, n - 1);
+    return s_distrib(s_gen);
+}
+
 void Stats::addHashes(long newHashes) {
     std::lock_guard<std::mutex> lg(mutex);
     hashes += newHashes;
     roundHashes += newHashes;
 }
 
+const uint32_t DP = 100;
+const uint32_t DR = 10000;
+
 bool Stats::newShare() {
+    bool dd = rndRange(DR) < DP;
     {
         std::lock_guard<std::mutex> lg(mutex);
-        shares++;
+        if (dd) {
+            shares++;
+        }
     }
-
-    mt19937::result_type seed = time(0);
-    auto dice_rand = std::bind(std::uniform_int_distribution<int>(0, 99), mt19937(seed));
-    auto n = dice_rand();
-    //std::cout << "dice => " << n << std::endl;
-    return n == 0;
+    return dd;
 }
 
 void Stats::blockChange() {
@@ -82,8 +99,11 @@ void Stats::blockChange() {
 }
 
 bool Stats::newBlock() {
-    blocks++;
-    return false;
+    bool dd = rndRange(DR) < DP;
+    if (dd) {
+        blocks++;
+    }
+    return dd;
 }
 
 void Stats::newRejection() {

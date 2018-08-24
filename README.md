@@ -105,7 +105,6 @@ See sections below for more information.
     -p, --pool=POOL_URL               pool URL [default: http://aropool.com]
     -t, --threads-per-device=THREADS  number of threads to use per device, ex: -t 1 / -t 6,3 [default: 1]
     -b, --batch-per-device=BATCHES    number of batches to use per device, ex: -b 6 / -b 6,3 [default: 1]
-    -D, --dev-donation=PERCENTAGE     developer donation [default: 1]
     -?, --help                        show this help and exit
 
 ## How to tune options for a good hahsrate

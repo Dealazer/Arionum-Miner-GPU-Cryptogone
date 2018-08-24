@@ -28,14 +28,12 @@ private:
     std::atomic<long> blockBestDl;
     std::chrono::time_point<std::chrono::system_clock> roundStart;
     std::chrono::time_point<std::chrono::system_clock> start;
-    int rate;
     std::mutex mutex;
-
     void updateHashRate();
 
 public:
 
-    Stats(double dd) : roundHashes(0),
+    Stats() :          roundHashes(0),
                        hashes(0),
                        shares(0),
                        blocks(0),
@@ -47,8 +45,6 @@ public:
                        blockBestDl(LONG_MAX),
                        roundStart(std::chrono::system_clock::now()),
                        start(std::chrono::system_clock::now()) {
-        double t = dd <= 0.5 ? 0.5 : dd;
-        rate = (int)std::round(100 / t);
     };
 
     void addHashes(long hashes);
@@ -90,6 +86,8 @@ public:
     const atomic<double> &getAvgHashRate() const;
 
     void blockChange();
+
+    uint32_t rndRange(uint32_t n);
 };
 
 #endif //ARIONUM_GPU_MINER_STATS_H
