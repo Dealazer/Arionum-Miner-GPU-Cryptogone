@@ -39,6 +39,9 @@ using namespace web;
 using namespace web::http;
 using namespace web::http::client;
 
+const size_t ARGON_OUTLEN = 32;
+const size_t ARGON_SALTLEN = 16;
+
 class Miner {
 private:
     //const char *alphanum = "0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -72,6 +75,8 @@ protected:
 
     Stats *stats;
     MinerSettings *settings;
+    uint32_t batchSize;
+    uint32_t initial_batchSize;
     MinerData data;
     http_client *client;
 
@@ -96,15 +101,19 @@ protected:
     std::vector<uint8_t*> resultBuffers;
 
 public:
-    explicit Miner(Stats *s, MinerSettings *ms, Updater *u) : stats(s),
-                                                              settings(ms),
-                                                              rest(0),
-                                                              diff(1),
-                                                              result(0),
-                                                              ZERO(0),
-                                                              BLOCK_LIMIT(240),
-                                                              limit(0),
-                                                              updater(u) {
+    explicit Miner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u) :
+        stats(s),
+        settings(ms),
+        batchSize(bs),
+        initial_batchSize(bs),
+        rest(0),
+        diff(1),
+        result(0),
+        ZERO(0),
+        BLOCK_LIMIT(240),
+        limit(0),
+        updater(u) 
+    {
         http_client_config config;
         utility::seconds timeout(2);
         config.set_timeout(timeout);
@@ -122,9 +131,11 @@ public:
 #endif
 
         // prepare array of gpu task results buffers
-        auto count = *settings->getBatchSize();
+        auto count = batchSize;
         resultBuffers.resize(count);
     };
+
+    virtual void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize) = 0;
 
     void to_base64(char *dst, size_t dst_len, const void *src, size_t src_len);
 
@@ -140,13 +151,17 @@ public:
     virtual void deviceFetchTaskResultAsync() = 0;
     virtual void deviceWaitForResults() = 0;
     virtual bool deviceResultsReady() = 0;
-    virtual void printInfo() = 0;
+    
+    std::string getInfo();
 
     void checkArgon(string *base, string *argon, string *nonce);
 
     void submit(string *argon, string *nonce, bool d);
 
-    char *encode(void *res, size_t reslen);
+    void encode(void *res, size_t reslen, std::string &out);
+
+    uint32_t getInitialBatchSize() const { return initial_batchSize; };
+    uint32_t getCurrentBatchSize() const { return batchSize; };
 };
 
 

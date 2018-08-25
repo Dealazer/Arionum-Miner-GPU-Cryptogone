@@ -29,9 +29,9 @@ public:
    void deviceFetchTaskResultAsync();
    bool deviceResultsReady();
    void deviceWaitForResults();
-   void printInfo();
+   void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize);
 
-    explicit CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceIndex);
+   explicit CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_t *deviceIndex);
 };
 
 #endif //ARIONUM_GPU_MINER_CUDAMINER_H

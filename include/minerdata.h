@@ -82,7 +82,7 @@ public:
 
     uint32_t getHeight() const;
 
-    BLOCK_TYPE getType() const { return type; };
+    BLOCK_TYPE getBlockType() const { return type; };
     string getArgonPrmsStr() const;
 
     bool isNewBlock(const string *newBlock);

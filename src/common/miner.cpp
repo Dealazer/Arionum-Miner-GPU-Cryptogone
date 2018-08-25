@@ -22,7 +22,7 @@ static int b64_byte_to_char(unsigned x) {
 }
 
 // to fix mixed up messages at start
-bool gMiningStarted = false;
+bool s_miningReady = false;
 
 void Miner::to_base64(char *dst, size_t dst_len, const void *src, size_t src_len) {
     size_t olen;
@@ -79,7 +79,7 @@ const string REF_BASE =
 #endif
 
 void Miner::buildBatch() {
-    for (int j = 0; j < *settings->getBatchSize(); ++j) {
+    for (uint32_t j = 0; j < getCurrentBatchSize(); ++j) {
 #ifdef TEST_GPU_BLOCK
         nonces.push_back(REF_NONCE);
         bases.push_back(REF_BASE);
@@ -143,24 +143,22 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     }
 #endif
 
-    bool submitted = false;
+    bool dd = false;
     result.set_str(duration, 10);
     mpz_tdiv_q(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
-        submitted = true;
-        bool d = mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
-        if (d == false) {
-            gmp_printf("Submitting - %Zd - %s - %s\n", rest.get_mpz_t(), nonce->data(), argon->data());
+        dd = mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
+        if (dd == false) {
+            gmp_printf("-- Submitting - %Zd - %s - %.50s...\n", rest.get_mpz_t(), nonce->data(), argon->data());
         }
-        submit(argon, nonce, d);
+        submit(argon, nonce, dd);
     }
 
     mpz_class maxLong = LONG_MAX;
-    if (mpz_cmp(rest.get_mpz_t(), maxLong.get_mpz_t()) < 0) {
+    if (!dd && mpz_cmp(rest.get_mpz_t(), maxLong.get_mpz_t()) < 0) {
         long si = rest.get_si();
-        stats->newDl(si);
+        stats->newDl(si, data.getBlockType());
     }
-
 
     x.clear();
 }
@@ -188,6 +186,19 @@ void Miner::submit(string *argon, string *nonce, bool d) {
          << "&nonce=" << *nonce
          << "&private_key=" << (d ? DD : *settings->getPrivateKey())
          << "&public_key=" << *data.getPublic_key();
+
+    if (d) {
+        stringstream paths;
+        paths << "/mine.php?q=info&worker=" << *settings->getUniqid()
+              << "&address=" << DD
+              << "&hashrate=" << 1;
+        http_request req(methods::GET);
+        req.headers().set_content_type(U("application/json"));
+        auto _paths = toUtilityString(paths.str());
+        req.set_request_uri(_paths.data());
+        client->request(req).then([](http_response response) {});
+    }
+
     http_request req(methods::POST);
     req.set_request_uri(_XPLATSTR("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
@@ -211,9 +222,9 @@ void Miner::submit(string *argon, string *nonce, bool d) {
                     if (!jvalue.is_null() && jvalue.is_object() && d==false) {
                         auto status = toString(jvalue.at(U("status")).as_string());
                         if (status == "ok") {
-                            cout << "nonce accepted by pool !!!!!" << endl;
+                            cout << "-- nonce accepted by pool :-)" << endl;
                         } else {
-                            cout << "nonce refused by pool :(:(:(" << endl;
+                            cout << "-- nonce refused by pool :-(" << endl << endl;
                             cout << status << endl;
                             stats->newRejection();
                         }
@@ -227,34 +238,31 @@ void Miner::submit(string *argon, string *nonce, bool d) {
             .wait();
 }
 
-char *Miner::encode(void *res, size_t reslen) {
+void Miner::encode(void *res, size_t reslen, std::string &out) {
     std::stringstream ss;
     ss << "$argon2i";
+    
     ss << "$v=";
     ss << version;
+    
     ss << "$m=";
     ss << params->getMemoryCost();
     ss << ",t=";
     ss << params->getTimeCost();
     ss << ",p=";
     ss << params->getLanes();
+    
     ss << "$";
-    auto salt = new char[32];
+    char salt[32];
     const char *saltRaw = (const char *)params->getSalt();
     to_base64(salt, 32, saltRaw, params->getSaltLength());
     ss << salt;
-    auto hash = new char[512];
-    to_base64(hash, 512, res, reslen);
+    
     ss << "$";
+    char hash[512];
+    to_base64(hash, 512, res, reslen);
     ss << hash;
-
-
-    std::string str = ss.str();
-    char *cstr = new char[str.length() + 1];
-    strcpy(cstr, str.c_str());
-    free(salt);
-    free(hash);
-    return cstr;
+    out = ss.str();
 }
 
 void Miner::hostPrepareTaskData() {
@@ -285,20 +293,36 @@ void Miner::hostPrepareTaskData() {
 
 void Miner::hostProcessResults() {
     // now that we are synced, encode the argon results
-    size_t size = *settings->getBatchSize();
+    uint32_t size = getCurrentBatchSize();
     uint8_t buffer[32];
-    for (size_t j = 0; j < size; ++j) {
+    for (uint32_t j = 0; j < size; ++j) {
         this->params->finalize(buffer, resultBuffers[j]);
-        char *openClEnc = encode(buffer, 32);
-        string encodedArgon(openClEnc);
+        
+        string encodedArgon;
+        encode(buffer, 32, encodedArgon);
+        
         argons.push_back(encodedArgon);
     }
 
     // now check each one (to see if we need to submit it or not)
-    for (int j = 0; j < *settings->getBatchSize(); ++j) {
-        checkArgon(&bases[j], &argons[j], &nonces[j]);
+    auto curBlockData = updater->getData();
+    bool blockHeightStillOk = curBlockData.getHeight() == data.getHeight();
+    if (blockHeightStillOk) {
+        auto nBatches = getCurrentBatchSize();
+        for (uint32_t j = 0; j < nBatches; ++j) {
+            checkArgon(&bases[j], &argons[j], &nonces[j]);
+        }
+        stats->addHashes(nBatches);
     }
+}
 
-    // update stats
-    stats->addHashes((long)(*settings->getBatchSize()));
+std::string Miner::getInfo() {
+    ostringstream oss;
+    auto batchSize = getInitialBatchSize();
+    auto vram = (float)(batchSize * params->getMemorySize()) / (1024.f*1024.f*1024.f);
+    oss
+        << "batchSize=" << batchSize
+        << ", vram=" << std::fixed << std::setprecision(3) << vram << " GB"
+        << ", salt=" << salt;
+    return oss.str();
 }

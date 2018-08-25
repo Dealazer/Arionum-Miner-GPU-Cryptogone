@@ -128,10 +128,10 @@ index ebc8460..92d44b6 100644
          }
      }
 diff --git a/include/argon2-cuda/kernels.h b/include/argon2-cuda/kernels.h
-index 16418b4..1ec0ea8 100644
+index 16418b4..9a77e4c 100644
 --- a/include/argon2-cuda/kernels.h
 +++ b/include/argon2-cuda/kernels.h
-@@ -53,6 +53,8 @@ public:
+@@ -53,9 +53,17 @@ public:
  
      void writeInputMemory(std::uint32_t jobId, const void *buffer);
      void readOutputMemory(std::uint32_t jobId, void *buffer);
@@ -140,8 +140,17 @@ index 16418b4..1ec0ea8 100644
  
      void run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock);
      float finish();
++
++    void KernelRunner::reconfigureArgon(
++        std::uint32_t passes,
++        std::uint32_t lanes,
++        std::uint32_t segmentBlocks,
++        std::uint32_t newBatchSize);
+ };
+ 
+ } // cuda
 diff --git a/include/argon2-cuda/processingunit.h b/include/argon2-cuda/processingunit.h
-index 2109154..9061574 100644
+index 2109154..0a65604 100644
 --- a/include/argon2-cuda/processingunit.h
 +++ b/include/argon2-cuda/processingunit.h
 @@ -22,6 +22,7 @@ private:
@@ -152,7 +161,7 @@ index 2109154..9061574 100644
  
  public:
      std::size_t getBatchSize() const { return runner.getBatchSize(); }
-@@ -32,7 +33,10 @@ public:
+@@ -32,10 +33,14 @@ public:
              bool bySegment = true, bool precomputeRefs = false);
  
      void setPassword(std::size_t index, const void *pw, std::size_t pwSize);
@@ -164,6 +173,10 @@ index 2109154..9061574 100644
  
      void beginProcessing();
      void endProcessing();
++    void reconfigureArgon(const Argon2Params *newParams, std::uint32_t batchSize);
+ };
+ 
+ } // namespace cuda
 diff --git a/include/argon2-gpu-common/argon2-common.h b/include/argon2-gpu-common/argon2-common.h
 index fbcf67c..7a849bb 100644
 --- a/include/argon2-gpu-common/argon2-common.h
@@ -215,7 +228,7 @@ index ced34f5..c03a742 100644
      return err;
  }
 diff --git a/include/argon2-opencl/kernelrunner.h b/include/argon2-opencl/kernelrunner.h
-index a1bba8b..96a5bba 100644
+index a1bba8b..bdac6a8 100644
 --- a/include/argon2-opencl/kernelrunner.h
 +++ b/include/argon2-opencl/kernelrunner.h
 @@ -17,10 +17,10 @@ private:
@@ -231,7 +244,7 @@ index a1bba8b..96a5bba 100644
  
      std::size_t memorySize;
  
-@@ -42,14 +42,13 @@ public:
+@@ -42,14 +42,15 @@ public:
                   const Argon2Params *params, const Device *device,
                   std::uint32_t batchSize, bool bySegment, bool precompute);
  
@@ -248,11 +261,13 @@ index a1bba8b..96a5bba 100644
 +
 +    void waitForResults();
 +    bool resultsReady();
++
++    void reconfigureArgon(const Argon2Params *newParams, std::uint32_t batchSize);
  };
  
  } // namespace opencl
 diff --git a/include/argon2-opencl/processingunit.h b/include/argon2-opencl/processingunit.h
-index 277272d..d5ebec2 100644
+index 277272d..1d61324 100644
 --- a/include/argon2-opencl/processingunit.h
 +++ b/include/argon2-opencl/processingunit.h
 @@ -18,6 +18,7 @@ private:
@@ -263,7 +278,7 @@ index 277272d..d5ebec2 100644
  
  public:
      std::size_t getBatchSize() const { return runner.getBatchSize(); }
-@@ -28,10 +29,12 @@ public:
+@@ -28,10 +29,14 @@ public:
              bool bySegment = true, bool precomputeRefs = false);
  
      void setPassword(std::size_t index, const void *pw, std::size_t pwSize);
@@ -276,6 +291,8 @@ index 277272d..d5ebec2 100644
 +
 +    void waitForResults();
 +    bool resultsReady();
++
++    void reconfigureArgon(const Argon2Params *newParams, std::uint32_t batchSize);
  };
  
  } // namespace opencl
@@ -297,7 +314,7 @@ index eb52e02..56040c9 100644
      devices.reserve(count);
      for (int i = 0; i < count; i++) {
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
-index 79fb767..fdd6778 100644
+index 79fb767..9d343ed 100644
 --- a/lib/argon2-cuda/kernels.cu
 +++ b/lib/argon2-cuda/kernels.cu
 @@ -3,9 +3,14 @@
@@ -399,7 +416,7 @@ index 79fb767..fdd6778 100644
      if (bySegment) {
          for (uint32_t pass = 0; pass < passes; pass++) {
              for (uint32_t slice = 0; slice < ARGON2_SYNC_POINTS; slice++) {
-@@ -1041,17 +1051,11 @@ void KernelRunner::run(uint32_t lanesPerBlock, uint32_t jobsPerBlock)
+@@ -1041,17 +1051,28 @@ void KernelRunner::run(uint32_t lanesPerBlock, uint32_t jobsPerBlock)
      }
  
      CudaException::check(cudaGetLastError());
@@ -410,16 +427,32 @@ index 79fb767..fdd6778 100644
  float KernelRunner::finish()
  {
 -    CudaException::check(cudaStreamSynchronize(stream));
--
++    return 0.f;
++}
++
++void KernelRunner::reconfigureArgon(
++    std::uint32_t newPasses,
++    std::uint32_t newLanes,
++    std::uint32_t newSegmentBlocks,
++    std::uint32_t newBatchSize)
++{
++    if (precompute || bySegment) {
++        printf("reconfigureArgon not supported with precompute/bySegment modes !\n");
++        exit(1);
++    }
+ 
 -    float time = 0.0;
 -    CudaException::check(cudaEventElapsedTime(&time, start, end));
 -    return time;
-+    return 0.f;
++    passes = newPasses;
++    lanes = newLanes;
++    segmentBlocks = newSegmentBlocks;
++    batchSize = newBatchSize;
  }
  
  } // cuda
 diff --git a/lib/argon2-cuda/processingunit.cpp b/lib/argon2-cuda/processingunit.cpp
-index 7768427..3a8f858 100644
+index 7768427..9f62cc8 100644
 --- a/lib/argon2-cuda/processingunit.cpp
 +++ b/lib/argon2-cuda/processingunit.cpp
 @@ -24,6 +24,9 @@ static bool isPowerOfTwo(std::uint32_t x)
@@ -586,6 +619,22 @@ index 7768427..3a8f858 100644
      setCudaDevice(device->getDeviceIndex());
      runner.run(bestLanesPerBlock, bestJobsPerBlock);
  }
+@@ -152,5 +175,15 @@ void ProcessingUnit::endProcessing()
+     runner.finish();
+ }
+ 
++void ProcessingUnit::reconfigureArgon(const Argon2Params *newParams, std::uint32_t batchSize) {
++    params = newParams;
++    runner.reconfigureArgon(
++        params->getTimeCost(),
++        params->getLanes(),
++        params->getSegmentBlocks(),
++        batchSize);
++    bestLanesPerBlock = runner.getMinLanesPerBlock();
++    bestJobsPerBlock = runner.getMinJobsPerBlock();
++}
+ } // namespace cuda
+ } // namespace argon2
 diff --git a/lib/argon2-gpu-common/argon2params.cpp b/lib/argon2-gpu-common/argon2params.cpp
 index dd122d8..b74c11d 100644
 --- a/lib/argon2-gpu-common/argon2params.cpp
@@ -624,7 +673,7 @@ index 22949f3..927a44d 100644
          throw;
      }
 diff --git a/lib/argon2-opencl/kernelrunner.cpp b/lib/argon2-opencl/kernelrunner.cpp
-index 9fe39b4..50e7db2 100644
+index 9fe39b4..1b3c755 100644
 --- a/lib/argon2-opencl/kernelrunner.cpp
 +++ b/lib/argon2-opencl/kernelrunner.cpp
 @@ -1,16 +1,57 @@
@@ -713,7 +762,33 @@ index 9fe39b4..50e7db2 100644
  #endif
  
      memoryBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, memorySize);
-@@ -106,36 +153,60 @@ void KernelRunner::precomputeRefs()
+@@ -82,6 +129,25 @@ KernelRunner::KernelRunner(const ProgramContext *programContext,
+     }
+ }
+ 
++void KernelRunner::reconfigureArgon(const Argon2Params *newParams, std::uint32_t newBatchSize) {
++    if (precompute || bySegment) {
++        printf("reconfigureArgon not supported with precompute/bySegment modes !\n");
++        exit(1);
++    }
++
++    params = newParams;
++    batchSize = newBatchSize;
++    memorySize = params->getMemorySize() * static_cast<std::size_t>(batchSize);
++
++    std::uint32_t passes = params->getTimeCost();
++    std::uint32_t lanes = params->getLanes();
++    std::uint32_t segmentBlocks = params->getSegmentBlocks();
++
++    kernel.setArg<cl_uint>(2, passes);
++    kernel.setArg<cl_uint>(3, lanes);
++    kernel.setArg<cl_uint>(4, segmentBlocks);
++}
++
+ void KernelRunner::precomputeRefs()
+ {
+     std::uint32_t passes = params->getTimeCost();
+@@ -106,36 +172,60 @@ void KernelRunner::precomputeRefs()
  
      cl::NDRange globalRange { THREADS_PER_LANE * segments * segmentAddrBlocks };
      cl::NDRange localRange { THREADS_PER_LANE };
@@ -796,7 +871,7 @@ index 9fe39b4..50e7db2 100644
  }
  
  void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
-@@ -160,36 +231,51 @@ void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
+@@ -160,36 +250,51 @@ void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
      cl::NDRange globalRange { THREADS_PER_LANE * lanes, batchSize };
      cl::NDRange localRange { THREADS_PER_LANE * lanesPerBlock, jobsPerBlock };
  
@@ -841,18 +916,18 @@ index 9fe39b4..50e7db2 100644
 +        end.wait();
 +    }
 +}
-+
+ 
+-    cl_ulong nsStart = start.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+-    cl_ulong nsEnd   = end.getProfilingInfo<CL_PROFILING_COMMAND_END>();
 +bool KernelRunner::resultsReady() {
 +    // seems like some platforms (ex: Intel Integrated) need the flush call
 +    cl::detail::errHandler(queue->flush(), "KernelRunner::resultsReady, flushing queue");
  
--    cl_ulong nsStart = start.getProfilingInfo<CL_PROFILING_COMMAND_END>();
--    cl_ulong nsEnd   = end.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+-    return (nsEnd - nsStart) / (1000.0F * 1000.0F);
 +    cl_int err = NULL;
 +    auto status = end.getInfo<CL_EVENT_COMMAND_EXECUTION_STATUS>(&err);
 +    cl::detail::errHandler(err, "KernelRunner::resultsReady");
- 
--    return (nsEnd - nsStart) / (1000.0F * 1000.0F);
++
 +    if (status == CL_COMPLETE) {
 +        return true;
 +    }
@@ -863,7 +938,7 @@ index 9fe39b4..50e7db2 100644
  
  } // namespace opencl
 diff --git a/lib/argon2-opencl/processingunit.cpp b/lib/argon2-opencl/processingunit.cpp
-index 598ced7..4c65835 100644
+index 598ced7..67971f3 100644
 --- a/lib/argon2-opencl/processingunit.cpp
 +++ b/lib/argon2-opencl/processingunit.cpp
 @@ -13,6 +13,9 @@ static bool isPowerOfTwo(std::uint32_t x)
@@ -876,7 +951,7 @@ index 598ced7..4c65835 100644
  ProcessingUnit::ProcessingUnit(
          const ProgramContext *programContext, const Argon2Params *params,
          const Device *device, std::size_t batchSize,
-@@ -23,115 +26,123 @@ ProcessingUnit::ProcessingUnit(
+@@ -23,115 +26,130 @@ ProcessingUnit::ProcessingUnit(
        bestLanesPerBlock(runner.getMinLanesPerBlock()),
        bestJobsPerBlock(runner.getMinJobsPerBlock())
  {
@@ -1084,6 +1159,13 @@ index 598ced7..4c65835 100644
 +
 +bool ProcessingUnit::resultsReady() {
 +    return runner.resultsReady();
++}
++
++void ProcessingUnit::reconfigureArgon(const Argon2Params *newParams, std::uint32_t batchSize) {
++    params = newParams;
++    runner.reconfigureArgon(params, batchSize);
++    bestLanesPerBlock = runner.getMinLanesPerBlock();
++    bestJobsPerBlock = runner.getMinJobsPerBlock();
  }
  
  } // namespace opencl

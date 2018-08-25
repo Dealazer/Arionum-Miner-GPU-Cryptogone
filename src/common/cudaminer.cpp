@@ -22,16 +22,7 @@ static void setCudaDevice(int deviceIndex)
     }
 }
 
-void CudaMiner::printInfo() {
-    auto batchSize = *settings->getBatchSize();
-    cout << "Device       : " << device->getName() << endl;
-    cout << "Batch size   : " << batchSize << endl;
-    cout << "VRAM usage   : " << std::fixed << std::setprecision(3) <<
-        (float)(batchSize * params->getMemorySize()) / (1024.f*1024.f*1024.f) << " GB" << endl;
-    cout << "Salt         : " << salt << endl;
-}
-
-CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceIndex) : Miner(s, ms, u) {
+CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_t *deviceIndex) : Miner(s, ms, bs, u) {
     global = new argon2::cuda::GlobalContext();
     auto &devices = global->getAllDevices();
 
@@ -52,14 +43,14 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 4, 16384, nLanes);
 
     try {
-        unit = new argon2::cuda::ProcessingUnit(progCtx, params, device, *settings->getBatchSize(), false, false);
+        unit = new argon2::cuda::ProcessingUnit(progCtx, params, device, getInitialBatchSize(), false, false);
     }
     catch (const std::exception& e) {
         cout << "Error: exception while creating cudaminer unit: " << e.what() << ", try to reduce batch size (-b parameter), exiting now :-(" << endl;
         exit(1);
     }
     
-    for (int i = 0; i < *settings->getBatchSize(); i++) {
+    for (uint32_t i = 0; i < getInitialBatchSize(); i++) {
         cudaError_t status = cudaMallocHost((void**)&(resultBuffers[i]), nLanes * 1024 /*ARGON2_BLOCK_SIZE*/);
         if (status != cudaSuccess) {
             std::cout << "Error allocating pinned host memory" << std::endl;
@@ -68,9 +59,26 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, Updater *u, size_t *deviceInde
     }
 }
 
+void CudaMiner::reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t newBatchSize) {
+    if (params->getTimeCost() == t_cost &&
+        params->getMemoryCost() == m_cost &&
+        params->getLanes() == lanes)
+    {
+        return;
+    }
+
+    batchSize = newBatchSize;
+    if (params) {
+        delete params;
+    }
+    params = new argon2::Argon2Params(ARGON_OUTLEN, salt.data(), ARGON_SALTLEN, nullptr, 0, nullptr, 0, t_cost, m_cost, lanes);
+
+    unit->reconfigureArgon(params, batchSize);
+}
+
 void CudaMiner::deviceUploadTaskDataAsync() {
     // upload to GPU
-    size_t size = *settings->getBatchSize();
+    size_t size = getCurrentBatchSize();
     for (size_t j = 0; j < size; ++j) {
         std::string data = bases.at(j);
         unit->setPassword(j, data.data(), data.length());
@@ -82,7 +90,7 @@ void CudaMiner::deviceLaunchTaskAsync() {
 }
 
 void CudaMiner::deviceFetchTaskResultAsync() {
-    size_t size = *settings->getBatchSize();
+    size_t size = getCurrentBatchSize();
     for (size_t j = 0; j < size; ++j) {
         unit->fetchResultAsync(j, resultBuffers[j]);
     }

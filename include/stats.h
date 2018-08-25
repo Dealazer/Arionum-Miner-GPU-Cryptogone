@@ -12,81 +12,87 @@
 #include <climits>
 #include <cmath>
 
+#include "minerdata.h"
+
 using namespace std;
+
+//#define DEBUG_ROUNDS
 
 class Stats {
 private:
+    std::atomic<long> roundType;
     std::atomic<long> roundHashes;
-    std::atomic<long> rounds;
-    std::atomic<double> hashRate;
-    std::atomic<double> avgHashRate;
-    std::atomic<long> hashes;
+    std::atomic<double> roundHashRate;
+    std::chrono::time_point<std::chrono::system_clock> roundStart;
+
+    std::atomic<long> rounds_cpu;
+    std::atomic<long> totalHashes_cpu;
+    std::atomic<double> totalTime_cpu_sec;
+
+    std::atomic<long> rounds_gpu;
+    std::atomic<long> totalHashes_gpu;
+    std::atomic<double> totalTime_gpu_sec;
+
     std::atomic<long> shares;
     std::atomic<long> blocks;
     std::atomic<long> rejections;
-    std::atomic<long> bestDl;
+
+    std::atomic<long> bestDl_cpu;
+    std::atomic<long> bestDl_gpu;
     std::atomic<long> blockBestDl;
-    std::chrono::time_point<std::chrono::system_clock> roundStart;
-    std::chrono::time_point<std::chrono::system_clock> start;
+
     std::mutex mutex;
-    void updateHashRate();
 
 public:
 
-    Stats() :          roundHashes(0),
-                       hashes(0),
+    Stats() :          roundType(-1),
+                       roundHashes(0),
+                       totalHashes_cpu(0),
+                       totalHashes_gpu(0),
+                       totalTime_cpu_sec(0.0),
+                       totalTime_gpu_sec(0.0),
                        shares(0),
                        blocks(0),
                        rejections(0),
-                       rounds(-1),
-                       hashRate(0.0),
-                       avgHashRate(0.0),
-                       bestDl(LONG_MAX),
+                       rounds_cpu(0),
+                       rounds_gpu(0),
+                       roundHashRate(0.0),
+                       bestDl_cpu(LONG_MAX),
+                       bestDl_gpu(LONG_MAX),
                        blockBestDl(LONG_MAX),
-                       roundStart(std::chrono::system_clock::now()),
-                       start(std::chrono::system_clock::now()) {
+                       roundStart(std::chrono::system_clock::now())/*,
+                       start(std::chrono::system_clock::now())*/ {
     };
 
     void addHashes(long hashes);
-
     bool newShare();
-
     bool newBlock();
-
     void newRejection();
+    void newDl(long dl, BLOCK_TYPE t);
 
-    void newDl(long dl);
+    void beginRound(const MinerData& data);
+    void endRound();
 
-    void newRound();
+    const atomic<long> &getRounds(BLOCK_TYPE t) const;
+    const atomic<long> &getTotalHashes(BLOCK_TYPE t) const;
 
-    const atomic<long> &getRoundHashes() const;
-
-    const atomic<long> &getRounds() const;
-
-    const atomic<double> &getHashRate() const;
-
-    const atomic<long> &getHashes() const;
-
-    const atomic<long> &getShares() const;
-
-    const atomic<long> &getBestDl() const;
-
-    const atomic<long> &getBlockBestDl() const;
-
-    const atomic<long> &getBlocks() const;
-
-    const atomic<long> &getRejections() const;
-
+    const atomic<long> &getRoundHashes() const;    
+    const atomic<double> &getRoundHashRate() const;
     const chrono::time_point<chrono::system_clock> &getRoundStart() const;
 
-    const chrono::time_point<chrono::system_clock> &getStart() const;
+    double getAvgHashrate(BLOCK_TYPE t) const;
+    const atomic<long> &getBestDl(BLOCK_TYPE t) const;
+    const atomic<long> &getBlockBestDl() const;
+
+    const atomic<long> &getShares() const;
+    const atomic<long> &getBlocks() const;
+    const atomic<long> &getRejections() const;
 
     friend ostream &operator<<(ostream &os, const Stats &stats);
 
-    const atomic<double> &getAvgHashRate() const;
+    void blockChange(const MinerData &newData);
 
-    void blockChange();
-
+private:
     uint32_t rndRange(uint32_t n);
 };
 

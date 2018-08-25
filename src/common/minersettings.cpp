@@ -15,12 +15,8 @@ string *MinerSettings::getUniqid() const {
     return uniqid;
 }
 
-size_t *MinerSettings::getBatchSize() const {
-    return batchSize;
-}
-
 ostream &operator<<(ostream &os, const MinerSettings &settings) {
-	os << "uniqid        : " << settings.getUniqid()->c_str() << std::endl
+	os << "worker id     : " << settings.getUniqid()->c_str() << std::endl
        << "pool address  : " << settings.getPoolAddress()->c_str() << std::endl
        << "wallet address: " << settings.getPrivateKey()->c_str();
     return os;

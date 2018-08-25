@@ -27,9 +27,9 @@ public:
     void deviceFetchTaskResultAsync();
     void deviceWaitForResults();
     bool deviceResultsReady();
-    void printInfo();
+    void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize);
 
-    OpenClMiner(Stats *s, MinerSettings *ms, Updater *pUpdater, size_t *deviceIndex);
+    OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *pUpdater, size_t *deviceIndex);
 };
 
 #endif //ARIONUM_GPU_MINER_OPENCLMINER_H

@@ -2,6 +2,7 @@
 // Created by guli on 31/01/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
 #include <iostream>
+#include <iomanip>
 #include <thread>
 #include "../../include/updater.h"
 
@@ -11,18 +12,58 @@ using namespace std;
 
 #pragma warning(disable:4715)
 
+//#define DEBUG_HASHRATE_SENDS
+
 void Updater::update() {
+    // start building path
     stringstream paths;
     paths << "/mine.php?q=info&worker=" << *settings->getUniqid()
-          << "&address=" << *settings->getPrivateKey()
-          << "&hashrate=" << std::round(stats->getAvgHashRate());
+          << "&address=" << *settings->getPrivateKey();
 
+    // see if we need to send hashrates (pools recommend every 10 minutes)
+    static auto start = std::chrono::system_clock::now();    
+    auto now = std::chrono::system_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
+    auto timeSinceLastHrUpdateMs = duration.count();
+
+    // send first hashrates after 30s
+    static long long nHashRateSends = 0;
+    double hrSendRate_mins = (nHashRateSends == 0) ? 0.5 : 5.0;
+
+    // as soon as we get the first cpu hashrate value, set rate to zero to force send it
+    auto hrCPU = std::round(stats->getAvgHashrate(BLOCK_CPU));
+    static bool s_hrCpuOkOneTime = false;
+    if (hrCPU > 0 &&
+        !s_hrCpuOkOneTime) {
+        hrSendRate_mins = 0;
+        s_hrCpuOkOneTime = true;
+#ifdef DEBUG_HASHRATE_SENDS
+        cout << "##### FIRST CPU HASHRATE" << endl;
+#endif
+    }
+    else {
+        hrCPU = 1;
+    }
+
+    // send hashrates when update period reached
+    if ((double)timeSinceLastHrUpdateMs >= hrSendRate_mins * 60.0 * 1000.0) {
+        paths << "&hashrate=" << hrCPU
+              << "&hrgpu=" << std::round(stats->getAvgHashrate(BLOCK_GPU));
+        if (nHashRateSends != 0) {
+            start = now;
+        }
+        nHashRateSends++;
+#ifdef DEBUG_HASHRATE_SENDS
+        cout << "##### SENDING HASHRATES nHashRateSends=" << nHashRateSends << endl;
+        cout << paths.str() << endl;
+#endif
+    }
+
+    // perform request with cpp rest
     http_request req(methods::GET);
     req.headers().set_content_type(U("application/json"));
-
     auto _paths = toUtilityString(paths.str());
     req.set_request_uri(_paths.data());
-    
     client->request(req)
             .then([](http_response response) {
                 try {
@@ -50,18 +91,40 @@ void Updater::update() {
             .wait();
 }
 
-extern bool gMiningStarted;
+extern bool s_miningReady;
 
 void Updater::start() {
+    // wait for first  pool response
     while (true) {
-        if (gMiningStarted) {
-            stats->newRound();
-            if (stats->getRounds() > 1) {
-                cout << *stats << endl;
-            }
-        }
         update();
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        bool dataReady = false;
+        {
+            std::lock_guard<std::mutex> lg(mutex);
+            dataReady = data->isValid();
+        }
+        if (dataReady) {
+            while (!s_miningReady) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            break;
+        }
+        else {
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+        }
+    }
+
+    // loop
+    while (true) {
+        cout << *stats;
+
+        auto newData = getData();
+        stats->beginRound(newData);
+        {
+            update();
+            std::this_thread::sleep_for(std::chrono::seconds(POOL_UPDATE_RATE_SECONDS));
+        }
+        stats->endRound();
     }
 }
 
@@ -103,10 +166,10 @@ void Updater::processResponse(const json::value *value) {
                         argon_time,
                         blockType
                     );
-                    if (gMiningStarted) {
-                        cout << endl << "-- NEW BLOCK --" << endl << *data << endl;
+                    if (s_miningReady) {
+                        cout << endl << "-- NEW BLOCK --" << endl << *data;
                     }
-                    stats->blockChange();
+                    stats->blockChange(*data);
                 }
             }
         } else {

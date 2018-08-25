@@ -52,7 +52,7 @@ uint32_t MinerData::getHeight() const
 string MinerData::getArgonPrmsStr() const
 {
     ostringstream oss;
-    oss << argon_memory << "," << argon_threads << ", " << argon_time;
+    oss << argon_threads << ", " << argon_memory << ", " << argon_time;
     return oss.str();
 }
 
@@ -72,13 +72,21 @@ std::string strOrNull(const std::string* s) {
 }
 
 ostream &operator<<(ostream &os, const MinerData &data) {
-    os << "status     : " << strOrNull(data.getStatus()) << std::endl;
+#if 1    
+    os << "height     : " << data.getHeight() << std::endl;
+    os << "type       : " << blockTypeName(data.getBlockType()) << std::endl;
     os << "difficulty : " << strOrNull(data.getDifficulty()) << std::endl;
-    os << "block      : " << strOrNull(data.getBlock()) << std::endl;
+    os << "argon2i    : " << data.getArgonPrmsStr() << std::endl;
+#else
+    os << "height     : " << data.getHeight() << std::endl;
+    os << "type       : " << blockTypeName(data.getBlockType()) << std::endl;
+    os << "difficulty : " << strOrNull(data.getDifficulty()) << std::endl;
+    os << "argon2i    : " << data.getArgonPrmsStr() << std::endl;
     os << "limit      : " << strOrNull(data.getLimit()) << std::endl;
+    os << "block      : " << strOrNull(data.getBlock()) << std::endl;
     os << "public_key : " << strOrNull(data.getPublic_key()) << std::endl;
-    os << "type       : " << blockTypeName(data.getType()) << std::endl;
-    os << "argon prms : " << data.getArgonPrmsStr() << std::endl;
+    os << "status     : " << strOrNull(data.getStatus()) << std::endl;
+#endif
     return os;
 }
 

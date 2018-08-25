@@ -16,14 +16,11 @@ private:
     string *poolAddress;
     string *privateKey;
     string *uniqid;
-public:
-    size_t *batchSize;
 
 public:
     MinerSettings(string *pa, string *pk, string *ui, size_t *bs) : poolAddress(pa),
                                                         privateKey(pk),
-                                                        uniqid(ui),
-                                                        batchSize(bs) {};
+                                                        uniqid(ui) {};
 
     friend ostream &operator<<(ostream &os, const MinerSettings &settings);
 
@@ -32,8 +29,6 @@ public:
     string *getPrivateKey() const;
 
     string *getUniqid() const;
-
-    size_t *getBatchSize() const;
 };
 
 #endif //ARIONUM_GPU_MINER_MINERSETTINGS_H
