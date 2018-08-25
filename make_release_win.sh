@@ -3,8 +3,12 @@ set -e
 
 # get version number
 VERSION="v$(grep -Po 'MINER_VERSION = "\K[^"]*' include/miner_version.h)"
-OUT_DIR="rel/${VERSION}-win64"
-ZIP_PATH="rel/arionum-gpu-miner-${VERSION}-win64.zip"
+OS_NAME="win64"
+if [ -n "$1" ]; then
+	OS_NAME="$1"
+fi
+OUT_DIR="rel/${VERSION}-${OS_NAME}"
+ZIP_PATH="rel/arionum-gpu-miner-${VERSION}-${OS_NAME}.zip"
 
 # get 7zip path
 SEVEN_ZIP_X86="${PROGRAMFILES} (x86)/7-Zip/7z.exe"
