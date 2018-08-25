@@ -132,7 +132,7 @@ Choosing -b and -t:
 
 ## Example -b / -t values
 
-    AMD Vega64,          8GB, Win10, OpenCL => -t 2 -b 208
-    NVIDIA GTX960,       4GB, Linux, CUDA   => -t 1 -b 232
+    AMD Vega64,          8GB, Win10, OpenCL => -t 2 -b 224
+    NVIDIA GTX960,       4GB, Linux, CUDA   => -t 1 -b 224
     NVIDIA Quadro M500M, 2GB, Win10, CUDA   => -t 1 -b 96
 
