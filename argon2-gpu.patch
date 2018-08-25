@@ -128,7 +128,7 @@ index ebc8460..92d44b6 100644
          }
      }
 diff --git a/include/argon2-cuda/kernels.h b/include/argon2-cuda/kernels.h
-index 16418b4..9a77e4c 100644
+index 16418b4..b332b7c 100644
 --- a/include/argon2-cuda/kernels.h
 +++ b/include/argon2-cuda/kernels.h
 @@ -53,9 +53,17 @@ public:
@@ -141,7 +141,7 @@ index 16418b4..9a77e4c 100644
      void run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock);
      float finish();
 +
-+    void KernelRunner::reconfigureArgon(
++    void reconfigureArgon(
 +        std::uint32_t passes,
 +        std::uint32_t lanes,
 +        std::uint32_t segmentBlocks,
