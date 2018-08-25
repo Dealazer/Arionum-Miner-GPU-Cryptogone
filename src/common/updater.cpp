@@ -42,7 +42,8 @@ void Updater::update() {
 #endif
     }
     else {
-        hrCPU = 1;
+        if (hrCPU <= 0)
+            hrCPU = 1;
     }
 
     // send hashrates when update period reached
