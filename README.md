@@ -8,6 +8,15 @@ Please make sure you install latest Nvidia drivers if you use the CUDA miner !
 
 ## Updates
 
+#### Version 1.5.0 alpha
+* fixed important memory leak
+* CPU blocks mining now working 
+  (but still way slower than Bogdan's)
+* more accurate hashrate computations 
+  (the displayed hashrate will probably be a bit lower than before, but more exact)
+* now correctly reports CPU/GPU hashrate too pools
+* can set worker name via -i parameter (you can also set it via the run_CUDA/run_OpenCL scripts)
+
 #### Version 1.4.0 (08/23/2018)
 * block 80k fork support, only mines GPU blocks, idle during CPU ones
 * Linux support

@@ -1,21 +1,22 @@
-### How does arionum-gpu-miner v1.4.0 handles the fork ?
+### What are the strengths of arionum-gpu-miner v1.5.0 ?
 
-For simplicity and stability and in order to release a version in a reasonable time, v1.4.0 behaves like this:
-
-* During GPU blocks, it will mine at full speed
-* During CPU blocks, it will **NOT** mine
-
-### Will you implement GPU mining of CPU blocks ?
-
-Yes, but not ETA for now, I will release it when ready, no need to ping me about this on Discord or other social networks.
-
-### What are the strengths of arionum-gpu-miner v1.4.0 ?
-
-* High GPU mining performance
+* High performance GPU mining (GPU blocks)
 * Low CPU usage (only 1 thread to manage all GPU jobs)
 * CUDA and OpenCL support
 * Uses cpprestsdk (supports http / https pools)
 * Linux and Windows 10 support
+
+### Example settings & Hashrate ?
+
+    -----------------------------------------------------------------
+    |       GPU    |   Params     |      OS     |  CPU   |   GPU    |
+    -----------------------------------------------------------------
+    | GTX460, 4GB  | -t 1 -b 224  |  Ubuntu 17  | 8 H/s  | 408 H/s  |
+	-----------------------------------------------------------------
+	| GTX460, 4GB  | -t 1 -b 224  |  HiveOS     | 8 H/s  | 405 H/s  |
+    -----------------------------------------------------------------
+    | VEGA64, 8GB  | -t 2 -b 224  |  Windows 10 | 5 H/s  | 1925 H/s |
+    -----------------------------------------------------------------
 
 ### Performance vs ariominer ?
 
@@ -26,18 +27,14 @@ It is important to note that **CPU mining was disabled in ariominer** in order t
     -----------------------------------------------------------------------------------------------------------
     |       GPU    |          Notes        |      OS     |         ariominer        |    arionum-gpu-miner    |
     -----------------------------------------------------------------------------------------------------------
-    | GTX460, 4GB  | Xeon, 4 cores, 2.4Ghz |  Ubuntu 17  | 250 H/s,  20% CPU usage  |  420 H/s, 7% CPU usage  |
+    | GTX460, 4GB  | Xeon, 4 cores, 2.4Ghz |  Ubuntu 17  | 250 H/s,  20% CPU usage  |  407 H/s, 7% CPU usage  |
     -----------------------------------------------------------------------------------------------------------
-    | GTX970, 4GB |  single gpu            |  Windows 10 | 720  H/s                 |                         |
+    | VEGA64, 8GB  | i7, 6 cores, 3.6Ghz   |  Windows 10 | 1270 H/s, 2% CPU usage   |  1925 H/s, 4% CPU usage |
     -----------------------------------------------------------------------------------------------------------
-    | 1080Ti, 11GB | single gpu            |  Windows 10 | 1900 H/s                 |                         |
+    | M500M, 2GB   | i7, 4 cores, 2.5Ghz   |  Windows 10 | 56 H/s, 20% CPU usage    |  ?? H/s, 5% CPU usage   |
     -----------------------------------------------------------------------------------------------------------
-    | 1080Ti, 11GB | multi gpu             |  HiveOS     | 1600 H/s                 |                         |
-    -----------------------------------------------------------------------------------------------------------
-    | VEGA64, 8GB  | i7, 6 cores, 3.6Ghz   |  Windows 10 | 1270 H/s, 2% CPU usage   |  1880 H/s, 4% CPU usage |
-    -----------------------------------------------------------------------------------------------------------
-    | M500M, 2GB   | i7, 4 cores, 2.5Ghz   |  Windows 10 | 56 H/s, 20% CPU usage    |  68 H/s, 5% CPU usage   |
-    -----------------------------------------------------------------------------------------------------------
+
+For CPU block mining, arionum-gpu-miner is currently way slower than ariominer, this will be improved in future versions.
 
 ### Can I use a CPU miner at the same time as the GPU miner ?
 
@@ -53,7 +50,7 @@ The only way to solo mine using arionum-gpu-miner for now is by using https://ar
 
 But be aware that because of the 1% fee, each time you find a block there is 1 chance on 100 that the full reward will be taken as fees
 
-I have plans to implement proper solo mining to your own node and with a better fee system in the future.
+I have plans to implement proper solo mining with a better fee system in the future.
 
 ### What happened with the Arionum fork ?
 
