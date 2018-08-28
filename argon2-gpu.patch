@@ -228,10 +228,10 @@ index ced34f5..c03a742 100644
      return err;
  }
 diff --git a/include/argon2-opencl/kernelrunner.h b/include/argon2-opencl/kernelrunner.h
-index a1bba8b..bdac6a8 100644
+index a1bba8b..b985e2f 100644
 --- a/include/argon2-opencl/kernelrunner.h
 +++ b/include/argon2-opencl/kernelrunner.h
-@@ -17,10 +17,10 @@ private:
+@@ -17,13 +17,15 @@ private:
      bool bySegment;
      bool precompute;
  
@@ -244,7 +244,12 @@ index a1bba8b..bdac6a8 100644
  
      std::size_t memorySize;
  
-@@ -42,14 +42,15 @@ public:
++    void setKernelsArgs();
++    void allocateAndPrecomputeRefs();
+     void precomputeRefs();
+ 
+ public:
+@@ -42,14 +44,15 @@ public:
                   const Argon2Params *params, const Device *device,
                   std::uint32_t batchSize, bool bySegment, bool precompute);
  
@@ -673,10 +678,10 @@ index 22949f3..927a44d 100644
          throw;
      }
 diff --git a/lib/argon2-opencl/kernelrunner.cpp b/lib/argon2-opencl/kernelrunner.cpp
-index 9fe39b4..1b3c755 100644
+index 9fe39b4..46a3f51 100644
 --- a/lib/argon2-opencl/kernelrunner.cpp
 +++ b/lib/argon2-opencl/kernelrunner.cpp
-@@ -1,16 +1,57 @@
+@@ -1,20 +1,68 @@
  #include "kernelrunner.h"
  
  #include <stdexcept>
@@ -693,39 +698,8 @@ index 9fe39b4..1b3c755 100644
 +//#define SINGLE_QUEUE_PER_DEVICE
 +//#define FLUSH_ALL
 +//#define SKIP_MEM_TRANSFERS
-+//#define PROFILE
 +
-+#ifdef PROFILE
-+#include <chrono>
-+using std::chrono::high_resolution_clock;
-+
-+class PerfScope {
-+public:
-+    PerfScope(const std::string &_comment, bool _always_dump=false) : comment(_comment), always_dump(_always_dump) {
-+        startT = high_resolution_clock::now();
-+    }
-+
-+    ~PerfScope() {
-+        std::chrono::duration<float> duration = high_resolution_clock::now() - startT;
-+        float durationMs = duration.count() * 1000.f;
-+        if (always_dump) {
-+            std::cout << "|" << comment << "| => " << std::fixed << std::setprecision(2) << durationMs << " ms" << std::endl;
-+        }
-+        else if (durationMs > 1.f) {
-+            std::cout << "LONG |" << comment << "| => " << std::fixed << std::setprecision(2) << durationMs << " ms" << std::endl;
-+        }
-+    }
-+
-+    std::chrono::time_point<std::chrono::high_resolution_clock> startT;
-+    std::string comment;
-+    bool always_dump;
-+};
-+#else
-+class PerfScope {
-+public:
-+    PerfScope(const std::string &_comment, bool _always_dump = false) {};
-+};
-+#endif
++#include "../../include/perfscope.h"
 +
  namespace argon2 {
  namespace opencl {
@@ -737,7 +711,49 @@ index 9fe39b4..1b3c755 100644
  enum {
      ARGON2_REFS_PER_BLOCK = ARGON2_BLOCK_SIZE / (2 * sizeof(cl_uint)),
  };
-@@ -27,12 +68,18 @@ KernelRunner::KernelRunner(const ProgramContext *programContext,
+ 
++void KernelRunner::allocateAndPrecomputeRefs() {
++    auto context = programContext->getContext();
++    std::uint32_t passes = params->getTimeCost();
++    std::uint32_t lanes = params->getLanes();
++    std::uint32_t segmentBlocks = params->getSegmentBlocks();
++
++    Type type = programContext->getArgon2Type();
++    if ((type == ARGON2_I || type == ARGON2_ID) && precompute) {
++        std::uint32_t segments =
++            type == ARGON2_ID
++            ? lanes * (ARGON2_SYNC_POINTS / 2)
++            : passes * lanes * ARGON2_SYNC_POINTS;
++        std::size_t refsSize = segments * segmentBlocks * sizeof(cl_uint) * 2;
++        std::cout << "[INFO] Allocating " << std::fixed << std::setprecision(2) << (double)refsSize / (1024.0 * 1024.0) << " MB for refs..." << std::endl;
++        refsBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, refsSize);
++        precomputeRefs();
++    }
++}
++
++void KernelRunner::setKernelsArgs() {
++    std::uint32_t passes = params->getTimeCost();
++    std::uint32_t lanes = params->getLanes();
++    std::uint32_t segmentBlocks = params->getSegmentBlocks();
++
++    kernel.setArg<cl::Buffer>(1, memoryBuffer);
++    if (precompute) {
++        kernel.setArg<cl::Buffer>(2, refsBuffer);
++        kernel.setArg<cl_uint>(3, passes);
++        kernel.setArg<cl_uint>(4, lanes);
++        kernel.setArg<cl_uint>(5, segmentBlocks);
++    }
++    else {
++        kernel.setArg<cl_uint>(2, passes);
++        kernel.setArg<cl_uint>(3, lanes);
++        kernel.setArg<cl_uint>(4, segmentBlocks);
++    }
++}
++
+ KernelRunner::KernelRunner(const ProgramContext *programContext,
+                            const Argon2Params *params, const Device *device,
+                            std::uint32_t batchSize, bool bySegment, bool precompute)
+@@ -27,35 +75,24 @@ KernelRunner::KernelRunner(const ProgramContext *programContext,
      std::uint32_t lanes = params->getLanes();
      std::uint32_t segmentBlocks = params->getSegmentBlocks();
  
@@ -762,33 +778,66 @@ index 9fe39b4..1b3c755 100644
  #endif
  
      memoryBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, memorySize);
-@@ -82,6 +129,25 @@ KernelRunner::KernelRunner(const ProgramContext *programContext,
-     }
- }
  
+-    Type type = programContext->getArgon2Type();
+-    if ((type == ARGON2_I || type == ARGON2_ID) && precompute) {
+-        std::uint32_t segments =
+-                type == ARGON2_ID
+-                ? lanes * (ARGON2_SYNC_POINTS / 2)
+-                : passes * lanes * ARGON2_SYNC_POINTS;
+-
+-        std::size_t refsSize = segments * segmentBlocks * sizeof(cl_uint) * 2;
+-
+-#ifndef NDEBUG
+-        std::cerr << "[INFO] Allocating " << refsSize << " bytes for refs..."
+-                  << std::endl;
+-#endif
+-
+-        refsBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, refsSize);
+-
+-        precomputeRefs();
+-    }
+-
++    allocateAndPrecomputeRefs();
++   
+     static const char *KERNEL_NAMES[2][2] = {
+         {
+             "argon2_kernel_oneshot",
+@@ -69,17 +106,23 @@ KernelRunner::KernelRunner(const ProgramContext *programContext,
+ 
+     kernel = cl::Kernel(programContext->getProgram(),
+                         KERNEL_NAMES[precompute][bySegment]);
+-    kernel.setArg<cl::Buffer>(1, memoryBuffer);
+-    if (precompute) {
+-        kernel.setArg<cl::Buffer>(2, refsBuffer);
+-        kernel.setArg<cl_uint>(3, passes);
+-        kernel.setArg<cl_uint>(4, lanes);
+-        kernel.setArg<cl_uint>(5, segmentBlocks);
+-    } else {
+-        kernel.setArg<cl_uint>(2, passes);
+-        kernel.setArg<cl_uint>(3, lanes);
+-        kernel.setArg<cl_uint>(4, segmentBlocks);
++    
++    setKernelsArgs();
++}
++
 +void KernelRunner::reconfigureArgon(const Argon2Params *newParams, std::uint32_t newBatchSize) {
-+    if (precompute || bySegment) {
-+        printf("reconfigureArgon not supported with precompute/bySegment modes !\n");
++    if (bySegment) {
++        printf("reconfigureArgon not supported with bySegment mode !\n");
 +        exit(1);
-+    }
+     }
 +
 +    params = newParams;
 +    batchSize = newBatchSize;
 +    memorySize = params->getMemorySize() * static_cast<std::size_t>(batchSize);
 +
-+    std::uint32_t passes = params->getTimeCost();
-+    std::uint32_t lanes = params->getLanes();
-+    std::uint32_t segmentBlocks = params->getSegmentBlocks();
-+
-+    kernel.setArg<cl_uint>(2, passes);
-+    kernel.setArg<cl_uint>(3, lanes);
-+    kernel.setArg<cl_uint>(4, segmentBlocks);
-+}
-+
++    allocateAndPrecomputeRefs();
++    
++    setKernelsArgs();
+ }
+ 
  void KernelRunner::precomputeRefs()
- {
-     std::uint32_t passes = params->getTimeCost();
-@@ -106,36 +172,60 @@ void KernelRunner::precomputeRefs()
+@@ -106,36 +149,60 @@ void KernelRunner::precomputeRefs()
  
      cl::NDRange globalRange { THREADS_PER_LANE * segments * segmentAddrBlocks };
      cl::NDRange localRange { THREADS_PER_LANE };
@@ -871,7 +920,7 @@ index 9fe39b4..1b3c755 100644
  }
  
  void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
-@@ -160,36 +250,51 @@ void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
+@@ -160,36 +227,51 @@ void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
      cl::NDRange globalRange { THREADS_PER_LANE * lanes, batchSize };
      cl::NDRange localRange { THREADS_PER_LANE * lanesPerBlock, jobsPerBlock };
  
@@ -916,18 +965,18 @@ index 9fe39b4..1b3c755 100644
 +        end.wait();
 +    }
 +}
- 
--    cl_ulong nsStart = start.getProfilingInfo<CL_PROFILING_COMMAND_END>();
--    cl_ulong nsEnd   = end.getProfilingInfo<CL_PROFILING_COMMAND_END>();
++
 +bool KernelRunner::resultsReady() {
 +    // seems like some platforms (ex: Intel Integrated) need the flush call
 +    cl::detail::errHandler(queue->flush(), "KernelRunner::resultsReady, flushing queue");
  
--    return (nsEnd - nsStart) / (1000.0F * 1000.0F);
+-    cl_ulong nsStart = start.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+-    cl_ulong nsEnd   = end.getProfilingInfo<CL_PROFILING_COMMAND_END>();
 +    cl_int err = NULL;
 +    auto status = end.getInfo<CL_EVENT_COMMAND_EXECUTION_STATUS>(&err);
 +    cl::detail::errHandler(err, "KernelRunner::resultsReady");
-+
+ 
+-    return (nsEnd - nsStart) / (1000.0F * 1000.0F);
 +    if (status == CL_COMPLETE) {
 +        return true;
 +    }
@@ -938,7 +987,7 @@ index 9fe39b4..1b3c755 100644
  
  } // namespace opencl
 diff --git a/lib/argon2-opencl/processingunit.cpp b/lib/argon2-opencl/processingunit.cpp
-index 598ced7..67971f3 100644
+index 598ced7..fb34a0a 100644
 --- a/lib/argon2-opencl/processingunit.cpp
 +++ b/lib/argon2-opencl/processingunit.cpp
 @@ -13,6 +13,9 @@ static bool isPowerOfTwo(std::uint32_t x)
@@ -951,7 +1000,7 @@ index 598ced7..67971f3 100644
  ProcessingUnit::ProcessingUnit(
          const ProgramContext *programContext, const Argon2Params *params,
          const Device *device, std::size_t batchSize,
-@@ -23,115 +26,130 @@ ProcessingUnit::ProcessingUnit(
+@@ -23,115 +26,139 @@ ProcessingUnit::ProcessingUnit(
        bestLanesPerBlock(runner.getMinLanesPerBlock()),
        bestJobsPerBlock(runner.getMinJobsPerBlock())
  {
@@ -967,18 +1016,24 @@ index 598ced7..67971f3 100644
          setPassword(i, NULL, 0);
      }
  
--    if (runner.getMaxLanesPerBlock() > runner.getMinLanesPerBlock()
++#if 0
+     if (runner.getMaxLanesPerBlock() > runner.getMinLanesPerBlock()
 -            && isPowerOfTwo(runner.getMaxLanesPerBlock())) {
 -#ifndef NDEBUG
 -        std::cerr << "[INFO] Tuning lanes per block..." << std::endl;
 -#endif
--
--        float bestTime = std::numeric_limits<float>::infinity();
--        for (std::uint32_t lpb = 1; lpb <= runner.getMaxLanesPerBlock();
++        && isPowerOfTwo(runner.getMaxLanesPerBlock())) {
++        //#ifndef NDEBUG
++        std::cout << "[INFO] Tuning lanes per block..." << std::endl;
++        //#endif
+ 
+         float bestTime = std::numeric_limits<float>::infinity();
+         for (std::uint32_t lpb = 1; lpb <= runner.getMaxLanesPerBlock();
 -             lpb *= 2)
--        {
--            float time;
--            try {
++            lpb *= 2)
+         {
+             float time;
+             try {
 -                runner.run(lpb, bestJobsPerBlock);
 -                time = runner.finish();
 -            } catch(cl::Error &ex) {
@@ -986,140 +1041,105 @@ index 598ced7..67971f3 100644
 -                std::cerr << "[WARN]   OpenCL error on " << lpb
 -                          << " lanes per block: " << ex.what() << std::endl;
 -#endif
--                break;
--            }
--
++                //runner.run(lpb, bestJobsPerBlock);
++                //time = runner.finish();
++            }
++            catch (cl::Error &ex) {
++                //#ifndef NDEBUG
++                std::cout << "[WARN]   OpenCL error on " << lpb
++                    << " lanes per block: " << ex.what() << std::endl;
++                //#endif
+                 break;
+             }
+ 
 -#ifndef NDEBUG
 -            std::cerr << "[INFO]   " << lpb << " lanes per block: "
 -                      << time << " ms" << std::endl;
 -#endif
--
--            if (time < bestTime) {
--                bestTime = time;
--                bestLanesPerBlock = lpb;
--            }
--        }
++            //#ifndef NDEBUG
++            std::cout << "[INFO]   " << lpb << " lanes per block: "
++                << time << " ms" << std::endl;
++            //#endif
+ 
+             if (time < bestTime) {
+                 bestTime = time;
+                 bestLanesPerBlock = lpb;
+             }
+         }
 -#ifndef NDEBUG
 -        std::cerr << "[INFO] Picked " << bestLanesPerBlock
 -                  << " lanes per block." << std::endl;
 -#endif
--    }
-+//        if (runner.getMaxLanesPerBlock() > runner.getMinLanesPerBlock()
-+//             && isPowerOfTwo(runner.getMaxLanesPerBlock())) {
-+//#ifndef NDEBUG
-+//        std::cerr << "[INFO] Tuning lanes per block..." << std::endl;
-+//#endif
-+//
-+//        float bestTime = std::numeric_limits<float>::infinity();
-+//        for (std::uint32_t lpb = 1; lpb <= runner.getMaxLanesPerBlock();
-+//             lpb *= 2)
-+//        {
-+//            float time;
-+//            try {
-+//                runner.run(lpb, bestJobsPerBlock);
-+//                time = runner.finish();
-+//            } catch(cl::Error &ex) {
-+//#ifndef NDEBUG
-+//                std::cerr << "[WARN]   OpenCL error on " << lpb
-+//                          << " lanes per block: " << ex.what() << std::endl;
-+//#endif
-+//                break;
-+//            }
-+//
-+//#ifndef NDEBUG
-+//            std::cerr << "[INFO]   " << lpb << " lanes per block: "
-+//                      << time << " ms" << std::endl;
-+//#endif
-+//
-+//            if (time < bestTime) {
-+//                bestTime = time;
-+//                bestLanesPerBlock = lpb;
-+//            }
-+//        }
-+//#ifndef NDEBUG
-+//        std::cerr << "[INFO] Picked " << bestLanesPerBlock
-+//                  << " lanes per block." << std::endl;
-+//#endif
-+    //}
++        //#ifndef NDEBUG
++        std::cout << "[INFO] Picked " << bestLanesPerBlock
++            << " lanes per block." << std::endl;
++        //#endif
+     }
  
      /* Only tune jobs per block if we hit maximum lanes per block: */
--    if (bestLanesPerBlock == runner.getMaxLanesPerBlock()
+     if (bestLanesPerBlock == runner.getMaxLanesPerBlock()
 -            && runner.getMaxJobsPerBlock() > runner.getMinJobsPerBlock()
 -            && isPowerOfTwo(runner.getMaxJobsPerBlock())) {
 -#ifndef NDEBUG
--        std::cerr << "[INFO] Tuning jobs per block..." << std::endl;
++        && runner.getMaxJobsPerBlock() > runner.getMinJobsPerBlock()
++        && isPowerOfTwo(runner.getMaxJobsPerBlock())) {
++
++        //#ifndef NDEBUG
+         std::cerr << "[INFO] Tuning jobs per block..." << std::endl;
 -#endif
--
--        float bestTime = std::numeric_limits<float>::infinity();
--        for (std::uint32_t jpb = 1; jpb <= runner.getMaxJobsPerBlock();
++        //#endif
+ 
+         float bestTime = std::numeric_limits<float>::infinity();
+         for (std::uint32_t jpb = 1; jpb <= runner.getMaxJobsPerBlock();
 -             jpb *= 2)
--        {
--            float time;
--            try {
++            jpb *= 2)
+         {
+             float time;
+             try {
 -                runner.run(bestLanesPerBlock, jpb);
 -                time = runner.finish();
 -            } catch(cl::Error &ex) {
 -#ifndef NDEBUG
--                std::cerr << "[WARN]   OpenCL error on " << jpb
++                //runner.run(bestLanesPerBlock, jpb);
++                //time = runner.finish();
++            }
++            catch (cl::Error &ex) {
++                //#ifndef NDEBUG
+                 std::cerr << "[WARN]   OpenCL error on " << jpb
 -                          << " jobs per block: " << ex.what() << std::endl;
 -#endif
--                break;
--            }
--
++                    << " jobs per block: " << ex.what() << std::endl;
++                //#endif
+                 break;
+             }
+ 
 -#ifndef NDEBUG
--            std::cerr << "[INFO]   " << jpb << " jobs per block: "
++            //#ifndef NDEBUG
+             std::cerr << "[INFO]   " << jpb << " jobs per block: "
 -                      << time << " ms" << std::endl;
 -#endif
--
--            if (time < bestTime) {
--                bestTime = time;
--                bestJobsPerBlock = jpb;
--            }
--        }
++                << time << " ms" << std::endl;
++            //#endif
+ 
+             if (time < bestTime) {
+                 bestTime = time;
+                 bestJobsPerBlock = jpb;
+             }
+         }
 -#ifndef NDEBUG
--        std::cerr << "[INFO] Picked " << bestJobsPerBlock
++
++
++        //bestJobsPerBlock = 128;
++
++
++        //#ifndef NDEBUG
+         std::cerr << "[INFO] Picked " << bestJobsPerBlock
 -                  << " jobs per block." << std::endl;
 -#endif
--    }
-+//  if (bestLanesPerBlock == runner.getMaxLanesPerBlock()
-+//        && runner.getMaxJobsPerBlock() > runner.getMinJobsPerBlock()
-+//        && isPowerOfTwo(runner.getMaxJobsPerBlock())) {
-+//
-+//#ifndef NDEBUG
-+//        std::cerr << "[INFO] Tuning jobs per block..." << std::endl;
-+//#endif
-+//
-+//        float bestTime = std::numeric_limits<float>::infinity();
-+//        for (std::uint32_t jpb = 1; jpb <= runner.getMaxJobsPerBlock();
-+//             jpb *= 2)
-+//        {
-+//            float time;
-+//            try {
-+//                runner.run(bestLanesPerBlock, jpb);
-+//                time = runner.finish();
-+//            } catch(cl::Error &ex) {
-+//#ifndef NDEBUG
-+//                std::cerr << "[WARN]   OpenCL error on " << jpb
-+//                          << " jobs per block: " << ex.what() << std::endl;
-+//#endif
-+//                break;
-+//            }
-+//
-+//#ifndef NDEBUG
-+//            std::cerr << "[INFO]   " << jpb << " jobs per block: "
-+//                      << time << " ms" << std::endl;
-+//#endif
-+//
-+//            if (time < bestTime) {
-+//                bestTime = time;
-+//                bestJobsPerBlock = jpb;
-+//            }
-+//        }
-+//#ifndef NDEBUG
-+//        std::cerr << "[INFO] Picked " << bestJobsPerBlock
-+//                  << " jobs per block." << std::endl;
-+//#endif
-+//    }
++            << " jobs per block." << std::endl;
++        //#endif
+     }
++#endif
  }
  
  void ProcessingUnit::setPassword(std::size_t index, const void *pw,

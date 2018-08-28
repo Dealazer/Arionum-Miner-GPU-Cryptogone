@@ -67,20 +67,26 @@ void Miner::generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buf
     to_base64(dst, dst_len, buffer, buffer_size);
 }
 
-#ifdef TEST_GPU_BLOCK
-// GPU block test
+// $base = $this->publicKey."-".$nonce."-".$this->block."-".$this->difficulty;
+#if (TEST_MODE==TEST_GPU)
 const string REF_NONCE = "swGetfIyLrh8XYHcL7cM5kEElAJx3XkSrgTGveDN2w";
-//$base = $this->publicKey."-".$nonce."-".$this->block."-".$this->difficulty;
 const string REF_BASE =
-    string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") + // publicKey
-    REF_NONCE  + string("-") + // nonce
-    string("6327pZD7RSArjnD9wiVM6eUKkNck4Q5uCErh5M2H4MK2PQhgPmFTSmnYHANEVxHB82aVv6FZvKdmyUKkCoAhCXDy") + string("-") + // block
-    string("10614838");  // difficulty
+    /* pubkey */ string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") +
+    /* nonce  */ REF_NONCE + string("-") +
+    /* block  */ string("6327pZD7RSArjnD9wiVM6eUKkNck4Q5uCErh5M2H4MK2PQhgPmFTSmnYHANEVxHB82aVv6FZvKdmyUKkCoAhCXDy") + string("-") +
+    /* diff   */ string("10614838");
+#elif (TEST_MODE==TEST_CPU)
+const string REF_NONCE = "YYEETiqrzrmgIApJlA3WKfuYPdSQI4F3U04GirBhA";
+const string REF_BASE =
+    /* pubkey */ string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") +
+    /* nonce  */ REF_NONCE + string("-") +
+    /* block  */ string("KwkMnGF1qJeFh9nwZPTf3x86TmVF1RJaCPwfpKePVsAimJKTzA8H2ndx3FaRu7K54Md36yTcYKLaQtQNzRX4tAg") + string("-") +
+    /* diff   */ string("30792058");
 #endif
 
 void Miner::buildBatch() {
     for (uint32_t j = 0; j < getCurrentBatchSize(); ++j) {
-#ifdef TEST_GPU_BLOCK
+#if (TEST_MODE)
         nonces.push_back(REF_NONCE);
         bases.push_back(REF_BASE);
 #else
@@ -128,13 +134,17 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
 
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
-#ifdef TEST_GPU_BLOCK
+#if (TEST_MODE == TEST_GPU)
     const string REF_DURATION = "491522547412523425129";
+#elif (TEST_MODE == TEST_CPU)
+    const string REF_DURATION = "1054924814964225626";
+#endif
 
+#if TEST_MODE
     if (duration != REF_DURATION) {
         static bool errShown = false;
         if (!errShown) {
-            std::cout << std::endl << "-------------- TEST_GPU_BLOCK: invalid duration: " << duration << " / " << REF_DURATION << std::endl;
+            std::cout << std::endl << "-------------- TEST_MODE: invalid duration: " << duration << " / " << REF_DURATION << std::endl;
             std::cout << std::endl << "argon=" << *argon << std::endl;
             errShown = true;
             exit(1);
@@ -306,7 +316,12 @@ void Miner::hostProcessResults() {
 
     // now check each one (to see if we need to submit it or not)
     auto curBlockData = updater->getData();
-    bool blockHeightStillOk = curBlockData.getHeight() == data.getHeight();
+    bool blockHeightStillOk = 
+#if TEST_MODE
+        true;
+#else
+        curBlockData.getHeight() == data.getHeight();
+#endif
     if (blockHeightStillOk) {
         auto nBatches = getCurrentBatchSize();
         for (uint32_t j = 0; j < nBatches; ++j) {

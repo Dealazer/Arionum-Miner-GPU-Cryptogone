@@ -22,7 +22,10 @@
 
 // enabling this will always use same pass/salt/nonce and exit(1) if result not matching reference
 // (of course will also not submit anything)
-//#define TEST_GPU_BLOCK
+#define TEST_OFF (0)
+#define TEST_GPU (1)
+#define TEST_CPU (2)
+#define TEST_MODE (TEST_OFF)
 
 #include "stats.h"
 #include "minersettings.h"
@@ -123,11 +126,13 @@ public:
         client = new http_client(poolAddress, config);
         generator = std::mt19937(device());
         distribution = std::uniform_int_distribution<int>(0, 255);
+        
+#if (TEST_MODE == TEST_CPU)
+        salt = "0KVwsNr6yT42uDX9"; // == from_base64("MEtWd3NOcjZ5VDQydURYOQ")
+#elif (TEST_MODE == TEST_GPU)
+        salt = "cifE2rK4nvmbVgQu"; // == from_base64("Y2lmRTJySzRudm1iVmdRdQ")
+#else
         salt = randomStr(16);
-
-#ifdef TEST_GPU_BLOCK
-        // from_base64("Y2lmRTJySzRudm1iVmdRdQ") -> "cifE2rK4nvmbVgQu"
-        salt = "cifE2rK4nvmbVgQu";
 #endif
 
         // prepare array of gpu task results buffers

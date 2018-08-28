@@ -21,7 +21,8 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, s
     params = new argon2::Argon2Params(ARGON_OUTLEN, salt.data(), ARGON_SALTLEN, nullptr, 0, nullptr, 0, 4, 16384, 4);
 
     try {
-        unit = new argon2::opencl::ProcessingUnit(progCtx, params, device, getInitialBatchSize(), false, false);
+        bool precompute = ms->precompute();
+        unit = new argon2::opencl::ProcessingUnit(progCtx, params, device, getInitialBatchSize(), false, precompute);
     }
     catch (const std::exception& e) {
         cout << "Error: exception while creating opencl unit: " << e.what() << ", try to reduce batch size (-b parameter), exiting now :-(" << endl;

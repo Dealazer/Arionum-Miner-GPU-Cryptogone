@@ -63,7 +63,6 @@ const chrono::time_point<chrono::system_clock> &Stats::getRoundStart() const {
     return roundStart;
 }
 
-
 uint32_t Stats::rndRange(uint32_t n) {
     static bool s_inited = false;
     static mt19937 s_gen;
@@ -169,6 +168,12 @@ void Stats::endRound() {
     // compute hashrate
     roundHashRate = ((double)roundHashes * 1000.0) / (double)roundDurationMs;
 
+#if (TEST_MODE == TEST_CPU)
+    roundType = BLOCK_CPU;
+#elif (TEST_MODE == TEST_GPU)
+    roundType = BLOCK_GPU;
+#endif
+
     // record stats for averages
     if (roundType == BLOCK_GPU) {
         rounds_gpu++;
@@ -231,7 +236,7 @@ ostream &operator<<(ostream &os, const Stats &settings) {
 
         // column names
         cout << setw(COL_DATE) << left          << "Date";
-#ifndef TEST_GPU_BLOCK
+#if !TEST_MODE
         cout << setw(COL_HEIGHT) << left        << "Height";
 #endif
 
@@ -239,7 +244,7 @@ ostream &operator<<(ostream &os, const Stats &settings) {
         cout << setw(COL_HS) << left            << oss_hashrate_instant.str();
         cout << setw(COL_HS_AVG) << left        << "H/S-avg";
 
-#ifndef TEST_GPU_BLOCK
+#if !TEST_MODE
         cout << setw(COL_SHARES) << left        << "Shares"
              << setw(COL_BLOCKS) << left        << "Blocks"
              << setw(COL_REJECTS) << left       << "Reject"
@@ -254,11 +259,13 @@ ostream &operator<<(ostream &os, const Stats &settings) {
     // ------------------------------------- CONTENT
 
     // date
+#pragma warning(disable : 4996)
     auto roundStart = settings.getRoundStart();
     auto t = std::chrono::system_clock::to_time_t(roundStart);
     cout << setw(COL_DATE) << left << std::put_time(std::localtime(&t), "%D %T   ");
+#pragma warning(default : 4996)
 
-#ifndef TEST_GPU_BLOCK
+#if !TEST_MODE
     // height
     cout << setw(COL_HEIGHT) << left << (s_pUpdater ? data.getHeight() : (-1));
 
@@ -299,8 +306,9 @@ ostream &operator<<(ostream &os, const Stats &settings) {
 #else
     // test mining stats
     cout << std::fixed << std::setprecision(1);
-    cout << setw(COL_TYPE)    << left << "GPU_T"
-         << setw(COL_HEIGHT)  << left << settings.getRoundHashRate();
+    cout << setw(COL_TYPE)   << left << ((TEST_MODE == TEST_GPU) ? "GPU_T" : "CPU_T")
+         << setw(COL_HS)     << left << settings.getRoundHashRate()
+         << setw(COL_HS_AVG) << left << settings.getAvgHashrate(((TEST_MODE == TEST_GPU) ? BLOCK_GPU : BLOCK_CPU));
 #endif
 
     cout << endl;
