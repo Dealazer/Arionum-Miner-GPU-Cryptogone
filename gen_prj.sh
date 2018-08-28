@@ -19,7 +19,7 @@ fi
 
 mkdir -p build
 cd build
-cmake -D"CMAKE_BUILD_TYPE=Release" $extra -G"$target" ../
+cmake -DCMAKE_BUILD_TYPE=ReleaseWithDebugInfo $extra -G"$target" ../
 cd ..
 
 

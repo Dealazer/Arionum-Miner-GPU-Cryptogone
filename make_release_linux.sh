@@ -22,7 +22,7 @@ rm -f "$ARCH_PATH"
 
 # Build
 pushd build
-make
+make -j
 
 if ! [ -f "arionum-cuda-miner" ]; then
 	echo "Warning CUDA miner not found, compilation failed or CUDA SDK not installed..."

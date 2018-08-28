@@ -277,7 +277,7 @@ int commonMain(const char *const *argv) {
     setConsoleSize(150, 40, 2000);
 #else
     // install error handler to show stack trace
-    signal(SIGSEGV, handler);
+//    signal(SIGSEGV, handler);
 #endif
 
     // show version
