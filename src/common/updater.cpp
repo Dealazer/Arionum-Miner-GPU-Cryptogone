@@ -119,7 +119,7 @@ void Updater::start() {
     while (true) {
         cout << *stats;
 
-        auto newData = getData();
+        MinerData newData = getData();
         stats->beginRound(newData);
         {
             update();
@@ -159,6 +159,8 @@ void Updater::processResponse(const json::value *value) {
                 }
 
                 if (data == NULL || data->isNewBlock(&block)) {
+                    if (data)
+                        delete data;
                     data = new MinerData(
                         status, difficulty, limitAsString, block, public_key,
                         height,
@@ -181,6 +183,9 @@ void Updater::processResponse(const json::value *value) {
 
 MinerData Updater::getData() {
     std::lock_guard<std::mutex> lg(mutex);
+    if (!data) {
+        return {};
+    }
     return *data;
 }
 

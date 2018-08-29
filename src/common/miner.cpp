@@ -279,9 +279,10 @@ void Miner::encode(void *res, size_t reslen, std::string &out) {
 
 void Miner::hostPrepareTaskData() {
     // see if block changed
-    if (!data.isValid() || data.isNewBlock(updater->getData().getBlock())) {
+    auto curBlock = updater->getData().getBlock();
+    if (!data.isValid() || data.isNewBlock(curBlock)) {
         data = updater->getData();
-        while (!data.isValid()) {
+        while (data.isValid() == false) {
             std::cout << "--------------------------------------------------" << std::endl;
             std::cout << "Warning: cannot get pool info, maybe it is down ?" << std::endl;
             std::cout << "Hashrate will be zero until pool back online..." << std::endl;
@@ -318,12 +319,7 @@ void Miner::hostProcessResults() {
 
     // now check each one (to see if we need to submit it or not)
     auto curBlockData = updater->getData();
-    bool blockHeightStillOk = 
-#if TEST_MODE
-        true;
-#else
-        curBlockData.getHeight() == data.getHeight();
-#endif
+    bool blockHeightStillOk = (TEST_MODE) ? true : (curBlockData.getHeight() == data.getHeight());
     if (blockHeightStillOk) {
         auto nBatches = getCurrentBatchSize();
         for (uint32_t j = 0; j < nBatches; ++j) {

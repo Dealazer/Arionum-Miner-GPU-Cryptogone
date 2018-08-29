@@ -284,7 +284,7 @@ bool feedMiners() {
 
         auto &miner = s_miners[i];
         auto data = s_pUpdater->getData();
-        if (!data.isValid())
+        if (data.isValid()==false)
             return false;
         
         auto blockType = (TEST_MODE == TEST_CPU) ? (BLOCK_CPU) : 

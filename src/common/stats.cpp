@@ -193,10 +193,10 @@ void Stats::endRound() {
 }
 
 ostream &operator<<(ostream &os, const Stats &settings) {
-    //using std::cout;
+    // get current Mining data from updater
     auto data = s_pUpdater->getData();
-
-    // ------------------------------------- HEADER
+    
+    // -- show header
     const int COL_DATE          = 20;
     const int COL_TYPE          = 8;
     const int COL_HEIGHT        = 8;
@@ -212,14 +212,6 @@ ostream &operator<<(ostream &os, const Stats &settings) {
     static unsigned long r = -1;
     r++;
     if (s_forceShowHeaders || (r % 5 == 0)) {
-
-        // block info is shown the first time and stats not shown
-        static bool firstTime = true;
-        if (firstTime) {
-            std::cout << "-- CURRENT BLOCK --" << endl << data;
-            firstTime = false;
-            return os;
-        }
 
         // s_forceShowHeaders management
         if (s_forceShowHeaders) {
@@ -256,7 +248,7 @@ ostream &operator<<(ostream &os, const Stats &settings) {
         cout << endl;
     }
 
-    // ------------------------------------- CONTENT
+    // -- show content
 
     // date
 #pragma warning(disable : 4996)
