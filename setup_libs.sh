@@ -2,11 +2,21 @@
 
 set -e
 
+echo
+echo "- INSTALL ARGON LIB -"
+ARGON_PATH=argon2
+rm -rf "$ARGON_PATH"
+git clone https://bitbucket.org/cryptogone/phc-winner-argon2-for-ario-cpp-miner.git "$ARGON_PATH"
+cd "$ARGON_PATH"
+git checkout opt_arionum
+cd ..
+
 if [ "$1" = "vs2015" ]; then
   vcver="vc14"
 elif [ "$1" = "vs2017" ]; then
   vcver="vc15"
 elif [ "$1" = "linux" ]; then
+  echo "- INSTALL PACKAGES -"
   sudo apt install libgmp-dev python-dev libboost-dev libcpprest-dev zlib1g-dev libssl-dev -y
   exit 0
 else
@@ -25,3 +35,5 @@ echo "- INSTALL CPPREST -"
 echo
 echo "- INSTALL BOOST LIBS -"
 ./vcpkg/vcpkg.exe install boost-algorithm:x64-windows
+
+

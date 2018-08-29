@@ -30,3 +30,4 @@ TODO.md
 build/
 test*.sh
 vega64_params.txt
+argon2/

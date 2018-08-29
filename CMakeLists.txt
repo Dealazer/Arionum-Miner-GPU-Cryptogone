@@ -6,15 +6,17 @@ set(LIBRARY_INSTALL_DIR /usr/local/lib)
 set(INCLUDE_INSTALL_DIR /usr/local/include)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CUDA_FOUND FALSE)
+
+if(UNIX)
+	set(CMAKE_VERBOSE_MAKEFILE ON)
+endif()
 
 if(NOT NO_CUDA)
     find_package(CUDA)
 endif()
 
 if(CUDA_FOUND)
-    message("INFO: Using CUDA version ${CUDA_VERSION}")
     add_definitions(-DHAVE_CUDA=1)
 else()
     message("INFO: Building without CUDA support")
@@ -34,86 +36,89 @@ endif()
 
 add_subdirectory(argon2-gpu)
 
+include_directories("argon2/include")
+
+set(COMMON_SRCS)
+list(APPEND COMMON_SRCS
+    "include/miner_version.h"
+    "include/updater.h"
+    "include/stats.h"
+    "include/minerdata.h"
+    "include/minersettings.h"
+    "include/miner.h"
+    "include/main_common.h"
+    "include/timer.h"    
+	"src/common/updater.cpp"
+    "src/common/stats.cpp"
+    "src/common/minerdata.cpp"
+    "src/common/minersettings.cpp"
+    "src/common/miner.cpp"
+    "src/common/timer.cpp"
+    "src/common/win_tools.cpp"
+    
+    "argon2/include/argon2.h"
+	"argon2/src/opt.c"
+    "argon2/src/argon2.c"
+    "argon2/src/core.c"
+	"argon2/src/encoding.h"
+	"argon2/src/encoding.c"
+	"argon2/src/thread.h"
+	"argon2/src/thread.c"
+	"argon2/src/blake2/blake2b.c"
+)
+
 add_executable(arionum-opencl-miner
-        src/arionum-opencl-miner/main.cpp
-        include/miner.h
+        ${COMMON_SRCS}
         include/openclminer.h
         src/common/openclminer.cpp
-        include/updater.h
-        include/miner_version.h
-        src/common/updater.cpp
-        include/stats.h
-        src/common/stats.cpp
-        include/minerdata.h
-        src/common/minerdata.cpp
-        include/minersettings.h
-        src/common/minersettings.cpp
-        src/common/miner.cpp
-        src/common/win_tools.cpp
-        include/main_common.h
-        include/timer.h
-        src/common/timer.cpp)
-
-if(MSVC)
-target_link_libraries(arionum-opencl-miner
-        argon2-opencl
-        argon2
-        mpir
+        src/arionum-opencl-miner/main.cpp
 )
-endif()
-
-if (UNIX)
-target_link_libraries(arionum-opencl-miner
-       	argon2-opencl
-       	-lOpenCL
-       	-lboost_system
-       	-lssl
-       	-lcrypto
-       	-lgmp
-       	-lpthread
-       	-lcpprest
-)
-endif()
 
 if(CUDA_FOUND)
 add_executable(arionum-cuda-miner
-        src/arionum-cuda-miner/main.cpp
-        include/miner.h
+        ${COMMON_SRCS}
         include/cudaminer.h
-        include/miner_version.h
         src/common/cudaminer.cpp
-        include/updater.h
-        src/common/updater.cpp
-        include/stats.h
-        src/common/stats.cpp
-        include/minerdata.h
-        src/common/minerdata.cpp
-        include/minersettings.h
-        src/common/minersettings.cpp
-        src/common/miner.cpp
-        src/common/win_tools.cpp
-        include/main_common.h
-        include/timer.h
-        src/common/timer.cpp)
+        src/arionum-cuda-miner/main.cpp
+)
+endif()
 
 if(MSVC)
-target_link_libraries(arionum-cuda-miner
-        argon2-cuda
-        argon2
-        mpir
-)
-endif()
+	set(COMMON_LIBS_WIN)
+	list(APPEND COMMON_LIBS_WIN
+		"argon2"
+		"mpir"
+	)
 
-if (UNIX)
-target_link_libraries(arionum-cuda-miner
-       	argon2-cuda
-       	-lboost_system
-       	-lssl
-       	-lcrypto
-       	-lgmp
-       	-lpthread
-       	-lcpprest
-)
-endif()
+	target_link_libraries(arionum-opencl-miner
+			${COMMON_LIBS_WIN}
+			argon2-opencl
+	)
 
+	target_link_libraries(arionum-cuda-miner
+			${COMMON_LIBS_WIN}
+			argon2-cuda
+	)
+elseif (UNIX)
+	set(COMMON_LIBS_UNIX)
+	list(APPEND COMMON_LIBS_UNIX
+		"argon2"
+		"mpir"
+		"-lboost_system"
+		"-lssl"
+		"-lcrypto"
+		"-lgmp"
+		"-lpthread"
+		"-lcpprest"
+	)
+
+	target_link_libraries(arionum-opencl-miner
+			${COMMON_LIBS_UNIX}
+			argon2-opencl
+	)
+
+	target_link_libraries(arionum-cuda-miner
+			${COMMON_LIBS_UNIX}
+			argon2-cuda
+	)
 endif()
