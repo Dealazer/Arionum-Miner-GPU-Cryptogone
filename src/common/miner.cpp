@@ -144,8 +144,10 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     if (duration != REF_DURATION) {
         static bool errShown = false;
         if (!errShown) {
-            std::cout << std::endl << "-------------- TEST_MODE: invalid duration: " << duration << " / " << REF_DURATION << std::endl;
-            std::cout << std::endl << "argon=" << *argon << std::endl;
+            std::cout << std::endl;
+            std::cout << "Argon test failed, aborting ..." << std::endl;
+            std::cout << *argon << std::endl;
+            std::cout << duration << " / " << REF_DURATION << std::endl;
             errShown = true;
             exit(1);
         }
@@ -166,7 +168,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
 
     mpz_class maxLong = LONG_MAX;
     if (!dd && mpz_cmp(rest.get_mpz_t(), maxLong.get_mpz_t()) < 0) {
-        long si = rest.get_si();
+        long si = (long)rest.get_si();
         stats->newDl(si, data.getBlockType());
     }
 

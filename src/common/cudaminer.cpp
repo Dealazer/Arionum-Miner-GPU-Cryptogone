@@ -42,11 +42,12 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_
     auto nLanes = 4;
     params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, 4, 16384, nLanes);
 
+    const auto OPTIMIZATION_MODE = BASELINE;
     try {
-        unit = new argon2::cuda::ProcessingUnit(progCtx, params, device, getInitialBatchSize(), false, false);
+        unit = new argon2::cuda::ProcessingUnit(progCtx, params, device, getInitialBatchSize(), OPTIMIZATION_MODE);
     }
     catch (const std::exception& e) {
-        cout << "Error: exception while creating cudaminer unit: " << e.what() << ", try to reduce batch size (-b parameter), exiting now :-(" << endl;
+        cout << "processing unit creation failed, " << e.what() << ", try to reduce -b / -t values" << endl;
         exit(1);
     }
     

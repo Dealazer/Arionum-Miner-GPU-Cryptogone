@@ -305,7 +305,7 @@ ostream &operator<<(ostream &os, const Stats &settings) {
     }
 #else
     // test mining stats
-    cout << std::fixed << std::setprecision(1);
+    cout << std::fixed << std::setprecision((TEST_MODE == TEST_GPU) ? 1 : 2);
     cout << setw(COL_TYPE)   << left << ((TEST_MODE == TEST_GPU) ? "GPU_T" : "CPU_T")
          << setw(COL_HS)     << left << settings.getRoundHashRate()
          << setw(COL_HS_AVG) << left << settings.getAvgHashrate(((TEST_MODE == TEST_GPU) ? BLOCK_GPU : BLOCK_CPU));
