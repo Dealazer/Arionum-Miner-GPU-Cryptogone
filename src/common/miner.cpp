@@ -8,11 +8,18 @@
 #include <iomanip>
 #include <openssl/sha.h>
 #include <thread>
+#include <map>
 
 #include "../../include/miner.h"
 #include "../../include/timer.h"
 
+#include "argon2.h"
+#include "../../argon2/src/core.h"
+
 using namespace std;
+using argon2::t_optParams;
+using argon2::PRECOMPUTE;
+using argon2::BASELINE;
 
 static int b64_byte_to_char(unsigned x) {
     return (LT(x, 26) & (x + 'A')) |
@@ -338,4 +345,37 @@ std::string Miner::getInfo() const {
         << ", vram=" << std::fixed << std::setprecision(3) << vram << " GB"
         << ", salt=" << salt;
     return oss.str();
+}
+
+
+t_optParams Miner::precompute(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) {
+    static std::map<uint32_t, t_optParams> s_precomputeCache;
+
+    auto &it = s_precomputeCache.find(m_cost);
+    if (it == s_precomputeCache.end()) {
+        argon2_instance_t inst;
+        memset(&inst, 0, sizeof(inst));
+        inst.context_ptr = nullptr;
+        inst.lanes = params->getLanes();
+        inst.segment_length = params->getSegmentBlocks();
+        inst.lane_length = inst.segment_length * ARGON2_SYNC_POINTS;
+        inst.memory = nullptr;
+        inst.memory_blocks = params->getMemoryBlocks();
+        inst.passes = params->getTimeCost();
+        inst.threads = params->getLanes();
+        inst.type = Argon2_i;
+
+        auto nSteps = argon2i_index_size(&inst);
+        const uint32_t* pIndex = (uint32_t*)(new argon2_precomputed_index_t[nSteps]);
+        uint32_t blockCount = argon2i_precompute(&inst, (argon2_precomputed_index_t*)pIndex);
+
+        t_optParams prms;
+        prms.mode = PRECOMPUTE;
+        prms.customBlockCount = blockCount;
+        prms.customIndex = pIndex;
+        prms.customIndexNbSteps = nSteps;
+        s_precomputeCache[m_cost] = prms;
+    }
+
+    return s_precomputeCache[m_cost];
 }

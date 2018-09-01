@@ -67,7 +67,6 @@ private:
         return ss.str();
     }
 
-
 protected:
     mpz_class ZERO;
     mpz_class BLOCK_LIMIT;
@@ -102,6 +101,8 @@ protected:
     argon2::Argon2Params *params;
 
     std::vector<uint8_t*> resultBuffers;
+
+    argon2::t_optParams precompute(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
 
 public:
     explicit Miner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u) :

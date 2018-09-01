@@ -11,12 +11,10 @@
 #include "../../argon2-gpu/include/argon2-cuda/globalcontext.h"
 #include "../../argon2-gpu/include/argon2-cuda/cudaexception.h"
 
-#include "argon2.h"
-#include "../../argon2/src/core.h"
-
-#include <map>
-
 using namespace std;
+using argon2::t_optParams;
+using argon2::PRECOMPUTE;
+using argon2::BASELINE;
 
 static void setCudaDevice(int deviceIndex)
 {	
@@ -35,43 +33,9 @@ t_optParams CudaMiner::configure(uint32_t t_cost, uint32_t m_cost, uint32_t lane
     params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, t_cost, m_cost, lanes);
 
     t_optParams optPrms;
-    memset(&optPrms, 0, sizeof(optPrms));
-
-#if 1
     optPrms.mode = (lanes == 1 && t_cost == 1) ? PRECOMPUTE : BASELINE;
-#else
-    optPrms.mode = BASELINE;
-#endif
-
     if (optPrms.mode == PRECOMPUTE) {
-        
-        static std::map<uint32_t, t_optParams> s_precomputeCache;
-
-        auto &it = s_precomputeCache.find(m_cost);
-        if (it == s_precomputeCache.end()) {
-            argon2_instance_t inst;
-            memset(&inst, 0, sizeof(inst));
-            inst.context_ptr = nullptr;
-            inst.lanes = params->getLanes();
-            inst.segment_length = params->getSegmentBlocks();
-            inst.lane_length = inst.segment_length * ARGON2_SYNC_POINTS;
-            inst.memory = nullptr;
-            inst.memory_blocks = params->getMemoryBlocks();
-            inst.passes = params->getTimeCost();
-            inst.threads = params->getLanes();
-            inst.type = Argon2_i;
-
-            auto nSteps = argon2i_index_size(&inst);
-            uint32_t* pIndex = (uint32_t*)(new argon2_precomputed_index_t[nSteps]);
-            uint32_t blockCount = argon2i_precompute(&inst, (argon2_precomputed_index_t*)pIndex);
-
-            optPrms.customBlockCount = blockCount;
-            optPrms.customIndex = pIndex;
-            optPrms.customIndexNbSteps = nSteps;
-
-            s_precomputeCache[m_cost] = optPrms;
-        }
-        optPrms = s_precomputeCache[m_cost];
+        optPrms = precompute(t_cost, m_cost, lanes);
     }
     return optPrms;
 }

@@ -304,15 +304,12 @@ bool feedMiners() {
         if (blockType == BLOCK_CPU) {
             static uint32_t s_cpuBatchSize = UINT32_MAX;
             if (s_cpuBatchSize == UINT32_MAX) {
-                // get gpu blocks total mem size, with all batches
                 Argon2Params prmsInitial(ARGON_OUTLEN, nullptr, ARGON_SALTLEN, nullptr, 0, nullptr, 0, 4, 16384, 4);
                 size_t memPerBatchInitial = prmsInitial.getMemorySize();
 
-                // get cpu blocks mem size, with 1 batch
                 s_miners[i]->reconfigureArgon(tl, m_cost, tl, 1);
-
-                // deduce batch size to use for cpu blocks
                 size_t memPerBatch = s_miners[i]->getMemoryUsedPerBatch();
+
                 s_cpuBatchSize = (uint32_t)(((size_t)batchSizeInitial * memPerBatchInitial) / memPerBatch);
 
                 //printf("memPerBatchInitial=%llu memPerBatch=%llu => s_cpuBatchSize=%u",

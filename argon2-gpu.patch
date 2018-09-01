@@ -128,31 +128,18 @@ index ebc8460..92d44b6 100644
          }
      }
 diff --git a/include/argon2-cuda/kernels.h b/include/argon2-cuda/kernels.h
-index 16418b4..7fc6744 100644
+index 16418b4..0d5c6f1 100644
 --- a/include/argon2-cuda/kernels.h
 +++ b/include/argon2-cuda/kernels.h
-@@ -11,6 +11,20 @@
- #undef argon2
- #endif
+@@ -5,6 +5,7 @@
  
-+/* optimization modes */
-+enum OPT_MODE {
-+    BASELINE = 0,
-+    PRECOMPUTE_SIMPLE = 1,
-+    PRECOMPUTE = 2,
-+};
-+
-+typedef struct {
-+    OPT_MODE mode;
-+    uint32_t customBlockCount;
-+    const uint32_t* customIndex;
-+    uint32_t customIndexNbSteps;
-+}t_optParams;
-+
- namespace argon2 {
- namespace cuda {
+ #include <cuda_runtime.h>
+ #include <cstdint>
++#include <argon2-gpu-common/argon2-common.h>
  
-@@ -21,14 +35,19 @@ private:
+ /* workaround weird CMake/CUDA bug: */
+ #ifdef argon2
+@@ -21,14 +22,19 @@ private:
      std::uint32_t passes, lanes, segmentBlocks;
      std::uint32_t batchSize;
      bool bySegment;
@@ -174,7 +161,7 @@ index 16418b4..7fc6744 100644
  
      void runKernelSegment(std::uint32_t lanesPerBlock,
                            std::uint32_t jobsPerBlock,
-@@ -37,25 +56,36 @@ private:
+@@ -37,25 +43,36 @@ private:
                            std::uint32_t jobsPerBlock);
  
  public:
@@ -259,7 +246,7 @@ index 2109154..c196f59 100644
  
  } // namespace cuda
 diff --git a/include/argon2-gpu-common/argon2-common.h b/include/argon2-gpu-common/argon2-common.h
-index fbcf67c..7a849bb 100644
+index fbcf67c..dfc618f 100644
 --- a/include/argon2-gpu-common/argon2-common.h
 +++ b/include/argon2-gpu-common/argon2-common.h
 @@ -1,6 +1,8 @@
@@ -271,6 +258,31 @@ index fbcf67c..7a849bb 100644
  namespace argon2 {
  
  enum {
+@@ -21,6 +23,24 @@ enum Version {
+     ARGON2_VERSION_13 = 0x13,
+ };
+ 
++enum OPT_MODE {
++    BASELINE = 0,
++    PRECOMPUTE_SIMPLE = 1,
++    PRECOMPUTE = 2,
++};
++
++typedef struct OptParams {
++    OPT_MODE mode;
++    uint32_t customBlockCount;
++    const uint32_t* customIndex;
++    uint32_t customIndexNbSteps;
++
++    OptParams() : 
++        mode(BASELINE), customBlockCount(0), 
++        customIndex(nullptr), customIndexNbSteps(0) {
++    }
++}t_optParams;
++
+ } // namespace argon2
+ 
+ 
 diff --git a/include/argon2-opencl/cl.hpp b/include/argon2-opencl/cl.hpp
 index ced34f5..c03a742 100644
 --- a/include/argon2-opencl/cl.hpp
