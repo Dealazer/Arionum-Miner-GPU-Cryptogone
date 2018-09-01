@@ -21,6 +21,7 @@ private:
     const argon2::opencl::Device *device;
 
 public:
+    OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *pUpdater, size_t *deviceIndex);
 
     void deviceUploadTaskDataAsync();
     void deviceLaunchTaskAsync();
@@ -28,8 +29,9 @@ public:
     void deviceWaitForResults();
     bool deviceResultsReady();
     void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize);
-
-    OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *pUpdater, size_t *deviceIndex);
+    
+    size_t getMemoryUsage() const;
+    size_t getMemoryUsedPerBatch() const;
 };
 
 #endif //ARIONUM_GPU_MINER_OPENCLMINER_H

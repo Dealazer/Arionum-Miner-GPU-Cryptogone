@@ -329,10 +329,10 @@ void Miner::hostProcessResults() {
     }
 }
 
-std::string Miner::getInfo() {
+std::string Miner::getInfo() const {
     ostringstream oss;
     auto batchSize = getInitialBatchSize();
-    auto vram = (float)(batchSize * params->getMemorySize()) / (1024.f*1024.f*1024.f);
+    auto vram = (float)(getMemoryUsage()) / (1024.f*1024.f*1024.f);
     oss
         << "batchSize=" << batchSize
         << ", vram=" << std::fixed << std::setprecision(3) << vram << " GB"

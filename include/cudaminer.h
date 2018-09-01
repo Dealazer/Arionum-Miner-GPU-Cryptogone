@@ -21,6 +21,7 @@ private:
     argon2::cuda::ProgramContext *progCtx;
     argon2::cuda::GlobalContext *global;
     const argon2::cuda::Device *device;
+    t_optParams configure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize);
 
 public:
     
@@ -30,6 +31,8 @@ public:
    bool deviceResultsReady();
    void deviceWaitForResults();
    void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize);
+   size_t getMemoryUsage() const;
+   size_t getMemoryUsedPerBatch() const;
 
    explicit CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_t *deviceIndex);
 };

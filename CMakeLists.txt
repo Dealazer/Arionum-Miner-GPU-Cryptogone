@@ -12,20 +12,9 @@ if(UNIX)
 	set(CMAKE_VERBOSE_MAKEFILE ON)
 endif()
 
-if(NOT NO_CUDA)
-    find_package(CUDA)
-endif()
-
-if(CUDA_FOUND)
-    add_definitions(-DHAVE_CUDA=1)
-else()
-    message("INFO: Building without CUDA support")
-    add_definitions(-DHAVE_CUDA=0)
-endif()
-
-if(CUDA_FOUND)
-    include_directories(${CUDA_INCLUDE_DIRS})
-endif()
+find_package(CUDA REQUIRED)
+include_directories(${CUDA_INCLUDE_DIRS})
+add_definitions(-DHAVE_CUDA=1)
 
 if (MSVC)
     include_directories(mpir-3.0.0)
@@ -74,14 +63,12 @@ add_executable(arionum-opencl-miner
         src/arionum-opencl-miner/main.cpp
 )
 
-if(CUDA_FOUND)
 add_executable(arionum-cuda-miner
         ${COMMON_SRCS}
         include/cudaminer.h
         src/common/cudaminer.cpp
         src/arionum-cuda-miner/main.cpp
 )
-endif()
 
 if(MSVC)
 	set(COMMON_LIBS_WIN)

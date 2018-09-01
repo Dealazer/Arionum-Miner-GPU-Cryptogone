@@ -115,7 +115,8 @@ public:
         ZERO(0),
         BLOCK_LIMIT(240),
         limit(0),
-        updater(u) 
+        updater(u),
+        params(nullptr)
     {
         http_client_config config;
         utility::seconds timeout(2);
@@ -156,8 +157,6 @@ public:
     virtual void deviceFetchTaskResultAsync() = 0;
     virtual void deviceWaitForResults() = 0;
     virtual bool deviceResultsReady() = 0;
-    
-    std::string getInfo();
 
     void checkArgon(string *base, string *argon, string *nonce);
 
@@ -167,6 +166,9 @@ public:
 
     uint32_t getInitialBatchSize() const { return initial_batchSize; };
     uint32_t getCurrentBatchSize() const { return batchSize; };
+    virtual size_t getMemoryUsage() const = 0;
+    virtual size_t getMemoryUsedPerBatch() const = 0;
+    std::string getInfo() const;
 };
 
 

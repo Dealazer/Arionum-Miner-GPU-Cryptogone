@@ -76,3 +76,11 @@ void OpenClMiner::deviceWaitForResults() {
 bool OpenClMiner::deviceResultsReady() {
     return unit->resultsReady();
 }
+
+size_t OpenClMiner::getMemoryUsage() const {
+    return unit->getMemoryUsage();
+}
+
+size_t OpenClMiner::getMemoryUsedPerBatch() const {
+    return unit->getMemoryUsedPerBatch();
+}

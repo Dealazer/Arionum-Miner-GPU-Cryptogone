@@ -102,7 +102,7 @@ void Updater::start() {
         bool dataReady = false;
         {
             std::lock_guard<std::mutex> lg(mutex);
-            dataReady = data->isValid();
+            dataReady = data && data->isValid();
         }
         if (dataReady) {
             while (!s_miningReady) {
