@@ -351,7 +351,7 @@ std::string Miner::getInfo() const {
 t_optParams Miner::precompute(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) {
     static std::map<uint32_t, t_optParams> s_precomputeCache;
 
-    auto &it = s_precomputeCache.find(m_cost);
+    std::map<uint32_t, t_optParams>::const_iterator it = s_precomputeCache.find(m_cost);
     if (it == s_precomputeCache.end()) {
         argon2_instance_t inst;
         memset(&inst, 0, sizeof(inst));

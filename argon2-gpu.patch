@@ -389,7 +389,7 @@ index ced34f5..c03a742 100644
      return err;
  }
 diff --git a/include/argon2-opencl/kernelrunner.h b/include/argon2-opencl/kernelrunner.h
-index a1bba8b..5a814f6 100644
+index a1bba8b..a1e9309 100644
 --- a/include/argon2-opencl/kernelrunner.h
 +++ b/include/argon2-opencl/kernelrunner.h
 @@ -15,16 +15,22 @@ private:
@@ -410,7 +410,7 @@ index a1bba8b..5a814f6 100644
 +    t_optParams optParams;
 +
 +    void setKernelsArgs();
-+    size_t KernelRunner::totalRefsSize() const;
++    size_t totalRefsSize() const;
      void precomputeRefs();
 +    void initializeBuffers();
 +    void setupKernel(const Device *device);
