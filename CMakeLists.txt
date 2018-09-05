@@ -90,7 +90,6 @@ elseif (UNIX)
 	set(COMMON_LIBS_UNIX)
 	list(APPEND COMMON_LIBS_UNIX
 		"argon2"
-		"mpir"
 		"-lboost_system"
 		"-lssl"
 		"-lcrypto"
