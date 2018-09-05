@@ -43,8 +43,6 @@ void OpenClMiner::reconfigureArgon(
     uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t newBatchSize) {
     if (!needReconfigure(t_cost, m_cost, lanes, newBatchSize))
         return;
-    //printf("-- OpenClMiner::reconfigureArgon %d,%d,%d newBatchSize=%u (%p)\n", 
-    //    t_cost, m_cost, lanes, newBatchSize, this);
     t_optParams optPrms = configure(t_cost, m_cost, lanes, newBatchSize);
     unit->reconfigureArgon(params, batchSize, optPrms);
 }

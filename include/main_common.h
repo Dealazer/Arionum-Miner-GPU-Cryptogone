@@ -104,14 +104,17 @@ void spawnMiners(OpenCLArguments &args, vector<Miner *> &miners, Stats* stats, U
             cout << endl;
             continue;
         }
-#ifdef OPENCL_MINER
-        auto devInfo = devices[it].getInfo();
-        if (devInfo.find("Type: GPU") == std::string::npos) {
-            //std::cout << std::endl;
-            //std::cout << "--- Device " << it << " is not a GPU, skipping it" << std::endl << devices[it].getName() << std::endl;
-            continue;
+
+        // skip CPU devices (only needed for OpenCL)
+        if (!strcmp(API_NAME, "OPENCL")) {
+            auto devInfo = devices[it].getInfo();
+            if (devInfo.find("Type: GPU") == std::string::npos) {
+                //std::cout << std::endl;
+                //std::cout << "--- Device " << it << " is not a GPU, skipping it" << std::endl << devices[it].getName() << std::endl;
+                continue;
+            }
         }
-#endif
+
         size_t deviceIndex = it;
         size_t nThreads = args.threadsPerDeviceList.back();
         if (deviceListItem < args.threadsPerDeviceList.size()) {

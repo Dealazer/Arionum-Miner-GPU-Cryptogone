@@ -1174,7 +1174,7 @@ index 22949f3..b328e16 100644
          throw;
      }
 diff --git a/lib/argon2-opencl/kernelrunner.cpp b/lib/argon2-opencl/kernelrunner.cpp
-index 9fe39b4..b76a6bf 100644
+index 9fe39b4..aa517d0 100644
 --- a/lib/argon2-opencl/kernelrunner.cpp
 +++ b/lib/argon2-opencl/kernelrunner.cpp
 @@ -1,61 +1,93 @@
@@ -1321,7 +1321,7 @@ index 9fe39b4..b76a6bf 100644
 +    static const char *KERNEL_PRECOMPUTED_INDEX = "argon2_kernel_oneshot_precomputedIndex";
 +
 +    bool precompute = (optParams.mode == PRECOMPUTE_SIMPLE);
-+    auto& kernelName = KERNEL_NAMES[precompute][bySegment];
++    const char* kernelName = KERNEL_NAMES[precompute][bySegment];
 +
 +    if (optParams.mode == PRECOMPUTE) {
 +        // check that we use argon2I
