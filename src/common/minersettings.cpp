@@ -15,10 +15,6 @@ string *MinerSettings::getUniqid() const {
     return uniqid;
 }
 
-bool MinerSettings::precompute() const {
-    return precomputeRefs;
-}
-
 ostream &operator<<(ostream &os, const MinerSettings &settings) {
 	os << "worker id     : " << settings.getUniqid()->c_str() << std::endl
        << "pool address  : " << settings.getPoolAddress()->c_str() << std::endl

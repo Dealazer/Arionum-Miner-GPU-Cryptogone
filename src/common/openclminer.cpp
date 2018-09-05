@@ -8,46 +8,45 @@
 #include "../../include/openclminer.h"
 
 using namespace std;
+using argon2::t_optParams;
+using argon2::PRECOMPUTE;
+using argon2::BASELINE;
 
 OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_t *deviceIndex)
         : Miner(s, ms, bs, u) {
     global = new argon2::opencl::GlobalContext();
+
     auto &devices = global->getAllDevices();
     device = &devices[*deviceIndex];
-    progCtx = new argon2::opencl::ProgramContext(global, {*device}, type, version,
-                                                 const_cast<char *>("./argon2-gpu/data/kernels/"));
 
-    auto nLanes = 4;
-    params = new argon2::Argon2Params(ARGON_OUTLEN, salt.data(), ARGON_SALTLEN, nullptr, 0, nullptr, 0, 4, 16384, 4);
+    progCtx = new argon2::opencl::ProgramContext(
+        global, {*device}, type, version,
+        const_cast<char *>("./argon2-gpu/data/kernels/"));
 
+    auto nLanesMax = 4;
     try {
-        bool precompute = ms->precompute();
-        unit = new argon2::opencl::ProcessingUnit(progCtx, params, device, getInitialBatchSize(), false, precompute);
+        bool bySegment = false;
+        t_optParams optPrms = configure(4, 16384, nLanesMax, bs);
+        unit = new argon2::opencl::ProcessingUnit(
+            progCtx, params, device, 
+            getInitialBatchSize(), bySegment, optPrms);
     }
     catch (const std::exception& e) {
-        cout << "Error: exception while creating opencl unit: " << e.what() << ", try to reduce batch size (-b parameter), exiting now :-(" << endl;
+        cout << "Error: exception while creating opencl unit: " 
+             << e.what() << ", try to reduce batch size (-b parameter), exiting now :-(" 
+             << endl;
         exit(1);
-    }
-
-    for (uint32_t i = 0; i < getInitialBatchSize(); i++) {
-        resultBuffers[i] = new uint8_t[nLanes * 1024 /*1024 is ARGON2_BLOCK_SIZE*/];
     }
 }
 
-void OpenClMiner::reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t newBatchSize) {
-    if (params->getTimeCost() == t_cost &&
-        params->getMemoryCost() == m_cost &&
-        params->getLanes() == lanes)
-    {
+void OpenClMiner::reconfigureArgon(
+    uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t newBatchSize) {
+    if (!needReconfigure(t_cost, m_cost, lanes, newBatchSize))
         return;
-    }
-
-    batchSize = newBatchSize;
-    if (params) {
-        delete params;
-    }
-    params = new argon2::Argon2Params(ARGON_OUTLEN, salt.data(), ARGON_SALTLEN, nullptr, 0, nullptr, 0, t_cost, m_cost, lanes);
-    unit->reconfigureArgon(params, batchSize);
+    //printf("-- OpenClMiner::reconfigureArgon %d,%d,%d newBatchSize=%u (%p)\n", 
+    //    t_cost, m_cost, lanes, newBatchSize, this);
+    t_optParams optPrms = configure(t_cost, m_cost, lanes, newBatchSize);
+    unit->reconfigureArgon(params, batchSize, optPrms);
 }
 
 void OpenClMiner::deviceUploadTaskDataAsync() {
@@ -65,7 +64,7 @@ void OpenClMiner::deviceLaunchTaskAsync() {
 void OpenClMiner::deviceFetchTaskResultAsync() {
     size_t size = getCurrentBatchSize();
     for (size_t j = 0; j < size; ++j) {
-        unit->fetchResultAsync(j, resultBuffers[j]);
+        unit->fetchResultAsync(j);
     }    
 }
 
@@ -74,7 +73,13 @@ void OpenClMiner::deviceWaitForResults() {
 }
 
 bool OpenClMiner::deviceResultsReady() {
-    return unit->resultsReady();
+    bool queueFinished = unit->resultsReady();
+    if (queueFinished) {
+        for (uint32_t i = 0; i < unit->getBatchSize(); i++) {
+            resultBuffers[i] = unit->getResultPtr(i);
+        }
+    }
+    return queueFinished;
 }
 
 size_t OpenClMiner::getMemoryUsage() const {

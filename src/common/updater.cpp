@@ -95,37 +95,43 @@ void Updater::update() {
 extern bool s_miningReady;
 
 void Updater::start() {
-    // wait for first  pool response
-    while (true) {
-        update();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        bool dataReady = false;
-        {
-            std::lock_guard<std::mutex> lg(mutex);
-            dataReady = data && data->isValid();
-        }
-        if (dataReady) {
-            while (!s_miningReady) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    try {
+        // wait for first  pool response
+        while (true) {
+            update();
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            bool dataReady = false;
+            {
+                std::lock_guard<std::mutex> lg(mutex);
+                dataReady = data && data->isValid();
             }
-            break;
+            if (dataReady) {
+                while (!s_miningReady) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+                break;
+            }
+            else {
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+            }
         }
-        else {
-            std::this_thread::sleep_for(std::chrono::seconds(2));
+
+        // loop
+        while (true) {
+            cout << *stats;
+
+            MinerData newData = getData();
+            stats->beginRound(newData);
+            {
+                update();
+                std::this_thread::sleep_for(std::chrono::seconds(POOL_UPDATE_RATE_SECONDS));
+            }
+            stats->endRound();
         }
     }
-
-    // loop
-    while (true) {
-        cout << *stats;
-
-        MinerData newData = getData();
-        stats->beginRound(newData);
-        {
-            update();
-            std::this_thread::sleep_for(std::chrono::seconds(POOL_UPDATE_RATE_SECONDS));
-        }
-        stats->endRound();
+    catch (exception e) {
+        std::cout << "Exception in update thread: " << e.what() << std::endl;
+        exit(1);
     }
 }
 

@@ -25,21 +25,6 @@ static void setCudaDevice(int deviceIndex)
     }
 }
 
-t_optParams CudaMiner::configure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t bs) {
-    batchSize = bs;
-
-    if (params)
-        delete params;
-    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, t_cost, m_cost, lanes);
-
-    t_optParams optPrms;
-    optPrms.mode = (lanes == 1 && t_cost == 1) ? PRECOMPUTE : BASELINE;
-    if (optPrms.mode == PRECOMPUTE) {
-        optPrms = precompute(t_cost, m_cost, lanes);
-    }
-    return optPrms;
-}
-
 CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_t *deviceIndex) : Miner(s, ms, bs, u) {
     global = new argon2::cuda::GlobalContext();
     auto &devices = global->getAllDevices();
@@ -48,19 +33,20 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_
         cout << endl << "!!! Warning !!! invalid device index: -d " << *deviceIndex <<", will use device 0 instead" << endl << endl;
         *deviceIndex = 0;
     }
-
-    device = &devices[*deviceIndex];
-    auto nLanes = 4;
-    t_optParams optPrms = configure(4, 16384, nLanes, bs);
-    
+   
     // we MUST set device here
     // when creating ProcessingUnit, cudaMalloc & cudaStreamCreate are called and they will operate on the current device
+    device = &devices[*deviceIndex];
     setCudaDevice(device->getDeviceIndex());
     progCtx = new argon2::cuda::ProgramContext(global, {*device}, type, version);
-    
+
+     auto nLanesMax = 4;
      try {
         bool bySegment = false;
-        unit = new argon2::cuda::ProcessingUnit(progCtx, params, device, getInitialBatchSize(), bySegment, optPrms);
+        t_optParams optPrms = configure(4, 16384, nLanesMax, bs);
+        unit = new argon2::cuda::ProcessingUnit(
+            progCtx, params, device, 
+            getInitialBatchSize(), bySegment, optPrms);
     }
     catch (const std::exception& e) {
         cout << "processing unit creation failed, " << e.what() << ", try to reduce -b / -t values" << endl;
@@ -69,7 +55,7 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_
 
     // allocate pinned memory for result buffers
     for (uint32_t i = 0; i < getInitialBatchSize(); i++) {
-        cudaError_t status = cudaMallocHost((void**)&(resultBuffers[i]), nLanes * 1024 /*ARGON2_BLOCK_SIZE*/);
+        cudaError_t status = cudaMallocHost((void**)&(resultBuffers[i]), nLanesMax * 1024 /*ARGON2_BLOCK_SIZE*/);
         if (status != cudaSuccess) {
             std::cout << "Error allocating pinned host memory" << std::endl;
             exit(1);
@@ -78,22 +64,10 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_
 }
 
 void CudaMiner::reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t newBatchSize) {
-    if (params->getTimeCost() == t_cost &&
-        params->getMemoryCost() == m_cost &&
-        params->getLanes() == lanes &&
-        newBatchSize == batchSize)
-    {
+    if (!needReconfigure(t_cost, m_cost, lanes, newBatchSize))
         return;
-    }
-    
     //printf("-- CudaMiner::reconfigureArgon %d,%d,%d\n", t_cost, m_cost, lanes);
-
     t_optParams optPrms = configure(t_cost, m_cost, lanes, newBatchSize);
-    if (this->batchSize != newBatchSize) {
-        printf("problem changing batch size in reconfigureArgon\n");
-        exit(1);
-    }
-
     unit->reconfigureArgon(params, batchSize, optPrms);
 }
 

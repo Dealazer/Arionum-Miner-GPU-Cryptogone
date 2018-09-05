@@ -379,3 +379,34 @@ t_optParams Miner::precompute(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) 
 
     return s_precomputeCache[m_cost];
 }
+
+t_optParams Miner::configure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t bs) {
+    batchSize = bs;
+
+    if (params)
+        delete params;
+    params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, t_cost, m_cost, lanes);
+
+    t_optParams optPrms;
+    optPrms.mode = (lanes == 1 && t_cost == 1) ? PRECOMPUTE : BASELINE;
+
+#define DISABLE_PRECOMPUTE (0)
+#if DISABLE_PRECOMPUTE
+    if (optPrms.mode == PRECOMPUTE) {
+        optPrms.mode = BASELINE;
+    }
+#else
+    if (optPrms.mode == PRECOMPUTE) {
+        optPrms = precompute(t_cost, m_cost, lanes);
+    }
+#endif
+
+    return optPrms;
+}
+
+bool Miner::needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t newBatchSize) {
+    return (params->getTimeCost() != t_cost ||
+        params->getMemoryCost() != m_cost ||
+        params->getLanes() != lanes ||
+        newBatchSize != batchSize);
+}

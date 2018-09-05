@@ -102,7 +102,9 @@ protected:
 
     std::vector<uint8_t*> resultBuffers;
 
+    argon2::t_optParams configure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize);
     argon2::t_optParams precompute(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
+    bool needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t newBatchSize);
 
 public:
     explicit Miner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u) :

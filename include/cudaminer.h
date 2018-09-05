@@ -21,10 +21,8 @@ private:
     argon2::cuda::ProgramContext *progCtx;
     argon2::cuda::GlobalContext *global;
     const argon2::cuda::Device *device;
-    argon2::t_optParams configure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize);
 
 public:
-    
    void deviceUploadTaskDataAsync();
    void deviceLaunchTaskAsync();
    void deviceFetchTaskResultAsync();

@@ -16,14 +16,12 @@ private:
     string *poolAddress;
     string *privateKey;
     string *uniqid;
-    bool precomputeRefs;
 
 public:
-    MinerSettings(string *pa, string *pk, string *ui, size_t *bs, bool precompute) : 
+    MinerSettings(string *pa, string *pk, string *ui, size_t *bs) : 
         poolAddress(pa),
         privateKey(pk),
-        uniqid(ui),
-        precomputeRefs(precompute) {
+        uniqid(ui) {
     };
 
     friend ostream &operator<<(ostream &os, const MinerSettings &settings);
@@ -33,8 +31,6 @@ public:
     string *getPrivateKey() const;
 
     string *getUniqid() const;
-
-    bool precompute() const;
 };
 
 #endif //ARIONUM_GPU_MINER_MINERSETTINGS_H
