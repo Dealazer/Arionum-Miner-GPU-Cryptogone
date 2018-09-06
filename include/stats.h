@@ -68,7 +68,7 @@ public:
     bool newShare();
     bool newBlock();
     void newRejection();
-    void newDl(long dl, BLOCK_TYPE t);
+    void newDl(uint32_t dl, BLOCK_TYPE t);
 
     void beginRound(const MinerData& data);
     void endRound();

@@ -122,24 +122,24 @@ void Stats::newRejection() {
     rejections++;
 }
 
-void Stats::newDl(long dl, BLOCK_TYPE t) {
+void Stats::newDl(uint32_t dl, BLOCK_TYPE t) {
     if (dl <= 0)
         return;
 
     // update best ever dl
     if (t == BLOCK_CPU) {
-        long prev = bestDl_cpu;
+        uint32_t prev = bestDl_cpu;
         if (dl < prev)
             bestDl_cpu = dl;
     }
     else if (t == BLOCK_GPU) {
-        long prev = bestDl_gpu;
+        uint32_t prev = bestDl_gpu;
         if (dl < prev)
             bestDl_gpu = dl;
     }
 
     // update cur block best dl
-    long prev = blockBestDl;
+    uint32_t prev = blockBestDl;
     if (dl < prev) {
         blockBestDl = dl;
     }
