@@ -24,7 +24,7 @@ if (MSVC)
 endif()
 
 if ( CMAKE_COMPILER_IS_GNUCC )
-    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes -Wno-conversion-null")
 endif()
 
 add_subdirectory(argon2-gpu)
