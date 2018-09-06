@@ -79,6 +79,7 @@ protected:
     MinerSettings *settings;
     uint32_t batchSize;
     uint32_t initial_batchSize;
+    uint32_t cpu_batchSize;
     MinerData data;
     http_client *client;
 
@@ -119,7 +120,8 @@ public:
         BLOCK_LIMIT(240),
         limit(0),
         updater(u),
-        params(nullptr)
+        params(nullptr),
+        cpu_batchSize(1)
     {
         http_client_config config;
         utility::seconds timeout(2);
@@ -169,9 +171,25 @@ public:
 
     uint32_t getInitialBatchSize() const { return initial_batchSize; };
     uint32_t getCurrentBatchSize() const { return batchSize; };
+    uint32_t getCPUBatchSize() const { return cpu_batchSize; };
+
     virtual size_t getMemoryUsage() const = 0;
     virtual size_t getMemoryUsedPerBatch() const = 0;
     std::string getInfo() const;
+
+    static uint32_t getMemCost(BLOCK_TYPE type) {
+        return (type == BLOCK_CPU) ? 524288 : 16384;
+    }
+
+    static uint32_t getPasses(BLOCK_TYPE type) {
+        return (type == BLOCK_CPU) ? 1 : 4;
+    }
+
+    static uint32_t getLanes(BLOCK_TYPE type) {
+        return (type == BLOCK_CPU) ? 1 : 4;
+    }
+
+    void computeCPUBatchSize();
 };
 
 

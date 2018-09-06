@@ -40,10 +40,16 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_
     setCudaDevice(device->getDeviceIndex());
     progCtx = new argon2::cuda::ProgramContext(global, {*device}, type, version);
 
-     auto nLanesMax = 4;
+     auto nLanesMax = Miner::getLanes(BLOCK_GPU);
      try {
         bool bySegment = false;
-        t_optParams optPrms = configure(4, 16384, nLanesMax, bs);
+
+        t_optParams optPrms = configure(
+            Miner::getPasses(BLOCK_GPU),
+            Miner::getMemCost(BLOCK_GPU),
+            nLanesMax,
+            bs);
+
         unit = new argon2::cuda::ProcessingUnit(
             progCtx, params, device, 
             getInitialBatchSize(), bySegment, optPrms);

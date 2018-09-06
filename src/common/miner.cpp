@@ -15,11 +15,10 @@
 
 #include "argon2.h"
 #include "../../argon2/src/core.h"
+#include "argon2-gpu-common/argon2params.h"
 
 using namespace std;
-using argon2::t_optParams;
-using argon2::PRECOMPUTE;
-using argon2::BASELINE;
+using namespace argon2;
 
 static int b64_byte_to_char(unsigned x) {
     return (LT(x, 26) & (x + 'A')) |
@@ -336,17 +335,42 @@ void Miner::hostProcessResults() {
     }
 }
 
+void Miner::computeCPUBatchSize() {
+    uint32_t nPassesGPU = Miner::getPasses(BLOCK_GPU);
+    uint32_t memCostGPU = Miner::getMemCost(BLOCK_GPU);
+    uint32_t nLanesGPU = Miner::getLanes(BLOCK_GPU);
+
+    Argon2Params prmsInitial(
+        ARGON_OUTLEN, nullptr, ARGON_SALTLEN, nullptr, 0, nullptr, 0, 
+        nPassesGPU, memCostGPU, nLanesGPU);
+
+    size_t memPerBatchInitial = prmsInitial.getMemorySize();
+
+    uint32_t nPassesCPU = Miner::getPasses(BLOCK_CPU);
+    uint32_t memCostCPU = Miner::getMemCost(BLOCK_CPU);
+    uint32_t nLanesCPU = Miner::getLanes(BLOCK_CPU);
+
+    reconfigureArgon(nPassesCPU, memCostCPU, nLanesCPU, 1);
+    {
+        size_t memPerBatch = getMemoryUsedPerBatch();
+
+        cpu_batchSize = 
+            (uint32_t)(((size_t)getInitialBatchSize() * memPerBatchInitial) / memPerBatch);
+        if (cpu_batchSize < 1)
+            cpu_batchSize = 1;
+    }
+    reconfigureArgon(nPassesGPU, memCostGPU, nLanesGPU, getInitialBatchSize());
+}
+
 std::string Miner::getInfo() const {
     ostringstream oss;
-    auto batchSize = getInitialBatchSize();
     auto vram = (float)(getMemoryUsage()) / (1024.f*1024.f*1024.f);
     oss
-        << "batchSize=" << batchSize
+        << "batchSize GPU=" << getInitialBatchSize() << " CPU=" << getCPUBatchSize()
         << ", vram=" << std::fixed << std::setprecision(3) << vram << " GB"
         << ", salt=" << salt;
     return oss.str();
 }
-
 
 t_optParams Miner::precompute(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) {
     static std::map<uint32_t, t_optParams> s_precomputeCache;

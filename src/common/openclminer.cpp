@@ -23,10 +23,14 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, s
         global, {*device}, type, version,
         "./argon2-gpu/data/kernels/");
 
-    auto nLanesMax = 4;
+    auto nLanesMax = Miner::getLanes(BLOCK_GPU);
     try {
         bool bySegment = false;
-        t_optParams optPrms = configure(4, 16384, nLanesMax, bs);
+        t_optParams optPrms = configure(
+            Miner::getPasses(BLOCK_GPU),
+            Miner::getMemCost(BLOCK_GPU),
+            nLanesMax, 
+            bs);
         unit = new argon2::opencl::ProcessingUnit(
             progCtx, params, device, 
             getInitialBatchSize(), bySegment, optPrms);

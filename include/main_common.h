@@ -143,6 +143,7 @@ void spawnMiners(OpenCLArguments &args, vector<Miner *> &miners, Stats* stats, U
 
             // create the miner
             Miner *miner = new MINER(stats, pNewSettings, batchSize, updater, &deviceIndex);
+            miner->computeCPUBatchSize();
             miners.push_back(miner);
             cout << " - processing unit " << j << ", " << miner->getInfo() << endl;
         }
@@ -301,27 +302,6 @@ bool feedMiners() {
             cout << ("ERROR: unknown block type !!!\n") << endl;
             exit(1);
         }
-        
-        uint32_t m_cost = (blockType == BLOCK_GPU) ? 16384 : 524288;
-        uint32_t tl = (blockType == BLOCK_GPU) ? 4 : 1;
-
-        uint32_t batchSizeInitial = miner->getInitialBatchSize();
-        uint32_t batchSize = batchSizeInitial;
-        if (blockType == BLOCK_CPU) {
-            static uint32_t s_cpuBatchSize = UINT32_MAX;
-            if (s_cpuBatchSize == UINT32_MAX) {
-                Argon2Params prmsInitial(ARGON_OUTLEN, nullptr, ARGON_SALTLEN, nullptr, 0, nullptr, 0, 4, 16384, 4);
-                size_t memPerBatchInitial = prmsInitial.getMemorySize();
-
-                s_miners[i]->reconfigureArgon(tl, m_cost, tl, 1);
-                size_t memPerBatch = s_miners[i]->getMemoryUsedPerBatch();
-
-                s_cpuBatchSize = (uint32_t)(((size_t)batchSizeInitial * memPerBatchInitial) / memPerBatch);
-                if (s_cpuBatchSize < 1)
-                    s_cpuBatchSize = 1;
-            }
-            batchSize = s_cpuBatchSize;
-        }
 
 #define DEBUG_DURATIONS (0)
 #if DEBUG_DURATIONS
@@ -337,7 +317,15 @@ bool feedMiners() {
         s_minerStartT[i] = high_resolution_clock::now();
 #endif
 
-        s_miners[i]->reconfigureArgon(tl, m_cost, tl, batchSize);
+        uint32_t batchSize = 
+            (blockType == BLOCK_GPU) ? miner->getInitialBatchSize() : miner->getCPUBatchSize();
+
+        s_miners[i]->reconfigureArgon(
+            Miner::getPasses(blockType),
+            Miner::getMemCost(blockType),
+            Miner::getLanes(blockType),
+            batchSize);
+
         miner->hostPrepareTaskData();
         miner->deviceUploadTaskDataAsync();
         miner->deviceLaunchTaskAsync();
