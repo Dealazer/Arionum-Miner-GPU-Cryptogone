@@ -504,6 +504,19 @@ index 277272d..77906a6 100644
  };
  
  } // namespace opencl
+diff --git a/include/argon2-opencl/programcontext.h b/include/argon2-opencl/programcontext.h
+index 45d7ab3..a7fd166 100644
+--- a/include/argon2-opencl/programcontext.h
++++ b/include/argon2-opencl/programcontext.h
+@@ -37,7 +37,7 @@ public:
+     ProgramContext(
+             const GlobalContext *globalContext,
+             const std::vector<Device> &devices,
+-            Type type, Version version, char *pathToKernel);
++            Type type, Version version, const char *pathToKernel);
+ };
+ 
+ } // namespace opencl
 diff --git a/lib/argon2-cuda/globalcontext.cpp b/lib/argon2-cuda/globalcontext.cpp
 index eb52e02..56040c9 100644
 --- a/lib/argon2-cuda/globalcontext.cpp
@@ -1871,3 +1884,16 @@ index 598ced7..85eba81 100644
 +
  } // namespace opencl
  } // namespace argon2
+diff --git a/lib/argon2-opencl/programcontext.cpp b/lib/argon2-opencl/programcontext.cpp
+index 67c2dc1..d1e1dc4 100644
+--- a/lib/argon2-opencl/programcontext.cpp
++++ b/lib/argon2-opencl/programcontext.cpp
+@@ -8,7 +8,7 @@ namespace opencl {
+ ProgramContext::ProgramContext(
+         const GlobalContext *globalContext,
+         const std::vector<Device> &devices,
+-        Type type, Version version, char* pathToKernel)
++        Type type, Version version, const char* pathToKernel)
+     : globalContext(globalContext), devices(), type(type), version(version)
+ {
+     this->devices.reserve(devices.size());

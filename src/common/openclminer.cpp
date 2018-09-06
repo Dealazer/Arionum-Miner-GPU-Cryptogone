@@ -21,7 +21,7 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, s
 
     progCtx = new argon2::opencl::ProgramContext(
         global, {*device}, type, version,
-        const_cast<char *>("./argon2-gpu/data/kernels/"));
+        "./argon2-gpu/data/kernels/");
 
     auto nLanesMax = 4;
     try {

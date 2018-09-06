@@ -23,6 +23,10 @@ if (MSVC)
     link_directories("vcpkg/installed/x64-windows/lib")
 endif()
 
+if ( CMAKE_COMPILER_IS_GNUCC )
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes")
+endif()
+
 add_subdirectory(argon2-gpu)
 
 include_directories("argon2/include")
