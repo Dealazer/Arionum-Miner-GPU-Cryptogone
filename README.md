@@ -6,6 +6,8 @@ This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-mi
 
 Please make sure you install latest Nvidia drivers if you use the CUDA miner !
 
+Miner takes 1% fees (everytime you find a share, there is 1 chance on 100 it will be taken as fees).
+
 ## Prebuilt Binaries
 If you do not want to compile the project by yourself, you can find up to date ready to go binaries at this address :
 

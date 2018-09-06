@@ -1,40 +1,37 @@
 ### What are the strengths of arionum-gpu-miner v1.5.0 ?
 
-* High performance GPU mining (GPU blocks)
+* High performance GPU mining for CPU & GPU blocks
 * Low CPU usage (only 1 thread to manage all GPU jobs)
-* CUDA and OpenCL support
-* Uses cpprestsdk (supports http / https pools)
+* Supports CUDA and OpenCL
 * Linux and Windows 10 support
+* Uses cpprestsdk (supports https pools)
 
 ### Example settings & Hashrate ?
 
-    -----------------------------------------------------------------
-    |       GPU    |   Params     |      OS     |  CPU   |   GPU    |
-    -----------------------------------------------------------------
-    | GTX460, 4GB  | -t 1 -b 224  |  Ubuntu 17  | 8 H/s  | 408 H/s  |
-	-----------------------------------------------------------------
-	| GTX460, 4GB  | -t 1 -b 224  |  HiveOS     | 8 H/s  | 405 H/s  |
-    -----------------------------------------------------------------
-    | VEGA64, 8GB  | -t 2 -b 224  |  Windows 10 | 5 H/s  | 1925 H/s |
-    -----------------------------------------------------------------
+     -----------------------------------------------------------------------
+    |    Device         |   Params     |      OS     |  CPU      |   GPU    |
+    |-----------------------------------------------------------------------|
+    | M500M, 2GB        | -t 1 -b 104  |  Windows 10 | 9.6 H/s   | 70.4 H/s |
+    |-----------------------------------------------------------------------|
+    | GTX960, 4GB       | -t 1 -b 224  |  Ubuntu 17  | 37.3 H/s  | 401 H/s  |
+    |-----------------------------------------------------------------------|
+    | VEGA64 (OC), 8GB  | -t 2 -b 224  |  Windows 10 | 29.7 H/s  | 1836 H/s |
+     -----------------------------------------------------------------------
 
 ### Performance vs ariominer ?
 
-Here are performance comparisons of GPU block mining, done on 3 different setups
+Comparing v1.5 beta to ariominer 0.1.2 (cpu intensity set to zero, ``--autotune`` used to find the best CPU/GPU blocks intensities) :
 
-It is important to note that **CPU mining was disabled in ariominer** in order to compare only the raw GPU mining speed (`--cpu-intensity 0`).
+* **M500M, CUDA**: 4% slower on GPU blocks, 23% faster on CPU blocks
+* **GTX960, CUDA**: 1% slower on GPU blocks, 37% faster on CPU blocks
+* **Vega64, OpenCL**: 14% faster on GPU blocks, 25% slower on CPU blocks
 
-    -----------------------------------------------------------------------------------------------------------
-    |       GPU    |          Notes        |      OS     |         ariominer        |    arionum-gpu-miner    |
-    -----------------------------------------------------------------------------------------------------------
-    | GTX460, 4GB  | Xeon, 4 cores, 2.4Ghz |  Ubuntu 17  | 250 H/s,  20% CPU usage  |  407 H/s, 7% CPU usage  |
-    -----------------------------------------------------------------------------------------------------------
-    | VEGA64, 8GB  | i7, 6 cores, 3.6Ghz   |  Windows 10 | 1270 H/s, 2% CPU usage   |  1925 H/s, 4% CPU usage |
-    -----------------------------------------------------------------------------------------------------------
-    | M500M, 2GB   | i7, 4 cores, 2.5Ghz   |  Windows 10 | 56 H/s, 20% CPU usage    |  ?? H/s, 5% CPU usage   |
-    -----------------------------------------------------------------------------------------------------------
+Please take those numbers with a grain of salt, those were done quickly, using my own hardware.
 
-For CPU block mining, arionum-gpu-miner is currently way slower than ariominer, this will be improved in future versions.
+It is very important to use the CUDA version on NVidia GPUs it is always faster or equal to OpenCL.
+
+I am still working on reducing the gap for the slower cases.
+
 
 ### Can I use a CPU miner at the same time as the GPU miner ?
 
@@ -42,15 +39,13 @@ Yes you can run any other CPU miner at the same time, just make sure it doesn no
 
 If you use a combined cpu / gpu miner like ariominer it is recommended to configure it to not mine with GPU (``--gpu-intensity 0``).
 
-If you ever want to use ariominer to mine CPU blocks with your GPU in parallel of arionum-gpu-miner then reduce the `-b` value to free some GPU memory for it)
+It is **not advised** to use another GPU miner at the same time because both miner will compete for GPU ram.
 
 ### Can I solo mine with arionum-gpu-miner ?
 
-The only way to solo mine using arionum-gpu-miner for now is by using https://aro.hashpi.com/.
+The only way to solo mine for now is by using this pool: https://aro.hashpi.com/.
 
 But be aware that because of the 1% fee, each time you find a block there is 1 chance on 100 that the full reward will be taken as fees
-
-I have plans to implement proper solo mining with a better fee system in the future.
 
 ### What happened with the Arionum fork ?
 
