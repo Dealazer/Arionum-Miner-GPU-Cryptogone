@@ -173,8 +173,8 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
         submit(argon, nonce, dd);
     }
 
-    mpz_class maxLong = LONG_MAX;
-    if (!dd && mpz_cmp(rest.get_mpz_t(), maxLong.get_mpz_t()) < 0) {
+    mpz_class maxDL = UINT32_MAX;
+    if (!dd && mpz_cmp(rest.get_mpz_t(), maxDL.get_mpz_t()) < 0) {
         long si = (long)rest.get_si();
         stats->newDl(si, data.getBlockType());
     }

@@ -57,9 +57,9 @@ public:
                        rounds_cpu(0),
                        rounds_gpu(0),
                        roundHashRate(0.0),
-                       bestDl_cpu(LONG_MAX),
-                       bestDl_gpu(LONG_MAX),
-                       blockBestDl(LONG_MAX),
+                       bestDl_cpu(UINT32_MAX),
+                       bestDl_gpu(UINT32_MAX),
+                       blockBestDl(UINT32_MAX),
                        roundStart(std::chrono::system_clock::now())/*,
                        start(std::chrono::system_clock::now())*/ {
     };

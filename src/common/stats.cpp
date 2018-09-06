@@ -104,7 +104,7 @@ void Stats::blockChange(const MinerData &newData) {
     s_forceShowHeaders = true;
     if (roundType != -1) {
         endRound();
-        blockBestDl = LONG_MAX;
+        blockBestDl = UINT32_MAX;
         beginRound(newData);
     }
 }
