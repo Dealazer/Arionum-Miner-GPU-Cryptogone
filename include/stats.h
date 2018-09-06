@@ -37,9 +37,9 @@ private:
     std::atomic<long> blocks;
     std::atomic<long> rejections;
 
-    std::atomic<long> bestDl_cpu;
-    std::atomic<long> bestDl_gpu;
-    std::atomic<long> blockBestDl;
+    std::atomic<uint32_t> bestDl_cpu;
+    std::atomic<uint32_t> bestDl_gpu;
+    std::atomic<uint32_t> blockBestDl;
 
     std::mutex mutex;
 
@@ -81,8 +81,8 @@ public:
     const chrono::time_point<chrono::system_clock> &getRoundStart() const;
 
     double getAvgHashrate(BLOCK_TYPE t) const;
-    const atomic<long> &getBestDl(BLOCK_TYPE t) const;
-    const atomic<long> &getBlockBestDl() const;
+    const atomic<uint32_t> &getBestDl(BLOCK_TYPE t) const;
+    const atomic<uint32_t> &getBlockBestDl() const;
 
     const atomic<long> &getShares() const;
     const atomic<long> &getBlocks() const;

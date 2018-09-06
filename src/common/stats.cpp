@@ -28,7 +28,7 @@ const atomic<long> &Stats::getTotalHashes(BLOCK_TYPE t) const {
     return (t == BLOCK_GPU) ? totalHashes_gpu : totalHashes_cpu;
 }
 
-const atomic<long> &Stats::getBestDl(BLOCK_TYPE t) const {
+const atomic<uint32_t> &Stats::getBestDl(BLOCK_TYPE t) const {
     return (t == BLOCK_GPU) ? bestDl_gpu : bestDl_cpu;
 }
 
@@ -51,7 +51,7 @@ const atomic<long> &Stats::getBlocks() const {
     return blocks;
 }
 
-const atomic<long> &Stats::getBlockBestDl() const {
+const atomic<uint32_t> &Stats::getBlockBestDl() const {
     return blockBestDl;
 }
 
@@ -284,7 +284,7 @@ ostream &operator<<(ostream &os, const Stats &settings) {
          << setw(COL_BEST_DL)  << left << ossBlockBestDL.str();
 
     // best ever DL
-    long bestEver = settings.getBestDl(data.getBlockType());
+    uint32_t bestEver = settings.getBestDl(data.getBlockType());
     cout << setw(COL_EVER_BEST_DL) << left << bestEver;
 
     // pool limit
