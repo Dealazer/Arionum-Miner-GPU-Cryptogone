@@ -34,7 +34,7 @@ echo "-- Building arionum-gpu-miner Win64 $VERSION --"
 
 # Cleanup
 mkdir -p "rel"
-rm -rf "build/RelWithDebInfo"
+rm -rf "build/Release"
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
