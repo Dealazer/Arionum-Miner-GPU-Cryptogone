@@ -9,6 +9,8 @@
 #include <iostream>
 #include <mutex>
 
+#include "minerdata.h"
+
 using namespace std;
 
 class MinerSettings {
@@ -16,12 +18,17 @@ private:
     string *poolAddress;
     string *privateKey;
     string *uniqid;
-
+    bool mineGpuBlocks;
+    bool mineCpuBlocks;
 public:
-    MinerSettings(string *pa, string *pk, string *ui, size_t *bs) : 
+    MinerSettings(
+        string *pa, string *pk, string *ui, size_t *bs,
+        bool mineGPU, bool mineCPU) :
         poolAddress(pa),
         privateKey(pk),
-        uniqid(ui) {
+        uniqid(ui),
+        mineGpuBlocks(mineGPU),
+        mineCpuBlocks(mineCPU) {
     };
 
     friend ostream &operator<<(ostream &os, const MinerSettings &settings);
@@ -31,6 +38,8 @@ public:
     string *getPrivateKey() const;
 
     string *getUniqid() const;
+
+    bool mineBlock(BLOCK_TYPE type) const;
 };
 
 #endif //ARIONUM_GPU_MINER_MINERSETTINGS_H

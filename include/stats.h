@@ -17,6 +17,7 @@
 using namespace std;
 
 //#define DEBUG_ROUNDS
+class MinerSettings;
 
 class Stats {
 private:
@@ -43,25 +44,28 @@ private:
 
     std::mutex mutex;
 
+    MinerSettings *minerSettings{};
+
 public:
 
-    Stats() :          roundType(-1),
-                       roundHashes(0),
-                       totalHashes_cpu(0),
-                       totalHashes_gpu(0),
-                       totalTime_cpu_sec(0.0),
-                       totalTime_gpu_sec(0.0),
-                       shares(0),
-                       blocks(0),
-                       rejections(0),
-                       rounds_cpu(0),
-                       rounds_gpu(0),
-                       roundHashRate(0.0),
-                       bestDl_cpu(UINT32_MAX),
-                       bestDl_gpu(UINT32_MAX),
-                       blockBestDl(UINT32_MAX),
-                       roundStart(std::chrono::system_clock::now())/*,
-                       start(std::chrono::system_clock::now())*/ {
+    Stats(MinerSettings *pSettings) :
+        roundType(-1),
+        roundHashes(0),
+        totalHashes_cpu(0),
+        totalHashes_gpu(0),
+        totalTime_cpu_sec(0.0),
+        totalTime_gpu_sec(0.0),
+        shares(0),
+        blocks(0),
+        rejections(0),
+        rounds_cpu(0),
+        rounds_gpu(0),
+        roundHashRate(0.0),
+        bestDl_cpu(UINT32_MAX),
+        bestDl_gpu(UINT32_MAX),
+        blockBestDl(UINT32_MAX),
+        roundStart(std::chrono::system_clock::now()),
+        minerSettings(pSettings) {
     };
 
     void addHashes(long hashes);
@@ -76,7 +80,7 @@ public:
     const atomic<long> &getRounds(BLOCK_TYPE t) const;
     const atomic<long> &getTotalHashes(BLOCK_TYPE t) const;
 
-    const atomic<long> &getRoundHashes() const;    
+    const atomic<long> &getRoundHashes() const;
     const atomic<double> &getRoundHashRate() const;
     const chrono::time_point<chrono::system_clock> &getRoundStart() const;
 
@@ -91,6 +95,10 @@ public:
     friend ostream &operator<<(ostream &os, const Stats &stats);
 
     void blockChange(const MinerData &newData);
+
+    const MinerSettings * getMinerSettings() const {
+        return minerSettings;
+    }
 
 private:
     uint32_t rndRange(uint32_t n);

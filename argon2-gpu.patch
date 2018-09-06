@@ -1157,7 +1157,7 @@ index 094fb83..7f438ee 100644
  namespace argon2 {
  
 diff --git a/lib/argon2-opencl/kernelloader.cpp b/lib/argon2-opencl/kernelloader.cpp
-index 22949f3..b328e16 100644
+index 22949f3..62bb887 100644
 --- a/lib/argon2-opencl/kernelloader.cpp
 +++ b/lib/argon2-opencl/kernelloader.cpp
 @@ -12,11 +12,16 @@ cl::Program KernelLoader::loadArgon2Program(
@@ -1172,7 +1172,7 @@ index 22949f3..b328e16 100644
          std::ifstream sourceFile { sourcePath };
 +
 +        if (!sourceFile.is_open()) {
-+            throw std::logic_error(std::string("Cannot open ") + sourcePath);
++            throw std::logic_error(std::string("Cannot find kernel source: ") + sourcePath);
 +        }
 +
          sourceText = {

@@ -189,6 +189,8 @@ public:
         return (type == BLOCK_CPU) ? 1 : 4;
     }
 
+    bool mineBlock(BLOCK_TYPE type);
+
     void computeCPUBatchSize();
 };
 

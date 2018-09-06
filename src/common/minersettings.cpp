@@ -22,3 +22,9 @@ ostream &operator<<(ostream &os, const MinerSettings &settings) {
     return os;
 }
 
+bool MinerSettings::mineBlock(BLOCK_TYPE type) const {
+    return
+        (type == BLOCK_CPU && mineCpuBlocks) ||
+        (type == BLOCK_GPU && mineGpuBlocks);
+}
+

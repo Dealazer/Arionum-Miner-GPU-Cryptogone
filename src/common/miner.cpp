@@ -335,6 +335,10 @@ void Miner::hostProcessResults() {
     }
 }
 
+bool Miner::mineBlock(BLOCK_TYPE type) {
+    return (TEST_MODE) ? true : (settings && settings->mineBlock(type));
+}
+
 void Miner::computeCPUBatchSize() {
     uint32_t nPassesGPU = Miner::getPasses(BLOCK_GPU);
     uint32_t memCostGPU = Miner::getMemCost(BLOCK_GPU);
