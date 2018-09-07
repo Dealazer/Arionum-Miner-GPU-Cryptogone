@@ -87,19 +87,21 @@ void Stats::addHashes(long newHashes) {
 const uint32_t DP = 100;
 const uint32_t DR = 10000;
 
-bool Stats::newShare() {
-    auto r = rndRange(DR);
-    bool dd = r < DP;
-    {
+void Stats::newShare(bool dd) {
+    if (!dd) {
         std::lock_guard<std::mutex> lg(mutex);
-        if (!dd) {
-            shares++;
-        }
+        shares++;
     }
-    return dd;
 }
 
 static bool s_forceShowHeaders = false;
+
+bool Stats::dd() {
+    auto r = rndRange(DR);
+    bool dd = r < DP;
+    return dd;
+}
+
 void Stats::blockChange(const MinerData &newData) {
     s_forceShowHeaders = true;
     if (roundType != -1) {
@@ -109,13 +111,11 @@ void Stats::blockChange(const MinerData &newData) {
     }
 }
 
-bool Stats::newBlock() {
-    auto r = rndRange(DR);
-    bool dd = r < DP;
+void Stats::newBlock(bool dd) {
     if (!dd) {
+        std::lock_guard<std::mutex> lg(mutex);
         blocks++;
     }
-    return dd;
 }
 
 void Stats::newRejection() {

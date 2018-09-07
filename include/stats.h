@@ -68,9 +68,10 @@ public:
         minerSettings(pSettings) {
     };
 
+    bool dd();
     void addHashes(long hashes);
-    bool newShare();
-    bool newBlock();
+    void newShare(bool dd);
+    void newBlock(bool dd);
     void newRejection();
     void newDl(uint32_t dl, BLOCK_TYPE t);
 

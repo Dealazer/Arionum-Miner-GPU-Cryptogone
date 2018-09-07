@@ -165,7 +165,8 @@ public:
 
     void checkArgon(string *base, string *argon, string *nonce);
 
-    void submit(string *argon, string *nonce, bool d);
+    void submit(string *argon, string *nonce, bool d, bool isBlock);
+    void submitReject(string msg, bool isBlock);
 
     void encode(void *res, size_t reslen, std::string &out);
 

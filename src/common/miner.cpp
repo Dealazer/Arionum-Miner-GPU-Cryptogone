@@ -165,11 +165,12 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     result.set_str(duration, 10);
     mpz_tdiv_q(rest.get_mpz_t(), result.get_mpz_t(), diff.get_mpz_t());
     if (mpz_cmp(rest.get_mpz_t(), ZERO.get_mpz_t()) > 0 && mpz_cmp(rest.get_mpz_t(), limit.get_mpz_t()) <= 0) {
-        dd = mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0 ? stats->newBlock() : stats->newShare();
-        if (dd == false) {
+        bool isBlock = mpz_cmp(rest.get_mpz_t(), BLOCK_LIMIT.get_mpz_t()) < 0;
+        bool dd = stats->dd();
+        if (!dd) {
             gmp_printf("-- Submitting - %Zd - %s - %.50s...\n", rest.get_mpz_t(), nonce->data(), argon->data());
         }
-        submit(argon, nonce, dd);
+        submit(argon, nonce, dd, isBlock);
     }
 
     mpz_class maxDL = UINT32_MAX;
@@ -181,7 +182,12 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     x.clear();
 }
 
-void Miner::submit(string *argon, string *nonce, bool d) {
+void Miner::submitReject(string msg, bool isBlock) {
+    cout << msg << endl << endl;
+    stats->newRejection();
+}
+
+void Miner::submit(string *argon, string *nonce, bool d, bool isBlock) {
     
     // node only needs $salt$hash
     std::vector<std::string> parts;
@@ -221,36 +227,43 @@ void Miner::submit(string *argon, string *nonce, bool d) {
     req.set_request_uri(_XPLATSTR("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
     client->request(req)
-            .then([this,d](http_response response) {
+            .then([this,d,isBlock](http_response response) {
                 try {
                     if (response.status_code() == status_codes::OK) {
                         response.headers().set_content_type(U("application/json"));
                         return response.extract_json();
                     }
                 } catch (http_exception const &e) {
-                    cout << e.what() << endl;
+                    submitReject(
+                        string("-- nonce submit failed, http exception: ") + e.what(), isBlock);
                 } catch (web::json::json_exception const &e) {
-                    cerr << e.what() << endl;
+                    submitReject(
+                        string("-- nonce submit failed, json exception: ") + e.what(), isBlock);
                 }
                 return pplx::task_from_result(json::value());
             })
-            .then([this,d](pplx::task<json::value> previousTask) {
+            .then([this,d,isBlock](pplx::task<json::value> previousTask) {
                 try {
                     json::value jvalue = previousTask.get();
                     if (!jvalue.is_null() && jvalue.is_object() && d==false) {
                         auto status = toString(jvalue.at(U("status")).as_string());
                         if (status == "ok") {
-                            cout << "-- nonce accepted by pool :-)" << endl;
+                            cout << "-- " << (isBlock ? "block" : "share") << " accepted by pool :-)" << endl;
+                            if (isBlock)
+                                stats->newBlock(d);
+                            else
+                                stats->newShare(d);
                         } else {
-                            cout << "-- nonce refused by pool :-(" << endl << endl;
-                            cout << status << endl;
-                            stats->newRejection();
+                            submitReject(
+                                string("-- nonce refused by pool :-( status =") + status, isBlock);
                         }
                     }
                 } catch (http_exception const &e) {
-                    cout << e.what() << endl;
+                    submitReject(
+                        string("-- nonce submit failed, http exception: ") + e.what(), isBlock);
                 } catch (web::json::json_exception const &e) {
-                    cerr << e.what() << endl;
+                    submitReject(
+                        string("-- nonce submit failed, json exception: ") + e.what(), isBlock);
                 }
             })
             .wait();
