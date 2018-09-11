@@ -48,6 +48,7 @@ list(APPEND COMMON_SRCS
     "src/common/miner.cpp"
     "src/common/timer.cpp"
     "src/common/win_tools.cpp"
+    "src/common/testMode.cpp"
     
     "argon2/include/argon2.h"
 	"argon2/src/opt.c"

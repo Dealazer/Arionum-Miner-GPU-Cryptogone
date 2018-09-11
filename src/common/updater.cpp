@@ -121,7 +121,7 @@ void Updater::start() {
             cout << *stats;
 
             MinerData newData = getData();
-            stats->beginRound(newData);
+            stats->beginRound(newData.getBlockType());
             {
                 update();
                 std::this_thread::sleep_for(std::chrono::seconds(POOL_UPDATE_RATE_SECONDS));
@@ -136,7 +136,6 @@ void Updater::start() {
 }
 
 void Updater::processResponse(const json::value *value) {
-    std::lock_guard<std::mutex> lg(mutex);
     if (!value->is_null() && value->is_object()) {
         string status = toString(value->at(U("status")).as_string());
         if (status == "ok") {
@@ -164,21 +163,26 @@ void Updater::processResponse(const json::value *value) {
                     blockType = (argon_threads != 1) ? BLOCK_GPU : BLOCK_CPU;
                 }
 
-                if (data == NULL || data->isNewBlock(&block)) {
-                    if (data)
-                        delete data;
-                    data = new MinerData(
-                        status, difficulty, limitAsString, block, public_key,
-                        height,
-                        argon_memory,
-                        argon_threads,
-                        argon_time,
-                        blockType
-                    );
-                    if (s_miningReady) {
-                        cout << endl << "-- NEW BLOCK --" << endl << *data;
+                {
+                    std::lock_guard<std::mutex> lg(mutex);
+
+                    if (data == NULL || data->isNewBlock(&block)) {
+                        if (data)
+                            delete data;
+                        data = new MinerData(
+                            status, difficulty, limitAsString, block, public_key,
+                            height,
+                            argon_memory,
+                            argon_threads,
+                            argon_time,
+                            blockType
+                        );
+
+                        if (s_miningReady) {
+                            cout << endl << "-- NEW BLOCK --" << endl << *data;
+                        }
+                        stats->blockChange(data->getBlockType());
                     }
-                    stats->blockChange(*data);
                 }
             }
         } else {
