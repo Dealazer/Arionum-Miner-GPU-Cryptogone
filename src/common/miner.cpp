@@ -255,7 +255,7 @@ void Miner::submit(string *argon, string *nonce, bool d, bool isBlock) {
                                 stats->newShare(d);
                         } else {
                             submitReject(
-                                string("-- nonce refused by pool :-( status =") + status, isBlock);
+                                string("-- nonce refused by pool :-( status=") + status, isBlock);
                         }
                     }
                 } catch (http_exception const &e) {
