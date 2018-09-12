@@ -12,6 +12,7 @@
 
 #include "../../include/miner.h"
 #include "../../include/timer.h"
+#include "../../include/perfscope.h"
 
 #include "argon2.h"
 #include "../../argon2/src/core.h"
@@ -73,43 +74,48 @@ void Miner::generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buf
     to_base64(dst, dst_len, buffer, buffer_size);
 }
 
-// $base = $this->publicKey."-".$nonce."-".$this->block."-".$this->difficulty;
-#if (TEST_MODE==TEST_GPU)
-const string REF_NONCE = "swGetfIyLrh8XYHcL7cM5kEElAJx3XkSrgTGveDN2w";
-const string REF_BASE =
-    /* pubkey */ string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") +
-    /* nonce  */ REF_NONCE + string("-") +
-    /* block  */ string("6327pZD7RSArjnD9wiVM6eUKkNck4Q5uCErh5M2H4MK2PQhgPmFTSmnYHANEVxHB82aVv6FZvKdmyUKkCoAhCXDy") + string("-") +
-    /* diff   */ string("10614838");
-#elif (TEST_MODE==TEST_CPU)
-const string REF_NONCE = "YYEETiqrzrmgIApJlA3WKfuYPdSQI4F3U04GirBhA";
-const string REF_BASE =
-    /* pubkey */ string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") +
-    /* nonce  */ REF_NONCE + string("-") +
-    /* block  */ string("KwkMnGF1qJeFh9nwZPTf3x86TmVF1RJaCPwfpKePVsAimJKTzA8H2ndx3FaRu7K54Md36yTcYKLaQtQNzRX4tAg") + string("-") +
-    /* diff   */ string("30792058");
-#endif
 
 void Miner::buildBatch() {
-    for (uint32_t j = 0; j < getCurrentBatchSize(); ++j) {
-#if (TEST_MODE)
-        nonces.push_back(REF_NONCE);
-        bases.push_back(REF_BASE);
-#else
-        generateBytes(nonceBase64, 64, byteBuffer, 32);
-        std::string nonce(nonceBase64);
+    if (testMode()) {
+        // $base = $this->publicKey."-".$nonce."-".$this->block."-".$this->difficulty;
+        const string REF_NONCE_GPU = "swGetfIyLrh8XYHcL7cM5kEElAJx3XkSrgTGveDN2w";
+        const string REF_BASE_GPU =
+            /* pubkey */ string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") +
+            /* nonce  */ REF_NONCE_GPU + string("-") +
+            /* block  */ string("6327pZD7RSArjnD9wiVM6eUKkNck4Q5uCErh5M2H4MK2PQhgPmFTSmnYHANEVxHB82aVv6FZvKdmyUKkCoAhCXDy") + string("-") +
+            /* diff   */ string("10614838");
 
-        boost::replace_all(nonce, "/", "");
-        boost::replace_all(nonce, "+", "");
+        const string REF_NONCE_CPU = "YYEETiqrzrmgIApJlA3WKfuYPdSQI4F3U04GirBhA";
+        const string REF_BASE_CPU =
+            /* pubkey */ string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") +
+            /* nonce  */ REF_NONCE_CPU + string("-") +
+            /* block  */ string("KwkMnGF1qJeFh9nwZPTf3x86TmVF1RJaCPwfpKePVsAimJKTzA8H2ndx3FaRu7K54Md36yTcYKLaQtQNzRX4tAg") + string("-") +
+            /* diff   */ string("30792058");
 
-        std::stringstream ss;
-        ss << *data.getPublic_key() << "-" << nonce << "-" << *data.getBlock() << "-" << *data.getDifficulty();
-        //cout << ss.str() << endl;
-        std::string base = ss.str();
+        bool isGPU = (params->getLanes() == 4);
+        string REF_NONCE = isGPU ? REF_NONCE_GPU : REF_NONCE_CPU;
+        string REF_BASE = isGPU ? REF_BASE_GPU : REF_BASE_CPU;
+        for (uint32_t j = 0; j < getCurrentBatchSize(); ++j) {
+            nonces.push_back(REF_NONCE);
+            bases.push_back(REF_BASE);
+        }
+    }
+    else {
+        for (uint32_t j = 0; j < getCurrentBatchSize(); ++j) {
+            generateBytes(nonceBase64, 64, byteBuffer, 32);
+            std::string nonce(nonceBase64);
 
-        nonces.push_back(nonce);
-        bases.push_back(base);
-#endif
+            boost::replace_all(nonce, "/", "");
+            boost::replace_all(nonce, "+", "");
+
+            std::stringstream ss;
+            ss << *data.getPublic_key() << "-" << nonce << "-" << *data.getBlock() << "-" << *data.getDifficulty();
+            //cout << ss.str() << endl;
+            std::string base = ss.str();
+
+            nonces.push_back(nonce);
+            bases.push_back(base);
+        }
     }
 }
 
@@ -140,26 +146,25 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
 
     duration.erase(0, min(duration.find_first_not_of('0'), duration.size() - 1));
 
-#if (TEST_MODE == TEST_GPU)
-    const string REF_DURATION = "491522547412523425129";
-#elif (TEST_MODE == TEST_CPU)
-    const string REF_DURATION = "1054924814964225626";
-#endif
-
-#if TEST_MODE
-    if (duration != REF_DURATION) {
-        static bool errShown = false;
-        if (!errShown) {
-            std::cout << std::endl;
-            std::cout << "Argon test failed, aborting ..." << std::endl;
-            std::cout << *argon << std::endl;
-            std::cout << duration << " / " << REF_DURATION << std::endl;
-            errShown = true;
-            exit(1);
+    if (testMode()) {
+        string REF_DURATION = 
+            //(testModeBlockType() == BLOCK_GPU) ?
+            (params->getLanes() == 4) ?
+            "491522547412523425129" :
+            "1054924814964225626";
+        if (duration != REF_DURATION) {
+            static bool errShown = false;
+            if (!errShown) {
+	            std::cout << std::endl;
+	                std::cout << "Argon test failed, aborting ..." << std::endl;
+	            std::cout << *argon << std::endl;
+	            std::cout << duration << " / " << REF_DURATION << std::endl;
+	            errShown = true;
+	            exit(1);
+            }
+            duration = "10000000000000000000";
         }
-        duration = "10000000000000000000";
     }
-#endif
 
     bool dd = false;
     result.set_str(duration, 10);
@@ -298,22 +303,23 @@ void Miner::encode(void *res, size_t reslen, std::string &out) {
 
 void Miner::hostPrepareTaskData() {
     // see if block changed
-    auto curBlock = updater->getData().getBlock();
-    if (!data.isValid() || data.isNewBlock(curBlock)) {
-        data = updater->getData();
-        while (data.isValid() == false) {
-            std::cout << "--------------------------------------------------" << std::endl;
-            std::cout << "Warning: cannot get pool info, maybe it is down ?" << std::endl;
-            std::cout << "Hashrate will be zero until pool back online..." << std::endl;
-            std::cout << "--------------------------------------------------" << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
+    if (updater) {
+        auto curBlock = updater->getData().getBlock();
+        if (!data.isValid() || data.isNewBlock(curBlock)) {
             data = updater->getData();
+            while (data.isValid() == false) {
+                std::cout << "--------------------------------------------------" << std::endl;
+                std::cout << "Warning: cannot get pool info, maybe it is down ?" << std::endl;
+                std::cout << "Hashrate will be zero until pool back online..." << std::endl;
+                std::cout << "--------------------------------------------------" << std::endl;
+                std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
+                data = updater->getData();
+            }
+
+            limit.set_str(*data.getLimit(), 10);
+            diff.set_str(*data.getDifficulty(), 10);
         }
-
-        limit.set_str(*data.getLimit(), 10);
-        diff.set_str(*data.getDifficulty(), 10);
     }
-
     // clear previous round data
     nonces.clear();
     bases.clear();
@@ -337,8 +343,17 @@ void Miner::hostProcessResults() {
     }
 
     // now check each one (to see if we need to submit it or not)
-    auto curBlockData = updater->getData();
-    bool blockHeightStillOk = (TEST_MODE) ? true : (curBlockData.getHeight() == data.getHeight());
+    bool blockHeightStillOk = 
+        (updater == nullptr) ||
+        (updater->getData().getHeight() == data.getHeight());
+
+    if (testMode()) {
+        auto bt = testModeBlockType();
+        blockHeightStillOk =
+            ((bt == BLOCK_GPU) && (params->getLanes() == 4)) ||
+            ((bt == BLOCK_CPU) && (params->getLanes() == 1));
+    }
+
     if (blockHeightStillOk) {
         auto nBatches = getCurrentBatchSize();
         for (uint32_t j = 0; j < nBatches; ++j) {
@@ -346,10 +361,18 @@ void Miner::hostProcessResults() {
         }
         stats->addHashes(nBatches);
     }
+#if 0
+    else {
+        stats->printTimePrefix();
+        cout << size << " hashes skipped (changing block)" << endl;
+    }
+#endif
 }
 
 bool Miner::mineBlock(BLOCK_TYPE type) {
-    return (TEST_MODE) ? true : (settings && settings->mineBlock(type));
+    return testMode() ? 
+        true : 
+        (settings && settings->mineBlock(type));
 }
 
 void Miner::computeCPUBatchSize() {
@@ -394,6 +417,7 @@ t_optParams Miner::precompute(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) 
 
     std::map<uint32_t, t_optParams>::const_iterator it = s_precomputeCache.find(m_cost);
     if (it == s_precomputeCache.end()) {
+        PERFSCOPE("INDEX PRECOMPUTE");
         argon2_instance_t inst;
         memset(&inst, 0, sizeof(inst));
         inst.context_ptr = nullptr;
@@ -422,10 +446,20 @@ t_optParams Miner::precompute(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) 
 }
 
 t_optParams Miner::configure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t bs) {
+    PERFSCOPE("Miner::configure");
+
     batchSize = bs;
 
     if (params)
         delete params;
+
+    if (testMode()) {
+        if (lanes == 1)
+            salt = "0KVwsNr6yT42uDX9"; // == from_base64("MEtWd3NOcjZ5VDQydURYOQ")
+        else
+            salt = "cifE2rK4nvmbVgQu"; // == from_base64("Y2lmRTJySzRudm1iVmdRdQ")
+    }
+
     params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, t_cost, m_cost, lanes);
 
     t_optParams optPrms;

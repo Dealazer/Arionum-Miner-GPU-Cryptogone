@@ -36,10 +36,9 @@ void handler(int sig) {
 }
 #endif
 
-#include "../../include/miner_version.h"
-
-//#define PROFILE
-#include "../../include/perfscope.h"
+#include "miner_version.h"
+#include "perfscope.h"
+#include "testMode.h"
 
 // cpprest lib
 #pragma comment(lib, "cpprest_2_10")
@@ -64,6 +63,7 @@ struct OpenCLArguments {
     bool allDevices = false;
     bool skipCpuBlocks = false;
     bool skipGpuBlocks = false;
+    bool testMode = false;
     std::vector<uint32_t> deviceIndexList = { 0 };
     std::vector<uint32_t> threadsPerDeviceList = { 1 };
     std::vector<uint32_t> batchSizePerDeviceList = { DEFAULT_BATCH_SIZE };
@@ -231,6 +231,10 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
                 "skip-gpu-blocks", '\0', "do not mine gpu blocks"),
 
         new FlagOption<OpenCLArguments>(
+            [](OpenCLArguments &state) { state.testMode = true; },
+            "test-mode", '\0', "test CPU/GPU blocks hashrate"),
+
+        new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.showHelp = true; },
                 "help", '?', "show this help and exit")
     };
@@ -292,51 +296,47 @@ string generateUniqid() {
     return ss.str();
 }
 
-bool feedMiners() {
+bool feedMiners(Stats *stats) {
     for (int i = 0; i < s_miners.size(); i++) {
         if (s_minerIdle[i] == false)
             continue;
 
+        updateTestMode(*stats);
+
         auto &miner = s_miners[i];
-        auto data = s_pUpdater->getData();
-        if (data.isValid()==false)
-            return false;
+
+        BLOCK_TYPE blockType;
         
-        auto blockType = (TEST_MODE == TEST_CPU) ? (BLOCK_CPU) : 
-                            ((TEST_MODE == TEST_GPU) ? BLOCK_GPU : 
-                            data.getBlockType());
-        
+        if (testMode()) {
+            blockType = testModeBlockType();
+        }
+        else {
+            auto data = s_pUpdater->getData();
+            if (data.isValid() == false)
+                return false;
+            blockType = data.getBlockType();
+        }
+
         if (!miner->mineBlock(blockType)) {
             continue;
-        }
+        }        
 
-#define DEBUG_DURATIONS (0)
-#if DEBUG_DURATIONS
-        if (s_minerStartT[i] != t_time_point()) {
-            std::chrono::duration<float> T = high_resolution_clock::now() - s_start;
-            std::chrono::duration<float> duration = high_resolution_clock::now() - s_minerStartT[i];
-            printf("T=%4.2f miner %d, %d batches in %.2fms\n",
-                T.count(),
-                i,
-                s_miners[i]->getCurrentBatchSize(),
-                duration.count() * 1000.f);
-        }
-        s_minerStartT[i] = high_resolution_clock::now();
-#endif
+        uint32_t batchSize = (blockType == BLOCK_GPU) ? 
+            miner->getInitialBatchSize() : 
+            miner->getCPUBatchSize();
 
-        uint32_t batchSize = 
-            (blockType == BLOCK_GPU) ? miner->getInitialBatchSize() : miner->getCPUBatchSize();
+        PROFILE("reconfigure",
+            s_miners[i]->reconfigureArgon(
+                Miner::getPasses(blockType),
+                Miner::getMemCost(blockType),
+                Miner::getLanes(blockType),
+                batchSize)
+        );
 
-        s_miners[i]->reconfigureArgon(
-            Miner::getPasses(blockType),
-            Miner::getMemCost(blockType),
-            Miner::getLanes(blockType),
-            batchSize);
-
-        miner->hostPrepareTaskData();
-        miner->deviceUploadTaskDataAsync();
-        miner->deviceLaunchTaskAsync();
-        miner->deviceFetchTaskResultAsync();
+        PROFILE("prepareHashes", miner->hostPrepareTaskData());
+        PROFILE("uploadHashes", miner->deviceUploadTaskDataAsync());
+        PROFILE("runKernel", miner->deviceLaunchTaskAsync());
+        PROFILE("fetchResults", miner->deviceFetchTaskResultAsync());
 
 #if 0
         std::chrono::duration<float> duration = high_resolution_clock::now() - s_minerStartT[i];
@@ -349,28 +349,42 @@ bool feedMiners() {
     return true;
 }
 
-int miningLoop() {
+int processMinersResults() {
+    int nIdle = 0;
+    for (int i = 0; i < s_miners.size(); i++) {
+        if (s_minerIdle[i]) {
+            nIdle++;
+            continue;
+        }
+        if (s_miners[i]->deviceResultsReady()) {
+#define DEBUG_DURATIONS (0)
+#if DEBUG_DURATIONS
+            if (s_minerStartT[i] != t_time_point()) {
+                std::chrono::duration<float> T = high_resolution_clock::now() - s_start;
+                std::chrono::duration<float> duration = high_resolution_clock::now() - s_minerStartT[i];
+                printf("T=%4.3f miner %d, %d batches in %.2fms\n",
+                    T.count(),
+                    i,
+                    s_miners[i]->getCurrentBatchSize(),
+                    duration.count() * 1000.f);
+            }
+            s_minerStartT[i] = high_resolution_clock::now();
+#endif
+            s_miners[i]->hostProcessResults();
+            s_minerIdle[i] = true;
+        }
+    }
+    return nIdle;
+}
+
+int miningLoop(Stats *stats) {
     while (true) {
-        // give new work to idle miners
-        bool ok = feedMiners();
+        bool ok = feedMiners(stats);
         if (!ok) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
 
-        // process miner results
-        int nIdle = 0;
-        for (int i = 0; i < s_miners.size(); i++) {
-            if (s_minerIdle[i]) {
-                nIdle++;
-                continue;
-            }
-            if (s_miners[i]->deviceResultsReady()) {
-                s_miners[i]->hostProcessResults();
-                s_minerIdle[i] = true;
-            }
-        }
-
-        // wait a bit, to avoid polling too much GPUs about tasks status
+        int nIdle = processMinersResults();
         if (nIdle == 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
@@ -389,11 +403,6 @@ int run(const char *const *argv) {
 
     // show version
     cout << getVersionStr() << endl << endl;
-#if (TEST_MODE == TEST_CPU)
-    cout << endl << "-------------- TEST CPU ----------------" << endl << endl;
-#elif TEST_MODE == TEST_GPU
-    cout << endl << "-------------- TEST GPU ----------------" << endl << endl;
-#endif
 
     // process arguments
     CommandLineParser<OpenCLArguments> parser = buildCmdLineParser();
@@ -407,6 +416,9 @@ int run(const char *const *argv) {
         parser.printHelp(argv);
         return 0;
     }
+
+    if (args.testMode)
+        enableTestMode();
 
     // basic check to see if CUDA / OpenCL is supported
     std::cout << "Initializing " << API_NAME << std::endl;
@@ -430,15 +442,16 @@ int run(const char *const *argv) {
 
     auto *stats = new Stats(&settings);
 
-
-    s_pUpdater = new Updater(stats, &settings);
-    thread updateThread(&Updater::start, s_pUpdater);
-    updateThread.detach();
+    if (!testMode()) {
+        s_pUpdater = new Updater(stats, &settings);
+        thread updateThread(&Updater::start, s_pUpdater);
+        updateThread.detach();
+    }
 
     spawnMiners<CONTEXT, MINER>(args, s_miners, stats, s_pUpdater, settings);
     s_miningReady = true;
 
-    miningLoop();
+    miningLoop(stats);
 
     return true;
 }

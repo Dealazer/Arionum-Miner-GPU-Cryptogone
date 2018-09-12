@@ -75,8 +75,12 @@ public:
     void newRejection();
     void newDl(uint32_t dl, BLOCK_TYPE t);
 
-    void beginRound(const MinerData& data);
+    void beginRound(BLOCK_TYPE blockType);
     void endRound();
+
+    void printTimePrefix() const;
+    void printRoundStats(float nSeconds) const;
+    void printRoundStatsHeader() const;
 
     const atomic<long> &getRounds(BLOCK_TYPE t) const;
     const atomic<long> &getTotalHashes(BLOCK_TYPE t) const;
@@ -95,7 +99,7 @@ public:
 
     friend ostream &operator<<(ostream &os, const Stats &stats);
 
-    void blockChange(const MinerData &newData);
+    void blockChange(BLOCK_TYPE blockType);
 
     const MinerSettings * getMinerSettings() const {
         return minerSettings;
