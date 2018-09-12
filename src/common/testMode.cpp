@@ -19,13 +19,17 @@ const int TEST_MODE_STATS_INTERVAL = 2;
 const int TEST_MODE_BLOCK_CHANGE_RATE = 5;
 
 struct TestModeInfo {
-    bool enabled = true;
+    bool enabled = false;
     t_time_point lastT = {};
     int nRounds = 0;
     BLOCK_TYPE blockType = BLOCK_GPU;
 };
 
 static TestModeInfo s_testMode;
+
+void enableTestMode() {
+    s_testMode.enabled = true;
+}
 
 int testModeRoundLengthInSeconds() {
     return TEST_MODE_STATS_INTERVAL;

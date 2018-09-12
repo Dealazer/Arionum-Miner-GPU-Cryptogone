@@ -63,6 +63,7 @@ struct OpenCLArguments {
     bool allDevices = false;
     bool skipCpuBlocks = false;
     bool skipGpuBlocks = false;
+    bool testMode = false;
     std::vector<uint32_t> deviceIndexList = { 0 };
     std::vector<uint32_t> threadsPerDeviceList = { 1 };
     std::vector<uint32_t> batchSizePerDeviceList = { DEFAULT_BATCH_SIZE };
@@ -228,6 +229,10 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
         new FlagOption<OpenCLArguments>(
                 [](OpenCLArguments &state) { state.skipGpuBlocks = true; },
                 "skip-gpu-blocks", '\0', "do not mine gpu blocks"),
+
+        new FlagOption<OpenCLArguments>(
+            [](OpenCLArguments &state) { state.testMode = true; },
+            "test-mode", '\0', "test CPU/GPU blocks hashrate"),
 
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.showHelp = true; },
@@ -411,6 +416,9 @@ int run(const char *const *argv) {
         parser.printHelp(argv);
         return 0;
     }
+
+    if (args.testMode)
+        enableTestMode();
 
     // basic check to see if CUDA / OpenCL is supported
     std::cout << "Initializing " << API_NAME << std::endl;

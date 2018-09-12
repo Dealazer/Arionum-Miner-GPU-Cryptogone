@@ -217,12 +217,13 @@ void Stats::printRoundStats(float nSeconds) const {
 
     auto blockType = testModeBlockType();
     ostringstream hashes;
-    hashes << getRoundHashes() << " in " << std::fixed << std::setprecision(1) << nSeconds << "s";
+    hashes << getRoundHashes() << " in " << std::fixed << std::setprecision(2) << nSeconds << "s";
+    double hashRateInstant = double(getRoundHashes()) / nSeconds;
     cout
         << std::fixed
         << std::setprecision((blockType == BLOCK_GPU) ? 1 : 2)
         << setw(10) << left << blockTypeName(blockType)
-        << setw(10) << left << getRoundHashRate()
+        << setw(10) << left << hashRateInstant
         << setw(10) << left << getAvgHashrate(blockType)
         << setw(10) << left << hashes.str()
         << endl;

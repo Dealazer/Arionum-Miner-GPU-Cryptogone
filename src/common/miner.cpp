@@ -361,6 +361,12 @@ void Miner::hostProcessResults() {
         }
         stats->addHashes(nBatches);
     }
+#if 0
+    else {
+        stats->printTimePrefix();
+        cout << size << " hashes skipped (changing block)" << endl;
+    }
+#endif
 }
 
 bool Miner::mineBlock(BLOCK_TYPE type) {
