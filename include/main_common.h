@@ -237,7 +237,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
 
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.legacyHashrate = true; },
-            "legacy-5s-hashrate", '\0', "show last 5s avg hashrate instead of last batch hashrate"),
+            "legacy-5s-hashrate", '\0', "show 5s avg hashrate instead of last set of batches hashrate"),
 
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.showHelp = true; },

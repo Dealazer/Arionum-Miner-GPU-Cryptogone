@@ -395,6 +395,12 @@ void Miner::computeCPUBatchSize() {
         if (cpu_batchSize < 1)
             cpu_batchSize = 1;
     }
+
+    // simulate CPU block change right now
+    // so we will crash here and not later if too much mem used
+    reconfigureArgon(nPassesCPU, memCostCPU, nLanesCPU, cpu_batchSize);
+
+    // go back to default, GPU block
     reconfigureArgon(nPassesGPU, memCostGPU, nLanesGPU, getInitialBatchSize());
 }
 
