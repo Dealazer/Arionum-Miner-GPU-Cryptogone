@@ -16,7 +16,7 @@ using std::chrono::high_resolution_clock;
 typedef std::chrono::time_point<high_resolution_clock> t_time_point;
 
 const int TEST_MODE_STATS_INTERVAL = 2;
-const int TEST_MODE_BLOCK_CHANGE_RATE = 5;
+const int TEST_MODE_BLOCK_CHANGE_RATE = 10;
 
 struct TestModeInfo {
     bool enabled = false;
@@ -49,7 +49,6 @@ void updateTestMode(Stats &stats) {
     if (s_testMode.lastT == t_time_point()) {
         s_testMode.lastT = high_resolution_clock::now();
         stats.beginRound(s_testMode.blockType);
-        cout << "--- Test Mode starts ---" << endl << endl;
         stats.printRoundStatsHeader();
     }
     chrono::duration<float> duration =

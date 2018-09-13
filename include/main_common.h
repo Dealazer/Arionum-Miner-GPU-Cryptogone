@@ -64,6 +64,7 @@ struct OpenCLArguments {
     bool skipCpuBlocks = false;
     bool skipGpuBlocks = false;
     bool testMode = false;
+    bool legacyHashrate = false;
     std::vector<uint32_t> deviceIndexList = { 0 };
     std::vector<uint32_t> threadsPerDeviceList = { 1 };
     std::vector<uint32_t> batchSizePerDeviceList = { DEFAULT_BATCH_SIZE };
@@ -235,6 +236,10 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
             "test-mode", '\0', "test CPU/GPU blocks hashrate"),
 
         new FlagOption<OpenCLArguments>(
+            [](OpenCLArguments &state) { state.legacyHashrate = true; },
+            "legacy-5s-hashrate", '\0', "show last 5s avg hashrate instead of last batch hashrate"),
+
+        new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.showHelp = true; },
                 "help", '?', "show this help and exit")
     };
@@ -296,14 +301,75 @@ string generateUniqid() {
     return ss.str();
 }
 
+typedef struct MinerStats {
+    t_time_point lastT = {};
+    BLOCK_TYPE lastTaskType = BLOCK_GPU;
+    double lastTaskHashrate = -1.0;
+    bool lastTaskValidated = true;
+}t_minerStats;
+
+vector<t_minerStats> s_minerStats;
+
+void minerStatsOnNewTask(int minerId, t_time_point time) {
+    if (s_minerStats.size() == 0)
+        s_minerStats.resize(s_miners.size());
+
+    auto &miner = s_miners[minerId];
+    auto &mstats = s_minerStats[minerId];
+
+    if (mstats.lastT == t_time_point()) {
+        mstats.lastT = time;
+    }
+    else {
+        std::chrono::duration<double> duration = time - mstats.lastT;
+        auto nHashes = miner->getCurrentBatchSize();
+        mstats.lastT = time;
+        mstats.lastTaskType = miner->getCurrentBlockType();
+
+        if (!mstats.lastTaskValidated) {
+            mstats.lastTaskHashrate = 0;
+        }
+        else {
+            mstats.lastTaskHashrate = (double)(nHashes) / duration.count();
+        }
+    }
+}
+
+void minerStatsOnTaskEnd(int minerId, bool hashesAccepted) {
+    s_minerStats[minerId].lastTaskValidated = hashesAccepted;
+}
+
+double minerStatsGetLastHashrate() {
+    double tot = 0.0;
+    for (const auto &it : s_minerStats) {
+        tot += it.lastTaskHashrate;
+    }
+    return tot;
+}
+
 bool feedMiners(Stats *stats) {
     for (int i = 0; i < s_miners.size(); i++) {
+        
+        t_time_point now = high_resolution_clock::now();
+
         if (s_minerIdle[i] == false)
             continue;
 
-        updateTestMode(*stats);
-
         auto &miner = s_miners[i];
+
+        static bool s_miningStartedMsgShown = false;
+        if (!s_miningStartedMsgShown) {
+            stats->printTimePrefix();            
+            cout << 
+                (testMode() ? 
+                    "--- Start Testing ---" : "--- Start Mining ---")
+                 << endl;
+            s_miningStartedMsgShown = true;
+        }
+
+        minerStatsOnNewTask(i, now);
+
+        updateTestMode(*stats);
 
         BLOCK_TYPE blockType;
         
@@ -319,7 +385,7 @@ bool feedMiners(Stats *stats) {
 
         if (!miner->mineBlock(blockType)) {
             continue;
-        }        
+        }
 
         uint32_t batchSize = (blockType == BLOCK_GPU) ? 
             miner->getInitialBatchSize() : 
@@ -362,16 +428,19 @@ int processMinersResults() {
             if (s_minerStartT[i] != t_time_point()) {
                 std::chrono::duration<float> T = high_resolution_clock::now() - s_start;
                 std::chrono::duration<float> duration = high_resolution_clock::now() - s_minerStartT[i];
-                printf("T=%4.3f miner %d, %d batches in %.2fms\n",
+                printf("T=%4.3f miner %d, %d hashes in %.2fms => %.1f Hs\n",
                     T.count(),
                     i,
                     s_miners[i]->getCurrentBatchSize(),
-                    duration.count() * 1000.f);
+                    duration.count() * 1000.f,
+                    (float)s_miners[i]->getCurrentBatchSize() / duration.count());
             }
             s_minerStartT[i] = high_resolution_clock::now();
 #endif
-            s_miners[i]->hostProcessResults();
+            bool hashesAccepted = s_miners[i]->hostProcessResults();
             s_minerIdle[i] = true;
+
+            minerStatsOnTaskEnd(i, hashesAccepted);
         }
     }
     return nIdle;
@@ -437,7 +506,7 @@ int run(const char *const *argv) {
                         args.workerId;
     MinerSettings settings(
         &args.poolUrl, &args.address, &uniqid, &dummy,
-        !args.skipGpuBlocks, !args.skipCpuBlocks);
+        !args.skipGpuBlocks, !args.skipCpuBlocks, !args.legacyHashrate);
     std::cout << settings << std::endl;
 
     auto *stats = new Stats(&settings);

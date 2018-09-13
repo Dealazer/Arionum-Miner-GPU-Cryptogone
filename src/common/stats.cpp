@@ -243,6 +243,9 @@ ostream &operator<<(ostream &os, const Stats &stats) {
 
     auto data = s_pUpdater->getData();
 
+    bool useNewHashrateDisplay = 
+        stats.getMinerSettings()->useLastHashrateInsteadOfRoundAvg();
+
     static unsigned long r = -1;
     r++;
     if (s_forceShowHeaders || (r % 5 == 0)) {
@@ -252,8 +255,14 @@ ostream &operator<<(ostream &os, const Stats &stats) {
         }
 
         ostringstream oss_hashrate_instant;
-        oss_hashrate_instant 
-            << "H/S-" << POOL_UPDATE_RATE_SECONDS << "s";
+        if (useNewHashrateDisplay) {
+            oss_hashrate_instant 
+                << "H/S-last";
+        }
+        else {
+            oss_hashrate_instant
+                << "H/S-" << POOL_UPDATE_RATE_SECONDS << "s";
+        }
 
         cout 
             << endl
@@ -288,9 +297,11 @@ ostream &operator<<(ostream &os, const Stats &stats) {
         stats.getMinerSettings() && 
         stats.getMinerSettings()->mineBlock(blockType);
     if (isMining) {
-        oss_hashRate << std::fixed << std::setprecision(1) 
-            << stats.getRoundHashRate();
-        oss_avgHashRate << std::fixed << std::setprecision(1) 
+        oss_hashRate 
+            << std::fixed << std::setprecision(1) 
+            << (useNewHashrateDisplay ? 
+                    minerStatsGetLastHashrate() : stats.getRoundHashRate());
+        oss_avgHashRate << std::fixed << std::setprecision(1)
             << stats.getAvgHashrate(blockType);
         ossBlockBestDL 
             << stats.getBlockBestDl();

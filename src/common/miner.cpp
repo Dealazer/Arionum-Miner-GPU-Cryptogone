@@ -120,7 +120,7 @@ void Miner::buildBatch() {
 }
 
 
-void Miner::checkArgon(string *base, string *argon, string *nonce) {
+bool Miner::checkArgon(string *base, string *argon, string *nonce) {
 
     std::stringstream oss;
     oss << *base << *argon;
@@ -153,16 +153,7 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
             "491522547412523425129" :
             "1054924814964225626";
         if (duration != REF_DURATION) {
-            static bool errShown = false;
-            if (!errShown) {
-	            std::cout << std::endl;
-	                std::cout << "Argon test failed, aborting ..." << std::endl;
-	            std::cout << *argon << std::endl;
-	            std::cout << duration << " / " << REF_DURATION << std::endl;
-	            errShown = true;
-	            exit(1);
-            }
-            duration = "10000000000000000000";
+            return false;
         }
     }
 
@@ -185,6 +176,8 @@ void Miner::checkArgon(string *base, string *argon, string *nonce) {
     }
 
     x.clear();
+
+    return true;
 }
 
 void Miner::submitReject(string msg, bool isBlock) {
@@ -270,8 +263,7 @@ void Miner::submit(string *argon, string *nonce, bool d, bool isBlock) {
                     submitReject(
                         string("-- nonce submit failed, json exception: ") + e.what(), isBlock);
                 }
-            })
-            .wait();
+            });
 }
 
 void Miner::encode(void *res, size_t reslen, std::string &out) {
@@ -323,27 +315,13 @@ void Miner::hostPrepareTaskData() {
     // clear previous round data
     nonces.clear();
     bases.clear();
-    argons.clear();
 
     // build new round data
     buildBatch();
 }
 
-void Miner::hostProcessResults() {
-    // now that we are synced, encode the argon results
-    uint32_t size = getCurrentBatchSize();
-    uint8_t buffer[32];
-    for (uint32_t j = 0; j < size; ++j) {
-        this->params->finalize(buffer, resultBuffers[j]);
-        
-        string encodedArgon;
-        encode(buffer, 32, encodedArgon);
-        
-        argons.push_back(encodedArgon);
-    }
-
-    // now check each one (to see if we need to submit it or not)
-    bool blockHeightStillOk = 
+bool Miner::hostProcessResults() {
+    bool blockHeightStillOk =
         (updater == nullptr) ||
         (updater->getData().getHeight() == data.getHeight());
 
@@ -354,19 +332,37 @@ void Miner::hostProcessResults() {
             ((bt == BLOCK_CPU) && (params->getLanes() == 1));
     }
 
-    if (blockHeightStillOk) {
-        auto nBatches = getCurrentBatchSize();
-        for (uint32_t j = 0; j < nBatches; ++j) {
-            checkArgon(&bases[j], &argons[j], &nonces[j]);
-        }
-        stats->addHashes(nBatches);
-    }
+    uint32_t nBatches = getCurrentBatchSize();
+
+    if (!blockHeightStillOk) {
 #if 0
-    else {
-        stats->printTimePrefix();
-        cout << size << " hashes skipped (changing block)" << endl;
-    }
+        if (testMode()) {
+            cout
+                << "--- " << nBatches << " "
+                << blockTypeName((params->getLanes() == 4) ? BLOCK_GPU : BLOCK_CPU)
+                << " hashes ignored (because block changed)"
+                << endl;
+        }
 #endif
+        return false;
+    }
+
+    uint32_t nGood = 0;
+    uint8_t buffer[32];
+    for (uint32_t j = 0; j < nBatches; ++j) {
+        string encodedArgon;
+        this->params->finalize(buffer, resultBuffers[j]);
+        encode(buffer, 32, encodedArgon);
+        nGood += checkArgon(&bases[j], &encodedArgon, &nonces[j]);
+    }
+
+    if (testMode() && (nGood != nBatches)) {
+        std::cout << "Warning: found invalid argon results in batch !" << std::endl;
+    }
+
+    stats->addHashes(nBatches);
+
+    return true;
 }
 
 bool Miner::mineBlock(BLOCK_TYPE type) {

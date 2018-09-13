@@ -16,6 +16,8 @@
 
 using namespace std;
 
+double minerStatsGetLastHashrate();
+
 //#define DEBUG_ROUNDS
 class MinerSettings;
 

@@ -20,15 +20,17 @@ private:
     string *uniqid;
     bool mineGpuBlocks;
     bool mineCpuBlocks;
+    bool showLastHashrate;
 public:
     MinerSettings(
         string *pa, string *pk, string *ui, size_t *bs,
-        bool mineGPU, bool mineCPU) :
+        bool mineGPU, bool mineCPU, bool showLastHashrate) :
         poolAddress(pa),
         privateKey(pk),
         uniqid(ui),
         mineGpuBlocks(mineGPU),
-        mineCpuBlocks(mineCPU) {
+        mineCpuBlocks(mineCPU),
+        showLastHashrate(showLastHashrate) {
     };
 
     friend ostream &operator<<(ostream &os, const MinerSettings &settings);
@@ -40,6 +42,7 @@ public:
     string *getUniqid() const;
 
     bool mineBlock(BLOCK_TYPE type) const;
+    bool useLastHashrateInsteadOfRoundAvg() const { return showLastHashrate; };
 };
 
 #endif //ARIONUM_GPU_MINER_MINERSETTINGS_H

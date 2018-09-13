@@ -81,7 +81,6 @@ protected:
 
     std::vector<std::string> nonces;
     std::vector<std::string> bases;
-    std::vector<std::string> argons;
     char *nonceBase64 = new char[64];
     uint8_t *byteBuffer = new uint8_t[32];
 
@@ -143,7 +142,7 @@ public:
     void buildBatch();
 
     void hostPrepareTaskData();
-    void hostProcessResults();
+    bool hostProcessResults();
 
     virtual void deviceUploadTaskDataAsync() = 0;
     virtual void deviceLaunchTaskAsync() = 0;
@@ -151,7 +150,7 @@ public:
     virtual void deviceWaitForResults() = 0;
     virtual bool deviceResultsReady() = 0;
 
-    void checkArgon(string *base, string *argon, string *nonce);
+    bool checkArgon(string *base, string *argon, string *nonce);
 
     void submit(string *argon, string *nonce, bool d, bool isBlock);
     void submitReject(string msg, bool isBlock);
@@ -181,6 +180,10 @@ public:
     bool mineBlock(BLOCK_TYPE type);
 
     void computeCPUBatchSize();
+
+    BLOCK_TYPE getCurrentBlockType() {
+        return data.getBlockType();
+    }
 };
 
 

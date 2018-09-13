@@ -118,8 +118,6 @@ void Updater::start() {
 
         // loop
         while (true) {
-            cout << *stats;
-
             MinerData newData = getData();
             stats->beginRound(newData.getBlockType());
             {
@@ -127,6 +125,7 @@ void Updater::start() {
                 std::this_thread::sleep_for(std::chrono::seconds(POOL_UPDATE_RATE_SECONDS));
             }
             stats->endRound();
+            cout << *stats;
         }
     }
     catch (exception e) {
