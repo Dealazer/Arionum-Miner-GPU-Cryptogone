@@ -300,7 +300,7 @@ ostream &operator<<(ostream &os, const Stats &stats) {
         oss_hashRate 
             << std::fixed << std::setprecision(1) 
             << (useNewHashrateDisplay ? 
-                    minerStatsGetLastHashrate() : stats.getRoundHashRate());
+                    minerStatsGetLastHashrate() : stats.getRoundHashRate().load());
         oss_avgHashRate << std::fixed << std::setprecision(1)
             << stats.getAvgHashrate(blockType);
         ossBlockBestDL 

@@ -7,8 +7,8 @@
 #include <iomanip>
 #include <sstream>
 
-#include "../include/testMode.h"
-#include "../include/stats.h"
+#include "../../include/testMode.h"
+#include "../../include/stats.h"
 
 using namespace std;
 using std::chrono::high_resolution_clock;
