@@ -156,6 +156,7 @@ You can also skip the last step and instead open `build/arionum-gpu-miner.sln` w
 * new "instant" hashrate computation (less variance), average hashrate not changed
 * (use --legacy-5s-hashrate to revert to previous way of computing instant hashrate: avg of last 5s)
 * OpenCL program cache (faster startup time when -t > 1)
+* linux launch scripts: added option to auto restart the miner if it crashes
 * updated FAQ & README
 
 #### Version 1.5.0 beta
