@@ -20,17 +20,11 @@
 #include <codecvt>
 #include <string>
 
-// enabling this will always use same pass/salt/nonce and exit(1) if result not matching reference
-// (of course will also not submit anything)
-#define TEST_OFF (0)
-#define TEST_GPU (1)
-#define TEST_CPU (2)
-#define TEST_MODE (TEST_OFF)
-
 #include "stats.h"
 #include "minersettings.h"
 #include "minerdata.h"
 #include "updater.h"
+#include "testMode.h"
 
 #define EQ(x, y) ((((0U - ((unsigned)(x) ^ (unsigned)(y))) >> 8) & 0xFF) ^ 0xFF)
 #define GT(x, y) ((((unsigned)(y) - (unsigned)(x)) >> 8) & 0xFF)
@@ -87,7 +81,6 @@ protected:
 
     std::vector<std::string> nonces;
     std::vector<std::string> bases;
-    std::vector<std::string> argons;
     char *nonceBase64 = new char[64];
     uint8_t *byteBuffer = new uint8_t[32];
 
@@ -133,13 +126,7 @@ public:
         generator = std::mt19937(device());
         distribution = std::uniform_int_distribution<int>(0, 255);
         
-#if (TEST_MODE == TEST_CPU)
-        salt = "0KVwsNr6yT42uDX9"; // == from_base64("MEtWd3NOcjZ5VDQydURYOQ")
-#elif (TEST_MODE == TEST_GPU)
-        salt = "cifE2rK4nvmbVgQu"; // == from_base64("Y2lmRTJySzRudm1iVmdRdQ")
-#else
         salt = randomStr(16);
-#endif
 
         // prepare array of gpu task results buffers
         auto count = batchSize;
@@ -155,7 +142,7 @@ public:
     void buildBatch();
 
     void hostPrepareTaskData();
-    void hostProcessResults();
+    bool hostProcessResults();
 
     virtual void deviceUploadTaskDataAsync() = 0;
     virtual void deviceLaunchTaskAsync() = 0;
@@ -163,9 +150,10 @@ public:
     virtual void deviceWaitForResults() = 0;
     virtual bool deviceResultsReady() = 0;
 
-    void checkArgon(string *base, string *argon, string *nonce);
+    bool checkArgon(string *base, string *argon, string *nonce);
 
-    void submit(string *argon, string *nonce, bool d);
+    void submit(string *argon, string *nonce, bool d, bool isBlock);
+    void submitReject(string msg, bool isBlock);
 
     void encode(void *res, size_t reslen, std::string &out);
 
@@ -192,6 +180,10 @@ public:
     bool mineBlock(BLOCK_TYPE type);
 
     void computeCPUBatchSize();
+
+    BLOCK_TYPE getCurrentBlockType() {
+        return data.getBlockType();
+    }
 };
 
 

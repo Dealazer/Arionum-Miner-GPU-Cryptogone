@@ -12,6 +12,8 @@
 using namespace std;
 using std::cout;
 
+#define DEBUG_ROUNDS (0)
+
 const atomic<long> &Stats::getRoundHashes() const {
     return roundHashes;
 }
@@ -87,35 +89,35 @@ void Stats::addHashes(long newHashes) {
 const uint32_t DP = 100;
 const uint32_t DR = 10000;
 
-bool Stats::newShare() {
-    auto r = rndRange(DR);
-    bool dd = r < DP;
-    {
+void Stats::newShare(bool dd) {
+    if (!dd) {
         std::lock_guard<std::mutex> lg(mutex);
-        if (!dd) {
-            shares++;
-        }
+        shares++;
     }
-    return dd;
 }
 
 static bool s_forceShowHeaders = false;
-void Stats::blockChange(const MinerData &newData) {
+
+bool Stats::dd() {
+    auto r = rndRange(DR);
+    bool dd = r < DP;
+    return dd;
+}
+
+void Stats::blockChange(BLOCK_TYPE blockType) {
     s_forceShowHeaders = true;
     if (roundType != -1) {
         endRound();
         blockBestDl = UINT32_MAX;
-        beginRound(newData);
+        beginRound(blockType);
     }
 }
 
-bool Stats::newBlock() {
-    auto r = rndRange(DR);
-    bool dd = r < DP;
+void Stats::newBlock(bool dd) {
     if (!dd) {
+        std::lock_guard<std::mutex> lg(mutex);
         blocks++;
     }
-    return dd;
 }
 
 void Stats::newRejection() {
@@ -145,12 +147,12 @@ void Stats::newDl(uint32_t dl, BLOCK_TYPE t) {
     }
 }
 
-void Stats::beginRound(const MinerData& data) {
+void Stats::beginRound(BLOCK_TYPE blockType) {
     std::lock_guard<std::mutex> lg(mutex);
-    roundType = data.getBlockType();
+    roundType = blockType;
     roundHashes = 0;    
     roundStart = std::chrono::system_clock::now();
-#ifdef DEBUG_ROUNDS
+#if DEBUG_ROUNDS
     cout << "---- START ROUND, type=" << roundType << endl;
 #endif
 }
@@ -161,18 +163,16 @@ void Stats::endRound() {
     std::lock_guard<std::mutex> lg(mutex);
 
     // compute duration
-    auto now = std::chrono::system_clock::now();
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(now - roundStart);
+    auto now = chrono::system_clock::now();
+    auto time = chrono::duration_cast<std::chrono::milliseconds>(now - roundStart);
     auto roundDurationMs = time.count();
 
     // compute hashrate
     roundHashRate = ((double)roundHashes * 1000.0) / (double)roundDurationMs;
 
-#if (TEST_MODE == TEST_CPU)
-    roundType = BLOCK_CPU;
-#elif (TEST_MODE == TEST_GPU)
-    roundType = BLOCK_GPU;
-#endif
+    if (testMode()) {
+        roundType = testModeBlockType();
+    }
 
     // record stats for averages
     if (roundType == BLOCK_GPU) {
@@ -187,17 +187,49 @@ void Stats::endRound() {
         totalHashes_cpu += roundHashes;
         totalTime_cpu_sec = totalTime_cpu_sec + (double)roundDurationMs / 1000.0;
     }
-#ifdef DEBUG_ROUNDS
-    cout << "---- END ROUND, duration=" << std::fixed << std::setprecision(1) << roundDurationMs << "ms" << endl;
+#if DEBUG_ROUNDS
+    cout << "---- END ROUND, duration=" << std::fixed << std::setprecision(1) 
+        << roundDurationMs << "ms" << endl;
 #endif
 }
 
+const int COL_TIME = 20;
+
+void Stats::printTimePrefix() const {
+#pragma warning(disable : 4996)
+    auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    cout << setw(COL_TIME) << left << std::put_time(std::localtime(&t), "%D %T   ");
+#pragma warning(default : 4996)
+}
+
+void Stats::printRoundStatsHeader() const {
+    printTimePrefix();
+    cout
+        << setw(10) << left << "TYPE"
+        << setw(10) << left << "Instant"
+        << setw(10) << left << "Average"
+        << setw(10) << left << "Hashes"
+        << endl;
+}
+
+void Stats::printRoundStats(float nSeconds) const {
+    printTimePrefix();
+
+    auto blockType = testModeBlockType();
+    ostringstream hashes;
+    hashes << getRoundHashes() << " in " << std::fixed << std::setprecision(2) << nSeconds << "s";
+    double hashRateInstant = double(getRoundHashes()) / nSeconds;
+    cout
+        << std::fixed
+        << std::setprecision((blockType == BLOCK_GPU) ? 1 : 2)
+        << setw(10) << left << blockTypeName(blockType)
+        << setw(10) << left << hashRateInstant
+        << setw(10) << left << getAvgHashrate(blockType)
+        << setw(10) << left << hashes.str()
+        << endl;
+}
+
 ostream &operator<<(ostream &os, const Stats &stats) {
-    // get current Mining data from updater
-    auto data = s_pUpdater->getData();
-    
-    // -- show header
-    const int COL_DATE          = 20;
     const int COL_TYPE          = 8;
     const int COL_HEIGHT        = 8;
     const int COL_HS            = 10;
@@ -209,69 +241,72 @@ ostream &operator<<(ostream &os, const Stats &stats) {
     const int COL_EVER_BEST_DL  = 16;
     const int COL_MIN_DL        = 16;
 
+    auto data = s_pUpdater->getData();
+
+    bool useNewHashrateDisplay = 
+        stats.getMinerSettings()->useLastHashrateInsteadOfRoundAvg();
+
     static unsigned long r = -1;
     r++;
     if (s_forceShowHeaders || (r % 5 == 0)) {
-
-        // s_forceShowHeaders management
         if (s_forceShowHeaders) {
             r = 0;
             s_forceShowHeaders = false;
         }
 
-        // jump a line before header
-        cout << endl;
-
-        //
         ostringstream oss_hashrate_instant;
-        oss_hashrate_instant << "H/S-" << POOL_UPDATE_RATE_SECONDS << "s";
+        if (useNewHashrateDisplay) {
+            oss_hashrate_instant 
+                << "H/S-last";
+        }
+        else {
+            oss_hashrate_instant
+                << "H/S-" << POOL_UPDATE_RATE_SECONDS << "s";
+        }
 
-        // column names
-        cout << setw(COL_DATE) << left          << "Date";
-#if !TEST_MODE
-        cout << setw(COL_HEIGHT) << left        << "Height";
-#endif
-
-        cout << setw(COL_TYPE) << left          << "Type";
-        cout << setw(COL_HS) << left            << oss_hashrate_instant.str();
-        cout << setw(COL_HS_AVG) << left        << "H/S-avg";
-
-#if !TEST_MODE
-        cout << setw(COL_SHARES) << left        << "Shares"
-             << setw(COL_BLOCKS) << left        << "Blocks"
-             << setw(COL_REJECTS) << left       << "Reject"
-             << setw(COL_BEST_DL) << left       << "Block best DL"
-             << setw(COL_EVER_BEST_DL) << left  << "Ever best DL"
-             << setw(COL_MIN_DL) << left        << "Pool min DL";
-#endif
-
-        cout << endl;
+        cout 
+            << endl
+            << setw(COL_TIME) << left << "Date"
+            << setw(COL_HEIGHT) << left << "Height"
+            << setw(COL_TYPE) << left << "Type"
+            << setw(COL_HS) << left << oss_hashrate_instant.str()
+            << setw(COL_HS_AVG) << left << "H/S-avg"
+            << setw(COL_SHARES) << left << "Shares"
+            << setw(COL_BLOCKS) << left << "Blocks"
+            << setw(COL_REJECTS) << left << "Reject"
+            << setw(COL_BEST_DL) << left << "Block best DL"
+            << setw(COL_EVER_BEST_DL) << left << "Ever best DL"
+            << setw(COL_MIN_DL) << left << "Pool min DL"
+            << endl;
     }
 
-    // -- show content
+    stats.printTimePrefix();
 
-    // date
-#pragma warning(disable : 4996)
-    auto roundStart = stats.getRoundStart();
-    auto t = std::chrono::system_clock::to_time_t(roundStart);
-    cout << setw(COL_DATE) << left << std::put_time(std::localtime(&t), "%D %T   ");
-#pragma warning(default : 4996)
+    auto blockType = 
+        data.getBlockType();
 
-#if !TEST_MODE
-    // height
-    cout << setw(COL_HEIGHT) << left << (s_pUpdater ? data.getHeight() : (-1));
-
-    // type
-    cout << setw(COL_TYPE) << left << (s_pUpdater ? blockTypeName(data.getBlockType()) : "??");
-
-    // mining stats
-    bool isMining = stats.getMinerSettings() && stats.getMinerSettings()->mineBlock(data.getBlockType());
-    ostringstream oss_hashRate, oss_avgHashRate, ossBlockBestDL, ossEverBestDL;
+    cout << setw(COL_HEIGHT) << left << 
+        (s_pUpdater ? data.getHeight() : (-1));
+    cout << setw(COL_TYPE) << left << 
+        (s_pUpdater ? blockTypeName(blockType) : "??");
+ 
+    ostringstream 
+        oss_hashRate, oss_avgHashRate, 
+        ossBlockBestDL, ossEverBestDL;
+    bool isMining = 
+        stats.getMinerSettings() && 
+        stats.getMinerSettings()->mineBlock(blockType);
     if (isMining) {
-        oss_hashRate << std::fixed << std::setprecision(1) << stats.getRoundHashRate();
-        oss_avgHashRate << std::fixed << std::setprecision(1) << stats.getAvgHashrate(data.getBlockType());
-        ossBlockBestDL << stats.getBlockBestDl();
-        uint32_t bestEver = stats.getBestDl(data.getBlockType());
+        oss_hashRate 
+            << std::fixed << std::setprecision(1) 
+            << (useNewHashrateDisplay ? 
+                    minerStatsGetLastHashrate() : stats.getRoundHashRate().load());
+        oss_avgHashRate << std::fixed << std::setprecision(1)
+            << stats.getAvgHashrate(blockType);
+        ossBlockBestDL 
+            << stats.getBlockBestDl();
+        uint32_t bestEver = 
+            stats.getBestDl(blockType);
         ossEverBestDL << bestEver;
     }
     else {
@@ -281,29 +316,16 @@ ostream &operator<<(ostream &os, const Stats &stats) {
         ossEverBestDL << "N/A";
     }
 
-    cout << setw(COL_HS)       << left << oss_hashRate.str()
-         << setw(COL_HS_AVG)   << left << oss_avgHashRate.str()
-         << setw(COL_SHARES)   << left << stats.getShares()
-         << setw(COL_BLOCKS)   << left << stats.getBlocks()
-         << setw(COL_REJECTS)  << left << stats.getRejections()
-         << setw(COL_BEST_DL)  << left << ossBlockBestDL.str()
-         << setw(COL_EVER_BEST_DL) << left << ossEverBestDL.str();
+    cout << setw(COL_HS) << left << oss_hashRate.str()
+        << setw(COL_HS_AVG) << left << oss_avgHashRate.str()
+        << setw(COL_SHARES) << left << stats.getShares()
+        << setw(COL_BLOCKS) << left << stats.getBlocks()
+        << setw(COL_REJECTS) << left << stats.getRejections()
+        << setw(COL_BEST_DL) << left << ossBlockBestDL.str()
+        << setw(COL_EVER_BEST_DL) << left << ossEverBestDL.str();
 
-    // pool limit
     cout << setw(COL_MIN_DL) << left;
-    if (isMining) {
-        cout << *data.getLimit();
-    }
-    else {
-        cout << "N/A";
-    }
-#else
-    // test mining stats
-    cout << std::fixed << std::setprecision((TEST_MODE == TEST_GPU) ? 1 : 2);
-    cout << setw(COL_TYPE)   << left << ((TEST_MODE == TEST_GPU) ? "GPU_T" : "CPU_T")
-         << setw(COL_HS)     << left << stats.getRoundHashRate()
-         << setw(COL_HS_AVG) << left << stats.getAvgHashrate(((TEST_MODE == TEST_GPU) ? BLOCK_GPU : BLOCK_CPU));
-#endif
+    cout << (isMining ? *data.getLimit() : "N/A");
 
     cout << endl;
     return os;

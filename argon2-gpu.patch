@@ -196,10 +196,10 @@ index ebc8460..92d44b6 100644
          }
      }
 diff --git a/include/argon2-cuda/kernels.h b/include/argon2-cuda/kernels.h
-index 16418b4..0d5c6f1 100644
+index 16418b4..950ebd3 100644
 --- a/include/argon2-cuda/kernels.h
 +++ b/include/argon2-cuda/kernels.h
-@@ -5,6 +5,7 @@
+@@ -5,12 +5,15 @@
  
  #include <cuda_runtime.h>
  #include <cstdint>
@@ -207,7 +207,15 @@ index 16418b4..0d5c6f1 100644
  
  /* workaround weird CMake/CUDA bug: */
  #ifdef argon2
-@@ -21,14 +22,19 @@ private:
+ #undef argon2
+ #endif
+ 
++#define REUSE_BUFFERS (1)
++
+ namespace argon2 {
+ namespace cuda {
+ 
+@@ -21,14 +24,26 @@ private:
      std::uint32_t passes, lanes, segmentBlocks;
      std::uint32_t batchSize;
      bool bySegment;
@@ -217,6 +225,13 @@ index 16418b4..0d5c6f1 100644
  
      cudaEvent_t start, end;
      cudaStream_t stream;
++
++#if REUSE_BUFFERS
++    size_t blocksBufferSize;
++    size_t refsBufferSize;
++    const uint32_t* lastPrecomputeAddress;
++#endif
++
      void *memory;
      void *refs;
 -
@@ -229,7 +244,7 @@ index 16418b4..0d5c6f1 100644
  
      void runKernelSegment(std::uint32_t lanesPerBlock,
                            std::uint32_t jobsPerBlock,
-@@ -37,25 +43,36 @@ private:
+@@ -37,25 +52,36 @@ private:
                            std::uint32_t jobsPerBlock);
  
  public:
@@ -389,10 +404,19 @@ index ced34f5..c03a742 100644
      return err;
  }
 diff --git a/include/argon2-opencl/kernelrunner.h b/include/argon2-opencl/kernelrunner.h
-index a1bba8b..a1e9309 100644
+index a1bba8b..0c78134 100644
 --- a/include/argon2-opencl/kernelrunner.h
 +++ b/include/argon2-opencl/kernelrunner.h
-@@ -15,16 +15,22 @@ private:
+@@ -4,6 +4,8 @@
+ #include "programcontext.h"
+ #include "argon2-gpu-common/argon2params.h"
+ 
++#define REUSE_BUFFERS (1)
++
+ namespace argon2 {
+ namespace opencl {
+ 
+@@ -15,16 +17,28 @@ private:
  
      std::uint32_t batchSize;
      bool bySegment;
@@ -406,8 +430,14 @@ index a1bba8b..a1e9309 100644
  
 -    std::size_t memorySize;
 +    cl::Event end;
- 
++
 +    t_optParams optParams;
+ 
++#if REUSE_BUFFERS
++    size_t blocksBufferSize;
++    size_t refsBufferSize;
++    const uint32_t* lastPrecomputeAddress;
++#endif
 +
 +    void setKernelsArgs();
 +    size_t totalRefsSize() const;
@@ -419,16 +449,16 @@ index a1bba8b..a1e9309 100644
  
  public:
      std::uint32_t getMinLanesPerBlock() const
-@@ -40,16 +46,30 @@ public:
+@@ -40,16 +54,30 @@ public:
  
      KernelRunner(const ProgramContext *programContext,
                   const Argon2Params *params, const Device *device,
 -                 std::uint32_t batchSize, bool bySegment, bool precompute);
--
--    void *mapInputMemory(std::uint32_t jobId);
--    void unmapInputMemory(void *memory);
 +                 std::uint32_t batchSize, bool bySegment, t_optParams opt);
  
+-    void *mapInputMemory(std::uint32_t jobId);
+-    void unmapInputMemory(void *memory);
+-
 -    void *mapOutputMemory(std::uint32_t jobId);
 -    void unmapOutputMemory(void *memory);
 +    void uploadToInputMemoryAsync(std::uint32_t jobId, const void* srcPtr);
@@ -535,10 +565,10 @@ index eb52e02..56040c9 100644
      devices.reserve(count);
      for (int i = 0; i < count; i++) {
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
-index 79fb767..05b4e7b 100644
+index 79fb767..4846fea 100644
 --- a/lib/argon2-cuda/kernels.cu
 +++ b/lib/argon2-cuda/kernels.cu
-@@ -3,9 +3,14 @@
+@@ -3,9 +3,13 @@
  #define __CUDACC__
  #endif
  
@@ -547,13 +577,12 @@ index 79fb767..05b4e7b 100644
  #include "kernels.h"
  #include "cudaexception.h"
  
-+#include <iostream>
-+#include <iomanip>
++#include "../../include/perfscope.h"
 +
  #include <stdexcept>
  #ifndef NDEBUG
  #include <iostream>
-@@ -49,8 +54,8 @@ __device__ uint64_t u64_shuffle(uint64_t v, uint32_t thread)
+@@ -49,8 +53,8 @@ __device__ uint64_t u64_shuffle(uint64_t v, uint32_t thread)
  {
      uint32_t lo = u64_lo(v);
      uint32_t hi = u64_hi(v);
@@ -564,7 +593,7 @@ index 79fb767..05b4e7b 100644
      return u64_build(hi, lo);
  }
  
-@@ -269,6 +274,7 @@ __device__ void next_addresses(struct block_th *addr, struct block_th *tmp,
+@@ -269,6 +273,7 @@ __device__ void next_addresses(struct block_th *addr, struct block_th *tmp,
      xor_block(addr, tmp);
  }
  
@@ -572,7 +601,7 @@ index 79fb767..05b4e7b 100644
  __device__ void compute_ref_pos(
          uint32_t lanes, uint32_t segment_blocks,
          uint32_t pass, uint32_t lane, uint32_t slice, uint32_t offset,
-@@ -309,6 +315,12 @@ struct ref {
+@@ -309,6 +314,12 @@ struct ref {
      uint32_t ref_index;
  };
  
@@ -585,7 +614,7 @@ index 79fb767..05b4e7b 100644
  /*
   * Refs hierarchy:
   * lanes -> passes -> slices -> blocks
-@@ -415,6 +427,25 @@ __device__ void argon2_core(
+@@ -415,6 +426,25 @@ __device__ void argon2_core(
      store_block(mem_curr, prev, thread);
  }
  
@@ -611,7 +640,7 @@ index 79fb767..05b4e7b 100644
  template<uint32_t type, uint32_t version>
  __device__ void argon2_step_precompute(
          struct block_g *memory, struct block_g *mem_curr,
-@@ -548,6 +579,33 @@ __global__ void argon2_kernel_oneshot_precompute(
+@@ -548,6 +578,33 @@ __global__ void argon2_kernel_oneshot_precompute(
      }
  }
  
@@ -645,8 +674,16 @@ index 79fb767..05b4e7b 100644
  template<uint32_t type, uint32_t version>
  __device__ void argon2_step(
          struct block_g *memory, struct block_g *mem_curr,
-@@ -759,46 +817,111 @@ __global__ void argon2_kernel_oneshot(
+@@ -757,48 +814,162 @@ __global__ void argon2_kernel_oneshot(
+     }
+ }
  
++void cudaSafeFree(void* &ptr) {
++    if (ptr)
++        cudaFree(ptr);
++    ptr = nullptr;
++}
++
  KernelRunner::KernelRunner(uint32_t type, uint32_t version, uint32_t passes,
                             uint32_t lanes, uint32_t segmentBlocks,
 -                           uint32_t batchSize, bool bySegment, bool precompute)
@@ -657,6 +694,11 @@ index 79fb767..05b4e7b 100644
 -      precompute(precompute), stream(nullptr), memory(nullptr),
 +      stream(nullptr), memory(nullptr),
        refs(nullptr), start(nullptr), end(nullptr)
++#if REUSE_BUFFERS
++      , blocksBufferSize(0)
++      , refsBufferSize(0)
++      , lastPrecomputeAddress(nullptr)
++#endif
  {
 -    // FIXME: check overflow:
 -    size_t memorySize = static_cast<size_t>(lanes) * segmentBlocks
@@ -684,9 +726,12 @@ index 79fb767..05b4e7b 100644
 +    batchSize = newBatchSize;
 +    optParams = newOptParams;
 +    
-+    freeBuffers();
-+
++#if REUSE_BUFFERS
 +    initializeBuffers();
++#else
++    freeBuffers();
++    initializeBuffers();
++#endif
 +}
  
 -    CudaException::check(cudaEventCreate(&start));
@@ -726,40 +771,74 @@ index 79fb767..05b4e7b 100644
  
 -        size_t refsSize = segments * segmentBlocks * sizeof(struct ref);
 +void KernelRunner::initializeBuffers() {
++#if REUSE_BUFFERS
 +    // blocks buffer
 +    size_t blocksSize = totalBlocksSize(getBlockCount(), batchSize);
-+    CudaException::check(cudaMalloc(&memory, blocksSize));
++    if (blocksBufferSize < blocksSize)
++    {
++        PERFSCOPE("Cuda realloc blocks buffer");
++        cudaSafeFree(memory);
++        CudaException::check(cudaMalloc(&memory, blocksSize));
++        blocksBufferSize = blocksSize;
++    }
+ 
+-#ifndef NDEBUG
+-        std::cerr << "[INFO] Allocating " << refsSize << " bytes for refs..."
+-                  << std::endl;
++    // refs / index buffer
++    size_t refsSize = totalRefsSize();
++    if (refsSize && refsBufferSize < refsSize) {
++        {
++            PERFSCOPE("Cuda realloc refs buffer");
++            cudaSafeFree(refs);
++            CudaException::check(cudaMalloc(&refs, refsSize));
++            refsBufferSize = refsSize;
++        }
++        if (optParams.mode == PRECOMPUTE_SIMPLE) {
++            precomputeRefs();
++            CudaException::check(cudaStreamSynchronize(stream));
++        }
++    }
++
++    if (optParams.mode == PRECOMPUTE && optParams.customIndex != lastPrecomputeAddress) {
++        PERFSCOPE("Cuda memcpy index");
++        cudaMemcpy(refs, optParams.customIndex, refsSize, cudaMemcpyHostToDevice);
++        lastPrecomputeAddress = optParams.customIndex;
++    }
++#else
++    // blocks buffer
++    {
++        PERFSCOPE("Cuda alloc blocks buffer");
++        size_t blocksSize = totalBlocksSize(getBlockCount(), batchSize);
++        CudaException::check(cudaMalloc(&memory, blocksSize));
++    }
 +    
 +    // refs / index buffer
 +    size_t refsSize = totalRefsSize();
 +    if (refsSize) {
-+        CudaException::check(cudaMalloc(&refs, refsSize));
++        {
++            PERFSCOPE("Cuda alloc refs buffer");
++            CudaException::check(cudaMalloc(&refs, refsSize));
++        }
 +        if (optParams.mode == PRECOMPUTE_SIMPLE) {
 +            precomputeRefs();
 +            CudaException::check(cudaStreamSynchronize(stream));
 +        }
 +        else if (optParams.mode == PRECOMPUTE) {
++            PERFSCOPE("Cuda memcpy index");
 +            cudaMemcpy(refs, optParams.customIndex, refsSize, cudaMemcpyHostToDevice);
 +        }
 +    }
+ #endif
 +}
- 
--#ifndef NDEBUG
--        std::cerr << "[INFO] Allocating " << refsSize << " bytes for refs..."
--                  << std::endl;
--#endif
-+void cudaSafeFree(void* &ptr) {
-+    if (ptr)
-+        cudaFree(ptr);
-+    ptr = nullptr;
-+}
- 
--        CudaException::check(cudaMalloc(&refs, refsSize));
++
 +void KernelRunner::freeBuffers() {
++    PERFSCOPE("KernelRunner::freeBuffers");
 +    cudaSafeFree(refs);
 +    cudaSafeFree(memory);
 +}
-+
+ 
+-        CudaException::check(cudaMalloc(&refs, refsSize));
 +KernelRunner::~KernelRunner()
 +{
 +    freeBuffers();
@@ -783,7 +862,7 @@ index 79fb767..05b4e7b 100644
  }
  
  void KernelRunner::precomputeRefs()
-@@ -826,47 +949,42 @@ void KernelRunner::precomputeRefs()
+@@ -826,47 +997,42 @@ void KernelRunner::precomputeRefs()
      }
  }
  
@@ -846,7 +925,7 @@ index 79fb767..05b4e7b 100644
  }
  
  void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
-@@ -885,7 +1003,7 @@ void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
+@@ -885,7 +1051,7 @@ void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
      dim3 blocks = dim3(1, lanes / lanesPerBlock, batchSize / jobsPerBlock);
      dim3 threads = dim3(THREADS_PER_LANE, lanesPerBlock, jobsPerBlock);
      if (type == ARGON2_I) {
@@ -855,7 +934,7 @@ index 79fb767..05b4e7b 100644
              struct ref *refs = (struct ref *)this->refs;
              if (version == ARGON2_VERSION_10) {
                  argon2_kernel_segment_precompute<ARGON2_I, ARGON2_VERSION_10>
-@@ -912,7 +1030,7 @@ void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
+@@ -912,7 +1078,7 @@ void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
              }
          }
      } else if (type == ARGON2_ID) {
@@ -864,7 +943,7 @@ index 79fb767..05b4e7b 100644
              struct ref *refs = (struct ref *)this->refs;
              if (version == ARGON2_VERSION_10) {
                  argon2_kernel_segment_precompute<ARGON2_ID, ARGON2_VERSION_10>
-@@ -967,8 +1085,17 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
+@@ -967,8 +1133,17 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
      struct block_g *memory_blocks = (struct block_g *)memory;
      dim3 blocks = dim3(1, 1, batchSize / jobsPerBlock);
      dim3 threads = dim3(THREADS_PER_LANE, lanes, jobsPerBlock);
@@ -884,7 +963,7 @@ index 79fb767..05b4e7b 100644
              struct ref *refs = (struct ref *)this->refs;
              if (version == ARGON2_VERSION_10) {
                  argon2_kernel_oneshot_precompute<ARGON2_I, ARGON2_VERSION_10>
-@@ -991,7 +1118,7 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
+@@ -991,7 +1166,7 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
              }
          }
      } else if (type == ARGON2_ID) {
@@ -893,7 +972,7 @@ index 79fb767..05b4e7b 100644
              struct ref *refs = (struct ref *)this->refs;
              if (version == ARGON2_VERSION_10) {
                  argon2_kernel_oneshot_precompute<ARGON2_ID, ARGON2_VERSION_10>
-@@ -1028,8 +1155,6 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
+@@ -1028,8 +1203,6 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
  
  void KernelRunner::run(uint32_t lanesPerBlock, uint32_t jobsPerBlock)
  {
@@ -902,7 +981,7 @@ index 79fb767..05b4e7b 100644
      if (bySegment) {
          for (uint32_t pass = 0; pass < passes; pass++) {
              for (uint32_t slice = 0; slice < ARGON2_SYNC_POINTS; slice++) {
-@@ -1041,18 +1166,11 @@ void KernelRunner::run(uint32_t lanesPerBlock, uint32_t jobsPerBlock)
+@@ -1041,18 +1214,11 @@ void KernelRunner::run(uint32_t lanesPerBlock, uint32_t jobsPerBlock)
      }
  
      CudaException::check(cudaGetLastError());
@@ -1187,7 +1266,7 @@ index 22949f3..62bb887 100644
          throw;
      }
 diff --git a/lib/argon2-opencl/kernelrunner.cpp b/lib/argon2-opencl/kernelrunner.cpp
-index 9fe39b4..aa517d0 100644
+index 9fe39b4..75d25f8 100644
 --- a/lib/argon2-opencl/kernelrunner.cpp
 +++ b/lib/argon2-opencl/kernelrunner.cpp
 @@ -1,61 +1,93 @@
@@ -1289,10 +1368,10 @@ index 9fe39b4..aa517d0 100644
 +
 +    if (optParams.mode == PRECOMPUTE) {
 +        std::size_t shmemSize = THREADS_PER_LANE * sizeof(cl_uint) * 2;
++
++        kernel.setArg<cl::Buffer>(2, refsBuffer);
  
 -        precomputeRefs();
-+        kernel.setArg<cl::Buffer>(2, refsBuffer);
-+
 +        uint32_t nSteps = ARGON2_SYNC_POINTS * segmentBlocks;
 +
 +        kernel.setArg<cl_uint>(3, nSteps);
@@ -1303,19 +1382,19 @@ index 9fe39b4..aa517d0 100644
 +        kernel.setArg<cl_uint>(3, passes);
 +        kernel.setArg<cl_uint>(4, lanes);
 +        kernel.setArg<cl_uint>(5, segmentBlocks);
-     }
++    }
 +    else {
 +        kernel.setArg<cl_uint>(2, passes);
 +        kernel.setArg<cl_uint>(3, lanes);
 +        kernel.setArg<cl_uint>(4, segmentBlocks);
-+    }
+     }
 +}
  
 +void KernelRunner::setupKernel(const Device *device) {
      static const char *KERNEL_NAMES[2][2] = {
          {
              "argon2_kernel_oneshot",
-@@ -67,19 +99,118 @@ KernelRunner::KernelRunner(const ProgramContext *programContext,
+@@ -67,19 +99,161 @@ KernelRunner::KernelRunner(const ProgramContext *programContext,
          }
      };
  
@@ -1353,7 +1432,7 @@ index 9fe39b4..aa517d0 100644
 +
 +        // use custom kernel
 +        kernelName = KERNEL_PRECOMPUTED_INDEX;
-     }
++    }
 +
 +    kernel = cl::Kernel(programContext->getProgram(), kernelName);
 +
@@ -1365,6 +1444,11 @@ index 9fe39b4..aa517d0 100644
 +                           std::uint32_t batchSize, bool bySegment, t_optParams opt)
 +    : programContext(programContext), params(params), batchSize(batchSize),
 +      bySegment(bySegment), optParams(opt)
++#if REUSE_BUFFERS
++    , blocksBufferSize(0)
++    , refsBufferSize(0)
++    , lastPrecomputeAddress(nullptr)
++#endif
 +{
 +    auto context = programContext->getContext();
 +    cl_command_queue_properties props = CL_QUEUE_PROFILING_ENABLE;
@@ -1391,6 +1475,40 @@ index 9fe39b4..aa517d0 100644
 +}
 +
 +void KernelRunner::initializeBuffers() {
++#if REUSE_BUFFERS
++    auto context = programContext->getContext();
++    
++    // blocks
++    size_t blocksSize = totalBlocksSize(getBlockCount(), batchSize);
++    if (blocksBufferSize < blocksSize) {
++        memoryBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, blocksSize);
++        blocksBufferSize = blocksSize;
++    }
++
++    // refs / index buffer
++    size_t refsSize = totalRefsSize();
++    if (refsSize && refsBufferSize < refsSize) {
++        refsBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, refsSize);
++        refsBufferSize = refsSize;
++        if (optParams.mode == PRECOMPUTE_SIMPLE) {
++            precomputeRefs();
++        }
++    }
++
++    if (optParams.mode == PRECOMPUTE && optParams.customIndex != lastPrecomputeAddress) {
++        bool blocking = false;
++        cl_int res = queue->enqueueWriteBuffer(
++            refsBuffer,
++            blocking,
++            0,
++            refsSize,
++            optParams.customIndex,
++            NULL,
++            NULL);
++        queue->finish();
++        lastPrecomputeAddress = optParams.customIndex;
++    }
++#else
 +    // blocks
 +    auto context = programContext->getContext();
 +    size_t blocksSize = totalBlocksSize(getBlockCount(), batchSize);
@@ -1417,6 +1535,7 @@ index 9fe39b4..aa517d0 100644
 +            queue->finish();
 +        }
 +    }
++#endif
 +}
 +
 +void KernelRunner::freeBuffers() {
@@ -1432,21 +1551,24 @@ index 9fe39b4..aa517d0 100644
 +    if (bySegment) {
 +        printf("reconfigureArgon not supported with bySegment mode !\n");
 +        exit(1);
-+    }
+     }
 +
 +    params = newParams;
 +    batchSize = newBatchSize;
 +    optParams = newOptParams;
 +
-+    freeBuffers();
-+
++#if REUSE_BUFFERS
 +    initializeBuffers();
++#else
++    freeBuffers();
++    initializeBuffers();
++#endif
 +
 +    setupKernel(device);
  }
  
  void KernelRunner::precomputeRefs()
-@@ -98,6 +229,7 @@ void KernelRunner::precomputeRefs()
+@@ -98,6 +272,7 @@ void KernelRunner::precomputeRefs()
  
      cl::Kernel kernel = cl::Kernel(programContext->getProgram(),
                                     "argon2_precompute_kernel");
@@ -1454,7 +1576,7 @@ index 9fe39b4..aa517d0 100644
      kernel.setArg<cl::LocalSpaceArg>(0, { shmemSize });
      kernel.setArg<cl::Buffer>(1, refsBuffer);
      kernel.setArg<cl_uint>(2, passes);
-@@ -106,36 +238,62 @@ void KernelRunner::precomputeRefs()
+@@ -106,36 +281,62 @@ void KernelRunner::precomputeRefs()
  
      cl::NDRange globalRange { THREADS_PER_LANE * segments * segmentAddrBlocks };
      cl::NDRange localRange { THREADS_PER_LANE };
@@ -1539,7 +1661,7 @@ index 9fe39b4..aa517d0 100644
  }
  
  void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
-@@ -157,39 +315,72 @@ void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
+@@ -157,39 +358,72 @@ void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
          throw std::logic_error("Invalid jobsPerBlock!");
      }
  
@@ -1610,12 +1732,12 @@ index 9fe39b4..aa517d0 100644
 +        return optParams.customBlockCount;
 +    return params->getLanes() * params->getSegmentBlocks() * ARGON2_SYNC_POINTS;
 +}
++
++size_t KernelRunner::getMemoryUsage() const {
++    size_t tot = totalBlocksSize(getBlockCount(), batchSize);
  
 -    cl_ulong nsStart = start.getProfilingInfo<CL_PROFILING_COMMAND_END>();
 -    cl_ulong nsEnd   = end.getProfilingInfo<CL_PROFILING_COMMAND_END>();
-+size_t KernelRunner::getMemoryUsage() const {
-+    size_t tot = totalBlocksSize(getBlockCount(), batchSize);
-+
 +    if (refsBuffer() != NULL) {
 +        tot += totalRefsSize();
 +    }

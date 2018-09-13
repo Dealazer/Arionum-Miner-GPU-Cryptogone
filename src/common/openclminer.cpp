@@ -12,6 +12,13 @@ using argon2::t_optParams;
 using argon2::PRECOMPUTE;
 using argon2::BASELINE;
 
+#define USE_PROGRAM_CACHE (1)
+
+#if USE_PROGRAM_CACHE
+#include <map>
+static std::map<cl_device_id, argon2::opencl::ProgramContext*> s_programCache;
+#endif
+
 OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_t *deviceIndex)
         : Miner(s, ms, bs, u) {
     global = new argon2::opencl::GlobalContext();
@@ -19,9 +26,23 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, s
     auto &devices = global->getAllDevices();
     device = &devices[*deviceIndex];
 
+#if USE_PROGRAM_CACHE
+    cl_device_id deviceID = device->getCLDevice()();
+    auto it = s_programCache.find(deviceID);
+    if (it == s_programCache.end()) {
+        s_programCache.insert(
+            std::make_pair(
+                deviceID,
+                new argon2::opencl::ProgramContext(
+                    global, { *device }, type, version,
+                    "./argon2-gpu/data/kernels/")));
+    }
+    progCtx = s_programCache[deviceID];
+#else
     progCtx = new argon2::opencl::ProgramContext(
         global, {*device}, type, version,
         "./argon2-gpu/data/kernels/");
+#endif
 
     auto nLanesMax = Miner::getLanes(BLOCK_GPU);
     try {
