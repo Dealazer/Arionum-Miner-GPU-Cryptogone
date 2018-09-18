@@ -28,7 +28,7 @@ Also depending on your system (Ubuntu16 / 17 etc.) you might want to use another
     sudo ubuntu-drivers autoinstall
 
     # install required packages
-    sudo apt-get -y install wget libgmp libboost libcpprest libssl
+    sudo apt-get -y install wget libcpprest libboost-all-dev
 
     # create a folder to put the miner in, and go inside it
     mkdir arionum-gpu-miner
