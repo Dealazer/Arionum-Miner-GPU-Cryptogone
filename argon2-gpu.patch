@@ -1,7 +1,13 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 3dd95ba..15fb786 100644
+index 3dd95ba..f5130e0 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-cmake_minimum_required(VERSION 3.7)
++cmake_minimum_required(VERSION 3.5)
+ 
+ project(argon2-gpu CXX)
+ set(BINARY_INSTALL_DIR /usr/local/bin)
 @@ -28,9 +28,17 @@ if(CUDA_FOUND)
      )
  endif()
@@ -565,16 +571,17 @@ index eb52e02..56040c9 100644
      devices.reserve(count);
      for (int i = 0; i < count; i++) {
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
-index 79fb767..4846fea 100644
+index 79fb767..7cb0408 100644
 --- a/lib/argon2-cuda/kernels.cu
 +++ b/lib/argon2-cuda/kernels.cu
 @@ -3,9 +3,13 @@
  #define __CUDACC__
  #endif
  
+-#include "kernels.h"
 +#include <cuda_runtime.h>
 +
- #include "kernels.h"
++#include "../../include/argon2-cuda/kernels.h"
  #include "cudaexception.h"
  
 +#include "../../include/perfscope.h"

@@ -19,7 +19,7 @@ Here is a typical list of shell commands needed to install on Ubuntu (parts star
 
 I assume this is for a Nvidia card, for AMD card just replace `run_CUDA.sh` with `run_OpenCL.sh`
 
-Also depending on your system (Ubuntu16 / 17 etc.) you might want to use another binary url for wget, all binaries are [here](https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/)
+I also assume this is for Ubuntu 16, if you want to install on another Ubuntu version, use another binary url for the `wget` command, all binaries are [here](https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/)
 
     # update list of known packages
     sudo apt-get update
@@ -34,7 +34,7 @@ Also depending on your system (Ubuntu16 / 17 etc.) you might want to use another
     mkdir arionum-gpu-miner
     cd arionum-gpu-miner
 
-    # download latest binary archive
+    # download latest binary archive, make sure that you use the correct url for your Ubuntu version (16, 17, 18 ...)
     wget -O arionum-gpu-miner-v1.5.0.tar.gz "https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/arionum-gpu-miner-v1.5.0-ubuntu16-hiveOS.tar.gz"
 
     # extract archive 
@@ -148,6 +148,7 @@ First, install CUDA SDK (https://developer.nvidia.com/cuda-downloads)
 
 Then use the following commands:
 
+    sudo apt-get install git cmake 
     git clone https://bitbucket.org/cryptogone/arionum-gpu-miner.git
     cd arionum-gpu-miner
     ./setup_libs.sh linux

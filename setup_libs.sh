@@ -24,7 +24,7 @@ cd ..
 
 if [ "$1" = "linux" ]; then
   echo "- INSTALL PACKAGES -"
-  sudo apt install libgmp-dev python-dev libboost-dev libcpprest-dev zlib1g-dev libssl-dev -y
+  sudo apt install libgmp-dev python-dev libboost-dev libcpprest-dev zlib1g-dev libssl-dev ocl-icd-opencl-dev -y
   exit 0
 fi
 
