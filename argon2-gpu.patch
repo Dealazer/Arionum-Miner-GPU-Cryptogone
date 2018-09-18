@@ -202,14 +202,14 @@ index ebc8460..92d44b6 100644
          }
      }
 diff --git a/include/argon2-cuda/kernels.h b/include/argon2-cuda/kernels.h
-index 16418b4..950ebd3 100644
+index 16418b4..5618711 100644
 --- a/include/argon2-cuda/kernels.h
 +++ b/include/argon2-cuda/kernels.h
 @@ -5,12 +5,15 @@
  
  #include <cuda_runtime.h>
  #include <cstdint>
-+#include <argon2-gpu-common/argon2-common.h>
++#include "../include/argon2-gpu-common/argon2-common.h"
  
  /* workaround weird CMake/CUDA bug: */
  #ifdef argon2
@@ -571,25 +571,24 @@ index eb52e02..56040c9 100644
      devices.reserve(count);
      for (int i = 0; i < count; i++) {
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
-index 79fb767..7cb0408 100644
+index 79fb767..4b67f24 100644
 --- a/lib/argon2-cuda/kernels.cu
 +++ b/lib/argon2-cuda/kernels.cu
-@@ -3,9 +3,13 @@
+@@ -3,8 +3,11 @@
  #define __CUDACC__
  #endif
  
 -#include "kernels.h"
+-#include "cudaexception.h"
 +#include <cuda_runtime.h>
 +
 +#include "../../include/argon2-cuda/kernels.h"
- #include "cudaexception.h"
- 
++#include "../../include/argon2-cuda/cudaexception.h"
 +#include "../../include/perfscope.h"
-+
+ 
  #include <stdexcept>
  #ifndef NDEBUG
- #include <iostream>
-@@ -49,8 +53,8 @@ __device__ uint64_t u64_shuffle(uint64_t v, uint32_t thread)
+@@ -49,8 +52,8 @@ __device__ uint64_t u64_shuffle(uint64_t v, uint32_t thread)
  {
      uint32_t lo = u64_lo(v);
      uint32_t hi = u64_hi(v);
@@ -600,7 +599,7 @@ index 79fb767..7cb0408 100644
      return u64_build(hi, lo);
  }
  
-@@ -269,6 +273,7 @@ __device__ void next_addresses(struct block_th *addr, struct block_th *tmp,
+@@ -269,6 +272,7 @@ __device__ void next_addresses(struct block_th *addr, struct block_th *tmp,
      xor_block(addr, tmp);
  }
  
@@ -608,7 +607,7 @@ index 79fb767..7cb0408 100644
  __device__ void compute_ref_pos(
          uint32_t lanes, uint32_t segment_blocks,
          uint32_t pass, uint32_t lane, uint32_t slice, uint32_t offset,
-@@ -309,6 +314,12 @@ struct ref {
+@@ -309,6 +313,12 @@ struct ref {
      uint32_t ref_index;
  };
  
@@ -621,7 +620,7 @@ index 79fb767..7cb0408 100644
  /*
   * Refs hierarchy:
   * lanes -> passes -> slices -> blocks
-@@ -415,6 +426,25 @@ __device__ void argon2_core(
+@@ -415,6 +425,25 @@ __device__ void argon2_core(
      store_block(mem_curr, prev, thread);
  }
  
@@ -647,7 +646,7 @@ index 79fb767..7cb0408 100644
  template<uint32_t type, uint32_t version>
  __device__ void argon2_step_precompute(
          struct block_g *memory, struct block_g *mem_curr,
-@@ -548,6 +578,33 @@ __global__ void argon2_kernel_oneshot_precompute(
+@@ -548,6 +577,33 @@ __global__ void argon2_kernel_oneshot_precompute(
      }
  }
  
@@ -681,7 +680,7 @@ index 79fb767..7cb0408 100644
  template<uint32_t type, uint32_t version>
  __device__ void argon2_step(
          struct block_g *memory, struct block_g *mem_curr,
-@@ -757,48 +814,162 @@ __global__ void argon2_kernel_oneshot(
+@@ -757,48 +813,162 @@ __global__ void argon2_kernel_oneshot(
      }
  }
  
@@ -838,14 +837,14 @@ index 79fb767..7cb0408 100644
 +    }
  #endif
 +}
-+
+ 
+-        CudaException::check(cudaMalloc(&refs, refsSize));
 +void KernelRunner::freeBuffers() {
 +    PERFSCOPE("KernelRunner::freeBuffers");
 +    cudaSafeFree(refs);
 +    cudaSafeFree(memory);
 +}
- 
--        CudaException::check(cudaMalloc(&refs, refsSize));
++
 +KernelRunner::~KernelRunner()
 +{
 +    freeBuffers();
@@ -869,7 +868,7 @@ index 79fb767..7cb0408 100644
  }
  
  void KernelRunner::precomputeRefs()
-@@ -826,47 +997,42 @@ void KernelRunner::precomputeRefs()
+@@ -826,47 +996,42 @@ void KernelRunner::precomputeRefs()
      }
  }
  
@@ -932,7 +931,7 @@ index 79fb767..7cb0408 100644
  }
  
  void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
-@@ -885,7 +1051,7 @@ void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
+@@ -885,7 +1050,7 @@ void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
      dim3 blocks = dim3(1, lanes / lanesPerBlock, batchSize / jobsPerBlock);
      dim3 threads = dim3(THREADS_PER_LANE, lanesPerBlock, jobsPerBlock);
      if (type == ARGON2_I) {
@@ -941,7 +940,7 @@ index 79fb767..7cb0408 100644
              struct ref *refs = (struct ref *)this->refs;
              if (version == ARGON2_VERSION_10) {
                  argon2_kernel_segment_precompute<ARGON2_I, ARGON2_VERSION_10>
-@@ -912,7 +1078,7 @@ void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
+@@ -912,7 +1077,7 @@ void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
              }
          }
      } else if (type == ARGON2_ID) {
@@ -950,7 +949,7 @@ index 79fb767..7cb0408 100644
              struct ref *refs = (struct ref *)this->refs;
              if (version == ARGON2_VERSION_10) {
                  argon2_kernel_segment_precompute<ARGON2_ID, ARGON2_VERSION_10>
-@@ -967,8 +1133,17 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
+@@ -967,8 +1132,17 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
      struct block_g *memory_blocks = (struct block_g *)memory;
      dim3 blocks = dim3(1, 1, batchSize / jobsPerBlock);
      dim3 threads = dim3(THREADS_PER_LANE, lanes, jobsPerBlock);
@@ -970,7 +969,7 @@ index 79fb767..7cb0408 100644
              struct ref *refs = (struct ref *)this->refs;
              if (version == ARGON2_VERSION_10) {
                  argon2_kernel_oneshot_precompute<ARGON2_I, ARGON2_VERSION_10>
-@@ -991,7 +1166,7 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
+@@ -991,7 +1165,7 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
              }
          }
      } else if (type == ARGON2_ID) {
@@ -979,7 +978,7 @@ index 79fb767..7cb0408 100644
              struct ref *refs = (struct ref *)this->refs;
              if (version == ARGON2_VERSION_10) {
                  argon2_kernel_oneshot_precompute<ARGON2_ID, ARGON2_VERSION_10>
-@@ -1028,8 +1203,6 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
+@@ -1028,8 +1202,6 @@ void KernelRunner::runKernelOneshot(uint32_t lanesPerBlock,
  
  void KernelRunner::run(uint32_t lanesPerBlock, uint32_t jobsPerBlock)
  {
@@ -988,7 +987,7 @@ index 79fb767..7cb0408 100644
      if (bySegment) {
          for (uint32_t pass = 0; pass < passes; pass++) {
              for (uint32_t slice = 0; slice < ARGON2_SYNC_POINTS; slice++) {
-@@ -1041,18 +1214,11 @@ void KernelRunner::run(uint32_t lanesPerBlock, uint32_t jobsPerBlock)
+@@ -1041,18 +1213,11 @@ void KernelRunner::run(uint32_t lanesPerBlock, uint32_t jobsPerBlock)
      }
  
      CudaException::check(cudaGetLastError());
