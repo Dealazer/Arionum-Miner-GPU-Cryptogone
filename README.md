@@ -19,7 +19,8 @@ Here is a typical list of shell commands needed to install on Ubuntu (parts star
 
 I assume this is for a Nvidia card, for AMD card just replace `run_CUDA.sh` with `run_OpenCL.sh`
 
-I also assume this is for Ubuntu 16, if you want to install on another Ubuntu version, use another binary url for the `wget` command, all binaries are [here](https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/)
+I also assume this is for Ubuntu 16, if you want to install on another Ubuntu version (17 or 18), 
+then use another binary url for the `wget` command, all binaries are [here](https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/)
 
     # update list of known packages
     sudo apt-get update
@@ -145,6 +146,11 @@ Here are some battle tested values for various GB GPUs, should be similar for ot
 ## Building (Linux)
 
 First, install CUDA SDK (https://developer.nvidia.com/cuda-downloads)
+
+Please note that the CUDA version you need (9.0 / 9.1 / 9.2 ...) depends on your GPU drivers.
+For example NVidia drivers 384.13 from Ubuntu16 need CUDA 9.0, they won't work with CUDA 9.1 or 9.2 (miner will not detect the GPU)
+So if you want to use CUDA > 9.0, make sure to also install latest nvidia drivers for your GPU (390 or more).
+You can use nvidia-smi to view the drivers version.
 
 Then use the following commands:
 
