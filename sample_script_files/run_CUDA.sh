@@ -15,7 +15,7 @@ while :
 do
 	# -u means use all device, you can also use -d to specify list of devices (ex: -d 0,2,5)
 	./arionum-cuda-miner -u -b "$batches" -t "$threads" -p "$pool" -a "$wallet" -i "$worker"
-	
+
 	if [ "$relaunch_miner_on_crash" = "true" ]; then
 		echo "miner crashed, relaunching in 5 seconds ..."
 		sleep 5
