@@ -202,14 +202,14 @@ index ebc8460..92d44b6 100644
          }
      }
 diff --git a/include/argon2-cuda/kernels.h b/include/argon2-cuda/kernels.h
-index 16418b4..5618711 100644
+index 16418b4..203c473 100644
 --- a/include/argon2-cuda/kernels.h
 +++ b/include/argon2-cuda/kernels.h
 @@ -5,12 +5,15 @@
  
  #include <cuda_runtime.h>
  #include <cstdint>
-+#include "../include/argon2-gpu-common/argon2-common.h"
++#include "../../include/argon2-gpu-common/argon2-common.h"
  
  /* workaround weird CMake/CUDA bug: */
  #ifdef argon2
