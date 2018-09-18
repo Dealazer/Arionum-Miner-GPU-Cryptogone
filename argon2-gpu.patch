@@ -571,7 +571,7 @@ index eb52e02..56040c9 100644
      devices.reserve(count);
      for (int i = 0; i < count; i++) {
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
-index 79fb767..4b67f24 100644
+index 79fb767..429c4d8 100644
 --- a/lib/argon2-cuda/kernels.cu
 +++ b/lib/argon2-cuda/kernels.cu
 @@ -3,8 +3,11 @@
@@ -584,7 +584,7 @@ index 79fb767..4b67f24 100644
 +
 +#include "../../include/argon2-cuda/kernels.h"
 +#include "../../include/argon2-cuda/cudaexception.h"
-+#include "../../include/perfscope.h"
++#include "../../../include/perfscope.h"
  
  #include <stdexcept>
  #ifndef NDEBUG
