@@ -45,7 +45,7 @@ echo "-- copy docs & kernels --"
 
 KERNELS_OUT_FOLDER="$OUT_DIR/argon2-gpu/data/kernels"
 mkdir -p "$KERNELS_OUT_FOLDER"
-cp "argon2-/data/kernels/*.cl" "$KERNELS_OUT_FOLDER"
+cp "argon2-gpu/data/kernels/*.cl" "$KERNELS_OUT_FOLDER"
 
 cp README.md "$OUT_DIR"
 cp FAQ.md "$OUT_DIR"
