@@ -6,15 +6,24 @@ set(LIBRARY_INSTALL_DIR /usr/local/lib)
 set(INCLUDE_INSTALL_DIR /usr/local/include)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CUDA_FOUND FALSE)
 
 if(UNIX)
 	set(CMAKE_VERBOSE_MAKEFILE ON)
 endif()
 
-find_package(CUDA REQUIRED)
-include_directories(${CUDA_INCLUDE_DIRS})
-add_definitions(-DHAVE_CUDA=1)
+set(CUDA_FOUND FALSE)
+if(NOT NO_CUDA)
+    find_package(CUDA)
+endif()
+
+if(CUDA_FOUND)
+    message("INFO: Using CUDA version ${CUDA_VERSION}")
+    add_definitions(-DHAVE_CUDA=1)
+    include_directories(${CUDA_INCLUDE_DIRS})
+else()
+    message("INFO: Building without CUDA support")
+    add_definitions(-DHAVE_CUDA=0)
+endif()
 
 if (MSVC)
     include_directories(mpir-3.0.0)
@@ -68,12 +77,14 @@ add_executable(arionum-opencl-miner
         src/arionum-opencl-miner/main.cpp
 )
 
+if(CUDA_FOUND)
 add_executable(arionum-cuda-miner
         ${COMMON_SRCS}
         include/cudaminer.h
         src/common/cudaminer.cpp
         src/arionum-cuda-miner/main.cpp
 )
+endif()
 
 if(MSVC)
 	set(COMMON_LIBS_WIN)
@@ -87,10 +98,12 @@ if(MSVC)
 			argon2-opencl
 	)
 
+	if(CUDA_FOUND)
 	target_link_libraries(arionum-cuda-miner
 			${COMMON_LIBS_WIN}
 			argon2-cuda
 	)
+	endif()
 elseif (UNIX)
 	set(COMMON_LIBS_UNIX)
 	list(APPEND COMMON_LIBS_UNIX
@@ -108,8 +121,10 @@ elseif (UNIX)
 			argon2-opencl
 	)
 
+	if(CUDA_FOUND)
 	target_link_libraries(arionum-cuda-miner
 			${COMMON_LIBS_UNIX}
 			argon2-cuda
 	)
+	endif()
 endif()
