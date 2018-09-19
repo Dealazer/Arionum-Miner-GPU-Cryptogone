@@ -17,7 +17,7 @@ https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/
 
 Here is a typical list of shell commands needed to install on Ubuntu (parts starting with a `#` are comments, do not type them !)
 
-I assume this is for a Nvidia card, for AMD card just replace `run_CUDA.sh` with `run_OpenCL.sh`
+I assume this is for a Nvidia card, for AMD card just replace `run_CUDA.sh` with `run_OpenCL.sh` and skip nvidia drivers installation
 
 I also assume this is for Ubuntu 16, if you want to install on another Ubuntu version (17 or 18), 
 then use another binary url for the `wget` command, all binaries are [here](https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/)
@@ -29,7 +29,7 @@ then use another binary url for the `wget` command, all binaries are [here](http
     sudo ubuntu-drivers autoinstall
 
     # install required packages
-    sudo apt-get -y install wget libcpprest libboost-all-dev
+    sudo apt-get -y install wget libcpprest libboost-all-dev ocl-icd-opencl-dev
 
     # create a folder to put the miner in, and go inside it
     mkdir arionum-gpu-miner
