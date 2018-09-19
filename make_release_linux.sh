@@ -25,17 +25,18 @@ pushd build
 make -j
 
 if ! [ -f "arionum-cuda-miner" ]; then
-	echo "Warning CUDA miner not found, compilation failed or CUDA SDK not installed..."
-	exit 1
+	echo "Warning: CUDA miner not found (compilation failed or building only OpenCL version)"
 fi
 
 if ! [ -f "arionum-opencl-miner" ]; then
-	echo "Warning OPENCL miner not found, compilation probably failed..."
+	echo "Error: OPENCL miner not found, compilation probably failed..."
 	exit 1
 fi
 
 # Copy binaries
-cp arionum-cuda-miner "../$OUT_DIR"
+if [ -f "arionum-cuda-miner" ]; then
+	cp arionum-cuda-miner "../$OUT_DIR"
+fi
 cp arionum-opencl-miner "../$OUT_DIR"
 popd
 
@@ -45,7 +46,11 @@ echo "-- copy docs & kernels --"
 cp -r argon2-gpu "$OUT_DIR"
 cp README.md "$OUT_DIR"
 cp FAQ.md "$OUT_DIR"
-cp sample_script_files/* "$OUT_DIR"
+if [ -f "arionum-cuda-miner" ]; then
+	cp sample_script_files/* "$OUT_DIR"
+else
+	cp sample_script_files/*CUDA*.sh "$OUT_DIR"
+fi
 
 #archive
 echo "-- archive --"
