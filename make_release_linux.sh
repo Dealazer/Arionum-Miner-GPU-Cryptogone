@@ -43,13 +43,16 @@ popd
 # Copy docs & CL kernels
 echo "-- copy docs & kernels --"
 
-cp -r argon2-gpu "$OUT_DIR"
+KERNELS_OUT_FOLDER="$OUT_DIR/argon2-gpu/data/kernels"
+mkdir -p "$KERNELS_OUT_FOLDER"
+cp "argon2-/data/kernels/*.cl" "$KERNELS_OUT_FOLDER"
+
 cp README.md "$OUT_DIR"
 cp FAQ.md "$OUT_DIR"
 if [ -f "arionum-cuda-miner" ]; then
-	cp sample_script_files/* "$OUT_DIR"
+	cp sample_script_files/*OpenCL*.sh "$OUT_DIR"
 else
-	cp sample_script_files/*CUDA*.sh "$OUT_DIR"
+	cp sample_script_files/* "$OUT_DIR"
 fi
 
 #archive
