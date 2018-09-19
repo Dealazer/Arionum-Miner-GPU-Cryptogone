@@ -50,9 +50,9 @@ cp argon2-gpu/data/kernels/*.cl "$KERNELS_OUT_FOLDER"
 cp README.md "$OUT_DIR"
 cp FAQ.md "$OUT_DIR"
 if [ -f "arionum-cuda-miner" ]; then
-	cp sample_script_files/*OpenCL*.sh "$OUT_DIR"
-else
 	cp sample_script_files/* "$OUT_DIR"
+else
+	cp sample_script_files/*OpenCL*.sh "$OUT_DIR"
 fi
 
 #archive
