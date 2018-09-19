@@ -470,8 +470,12 @@ int run(const char *const *argv) {
     signal(SIGSEGV, handler);
 #endif
 
-    // show version
-    cout << getVersionStr() << endl << endl;
+    // show version & extra info
+    cout << getVersionStr();
+    auto extra = getExtraInfoStr();
+    if (extra.size() > 0)
+        cout << ", " << extra;
+    cout << endl << endl;
 
     // process arguments
     CommandLineParser<OpenCLArguments> parser = buildCmdLineParser();
