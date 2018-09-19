@@ -196,6 +196,7 @@ You can also skip the last step and instead open `build/arionum-gpu-miner.sln` w
 * reduced minimum Cmake version to 3.5 (for Ubuntu 16)
 * on Linux, if CUDA sdk not installed will only compile OpenCL miner
 * fixed various Linux compilation issues
+* improved README (improved linux compilation instructions, added Ubuntu easy setup instructions)
 
 #### Version 1.5.0
 * reusing same buffers for CPU & GPU blocks (improves stability, less hashrate loss on block change)
