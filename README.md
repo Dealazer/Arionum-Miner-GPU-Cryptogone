@@ -36,7 +36,7 @@ then use another binary url for the `wget` command, all binaries are [here](http
     cd arionum-gpu-miner
 
     # download latest binary archive, make sure that you use the correct url for your Ubuntu version (16, 17, 18 ...)
-    wget -O arionum-gpu-miner-v1.5.0.tar.gz "https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/arionum-gpu-miner-v1.5.0-ubuntu16-hiveOS.tar.gz"
+    wget -O arionum-gpu-miner-v1.5.0.tar.gz "https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/arionum-gpu-miner-v1.5.1-ubuntu16-cuda9.0.tar.gz"
 
     # extract archive 
     tar xzvf arionum-gpu-miner-v1.5.0.tar.gz
