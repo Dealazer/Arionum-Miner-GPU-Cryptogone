@@ -145,16 +145,16 @@ Here are some battle tested values for various GB GPUs, should be similar for ot
     
 ## Building (Linux)
 
-First, install CUDA SDK (https://developer.nvidia.com/cuda-downloads)
+First, install CUDA SDK (https://developer.nvidia.com/cuda-downloads).
+**Important** the CUDA SDK version depends on your GPU drivers (use `nvidia-smi` to view current driver version) :
 
-Please note that the CUDA version you need (9.0 / 9.1 / 9.2 ...) depends on your GPU drivers.
-For example NVidia drivers 384.13 from Ubuntu16 need CUDA 9.0, they won't work with CUDA 9.1 or 9.2 (miner will not detect the GPU)
-So if you want to use CUDA > 9.0, make sure to also install latest nvidia drivers for your GPU (390 or more).
-You can use nvidia-smi to view the drivers version.
+   driver <  387.26 ==> compatible with CUDA <= 9.0
+   driver <  396.14 ==> compatible with CUDA <= 9.1
+   driver >= 396.14 ==> compatible with CUDA <= 9.2
 
 Then use the following commands:
 
-    sudo apt-get install git cmake 
+    sudo apt-get install git
     git clone https://bitbucket.org/cryptogone/arionum-gpu-miner.git
     cd arionum-gpu-miner
     ./setup_libs.sh linux
@@ -164,7 +164,7 @@ Then use the following commands:
 
 Once done, binaries are put in the `rel/`folder.
 
-Note that `setup_libs.sh` may ask you for your password since it needs to install some packages with `apt-get`
+Note that `setup_libs.sh` may ask you for your password as it needs to install some packages with `apt-get`
 
 ## Building (Windows)
 
@@ -190,6 +190,12 @@ Once done, binaries are put in the `rel/`folder.
 You can also skip the last step and instead open `build/arionum-gpu-miner.sln` with Visual Studio 2015 or 2017, then in the toolbar select `Release / x64` then `Build Menu -> Build Solution`.
 
 ## Versions release notes
+
+#### Version 1.5.1
+* show cuda / opencl version used for building in welcome msg
+* reduced minimum Cmake version to 3.5 (for Ubuntu 16)
+* on Linux, if CUDA sdk not installed will only compile OpenCL miner
+* fixed various Linux compilation issues
 
 #### Version 1.5.0
 * reusing same buffers for CPU & GPU blocks (improves stability, less hashrate loss on block change)
