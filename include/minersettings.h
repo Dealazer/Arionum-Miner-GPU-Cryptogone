@@ -41,7 +41,7 @@ public:
 
     string *getUniqid() const;
 
-    bool mineBlock(BLOCK_TYPE type) const;
+    bool canMineBlock(BLOCK_TYPE type) const;
     bool useLastHashrateInsteadOfRoundAvg() const { return showLastHashrate; };
 };
 

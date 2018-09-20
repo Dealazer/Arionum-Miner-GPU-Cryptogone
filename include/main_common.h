@@ -134,14 +134,15 @@ void spawnMiners(OpenCLArguments &args, vector<Miner *> &miners, Stats* stats, U
 
         for (int j = 0; j < nThreads; ++j) {
             // choose batch size
-            MinerSettings* pNewSettings = new MinerSettings(settings);
             uint32_t batchSize = args.maxTaskMemPerDeviceList.back();
             if (deviceListItem < args.maxTaskMemPerDeviceList.size()) {
                 batchSize = args.maxTaskMemPerDeviceList[deviceListItem];
             }
 
             // create the miner
-            Miner *miner = new MINER(stats, pNewSettings, batchSize, updater, &deviceIndex);
+            Miner *miner = new MINER(
+                deviceIndex,
+                stats, settings, batchSize, updater);
             miner->computeCPUBatchSize();
             miners.push_back(miner);
             cout << " - processing unit " << j << ", " << miner->getInfo() << endl;
@@ -312,7 +313,7 @@ bool feedMiners(Stats *stats) {
             blockType = data.getBlockType();
         }
 
-        if (!miner->mineBlock(blockType)) {
+        if (!miner->canMineBlock(blockType)) {
             continue;
         }
 

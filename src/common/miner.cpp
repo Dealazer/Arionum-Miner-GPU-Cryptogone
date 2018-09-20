@@ -40,11 +40,12 @@ static int b64_byte_to_char(unsigned x) {
 // to fix mixed up messages at start
 bool s_miningReady = false;
 
-Miner::Miner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u) :
+const size_t SUBMIT_HTTP_TIMEOUT_SECONDS = 2;
+
+Miner::Miner(size_t maxMemUsage, Stats *s, MinerSettings &ms, Updater *u) :
     stats(s),
     settings(ms),
-    batchSize(bs),
-    initial_batchSize(bs),
+    maxMemUsage(maxMemUsage),
     rest(0),
     diff(1),
     result(0),
@@ -52,14 +53,13 @@ Miner::Miner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u) :
     BLOCK_LIMIT(240),
     limit(0),
     updater(u),
-    params(nullptr),
-    cpu_batchSize(1)
+    params(nullptr)
 {
     http_client_config config;
-    utility::seconds timeout(2);
+    utility::seconds timeout(SUBMIT_HTTP_TIMEOUT_SECONDS);
     config.set_timeout(timeout);
 
-    utility::string_t poolAddress = toUtilityString(*ms->getPoolAddress());
+    utility::string_t poolAddress = toUtilityString(*ms.getPoolAddress());
 
     client = new http_client(poolAddress, config);
     generator = std::mt19937(device());
@@ -67,10 +67,25 @@ Miner::Miner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u) :
 
     salt = randomStr(16);
 
-    // prepare array of gpu task results buffers
-    auto count = batchSize;
-    resultBuffers.resize(count);
+    initialize(maxMemUsage);
 }
+
+bool Miner::initialize(size_t maxMemUsage) {
+
+    memConfig = configure(maxMemUsage);
+
+    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
+        resultsPtrs[i].clear();
+        auto maxResults = std::max(
+            memConfig.batchSizes[BLOCK_CPU][i],
+            memConfig.batchSizes[BLOCK_GPU][i]);
+        resultsPtrs[i].resize(maxResults, nullptr);
+    }
+
+    bool ok = initialize(memConfig);
+    return ok;
+}
+
 
 void Miner::to_base64(char *dst, size_t dst_len, const void *src, size_t src_len) {
     size_t olen;
@@ -115,51 +130,57 @@ void Miner::generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buf
     to_base64(dst, dst_len, buffer, buffer_size);
 }
 
+BLOCK_TYPE Miner::getCurrentBlockType() {
+    bool isGPU = (params->getLanes() == 4);
+    return isGPU ? BLOCK_GPU : BLOCK_CPU;
+}
 
 void Miner::buildBatch() {
-    if (testMode()) {
-        // $base = $this->publicKey."-".$nonce."-".$this->block."-".$this->difficulty;
-        const string REF_NONCE_GPU = "swGetfIyLrh8XYHcL7cM5kEElAJx3XkSrgTGveDN2w";
-        const string REF_BASE_GPU =
-            /* pubkey */ string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") +
-            /* nonce  */ REF_NONCE_GPU + string("-") +
-            /* block  */ string("6327pZD7RSArjnD9wiVM6eUKkNck4Q5uCErh5M2H4MK2PQhgPmFTSmnYHANEVxHB82aVv6FZvKdmyUKkCoAhCXDy") + string("-") +
-            /* diff   */ string("10614838");
+    auto blockType = getCurrentBlockType();
+    bool isGPU = blockType == BLOCK_GPU;
+    
+    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
+        auto nBatches = memConfig.batchSizes[blockType][i];
+        if (testMode()) {
+            // $base = $this->publicKey."-".$nonce."-".$this->block."-".$this->difficulty;
+            const string REF_NONCE_GPU = "swGetfIyLrh8XYHcL7cM5kEElAJx3XkSrgTGveDN2w";
+            const string REF_BASE_GPU =
+                /* pubkey */ string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") +
+                /* nonce  */ REF_NONCE_GPU + string("-") +
+                /* block  */ string("6327pZD7RSArjnD9wiVM6eUKkNck4Q5uCErh5M2H4MK2PQhgPmFTSmnYHANEVxHB82aVv6FZvKdmyUKkCoAhCXDy") + string("-") +
+                /* diff   */ string("10614838");
 
-        const string REF_NONCE_CPU = "YYEETiqrzrmgIApJlA3WKfuYPdSQI4F3U04GirBhA";
-        const string REF_BASE_CPU =
-            /* pubkey */ string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") +
-            /* nonce  */ REF_NONCE_CPU + string("-") +
-            /* block  */ string("KwkMnGF1qJeFh9nwZPTf3x86TmVF1RJaCPwfpKePVsAimJKTzA8H2ndx3FaRu7K54Md36yTcYKLaQtQNzRX4tAg") + string("-") +
-            /* diff   */ string("30792058");
+            const string REF_NONCE_CPU = "YYEETiqrzrmgIApJlA3WKfuYPdSQI4F3U04GirBhA";
+            const string REF_BASE_CPU =
+                /* pubkey */ string("PZ8Tyr4Nx8MHsRAGMpZmZ6TWY63dXWSCy7AEg3h9oYjeR74yj73q3gPxbxq9R3nxSSUV4KKgu1sQZu9Qj9v2q2HhT5H3LTHwW7HzAA28SjWFdzkNoovBMncD") + string("-") +
+                /* nonce  */ REF_NONCE_CPU + string("-") +
+                /* block  */ string("KwkMnGF1qJeFh9nwZPTf3x86TmVF1RJaCPwfpKePVsAimJKTzA8H2ndx3FaRu7K54Md36yTcYKLaQtQNzRX4tAg") + string("-") +
+                /* diff   */ string("30792058");
 
-        bool isGPU = (params->getLanes() == 4);
-        string REF_NONCE = isGPU ? REF_NONCE_GPU : REF_NONCE_CPU;
-        string REF_BASE = isGPU ? REF_BASE_GPU : REF_BASE_CPU;
-        for (uint32_t j = 0; j < getCurrentBatchSize(); ++j) {
-            nonces.push_back(REF_NONCE);
-            bases.push_back(REF_BASE);
+            string REF_NONCE = isGPU ? REF_NONCE_GPU : REF_NONCE_CPU;
+            string REF_BASE = isGPU ? REF_BASE_GPU : REF_BASE_CPU;
+
+            for (int j = 0; j < nBatches; j++) {
+                nonces[i].push_back(REF_NONCE);
+                bases[i].push_back(REF_BASE);
+            }
         }
-    }
-    else {
-        for (uint32_t j = 0; j < getCurrentBatchSize(); ++j) {
-            generateBytes(nonceBase64, 64, byteBuffer, 32);
-            std::string nonce(nonceBase64);
+        else {
+            for (uint32_t j = 0; j < nBatches; ++j) {
+                generateBytes(nonceBase64, 64, byteBuffer, 32);
+                std::string nonce(nonceBase64);
+                boost::replace_all(nonce, "/", "");
+                boost::replace_all(nonce, "+", "");
+                nonces[i].push_back(nonce);
 
-            boost::replace_all(nonce, "/", "");
-            boost::replace_all(nonce, "+", "");
-
-            std::stringstream ss;
-            ss << *data.getPublic_key() << "-" << nonce << "-" << *data.getBlock() << "-" << *data.getDifficulty();
-            //cout << ss.str() << endl;
-            std::string base = ss.str();
-
-            nonces.push_back(nonce);
-            bases.push_back(base);
+                std::stringstream ss;
+                ss << *data.getPublic_key() << "-" << nonce << "-" << *data.getBlock() << "-" << *data.getDifficulty();
+                std::string base = ss.str();
+                bases[i].push_back(base);
+            }
         }
     }
 }
-
 
 bool Miner::checkArgon(string *base, string *argon, string *nonce) {
 
@@ -189,8 +210,7 @@ bool Miner::checkArgon(string *base, string *argon, string *nonce) {
 
     if (testMode()) {
         string REF_DURATION = 
-            //(testModeBlockType() == BLOCK_GPU) ?
-            (params->getLanes() == 4) ?
+            (getCurrentBlockType() == BLOCK_GPU) ?
             "491522547412523425129" :
             "1054924814964225626";
         if (duration != REF_DURATION) {
@@ -244,15 +264,15 @@ void Miner::submit(string *argon, string *nonce, bool d, bool isBlock) {
     boost::replace_all(argonTail, "$", "%24");
     boost::replace_all(*nonce, "/", "%2F");
     boost::replace_all(argonTail, "/", "%2F");
-    body << "address=" << (d ? DD : *settings->getPrivateKey())
+    body << "address=" << (d ? DD : *settings.getPrivateKey())
          << "&argon=" << argonTail
          << "&nonce=" << *nonce
-         << "&private_key=" << (d ? DD : *settings->getPrivateKey())
+         << "&private_key=" << (d ? DD : *settings.getPrivateKey())
          << "&public_key=" << *data.getPublic_key();
 
     if (d) {
         stringstream paths;
-        paths << "/mine.php?q=info&worker=" << *settings->getUniqid()
+        paths << "/mine.php?q=info&worker=" << *settings.getUniqid()
               << "&address=" << DD
               << "&hashrate=" << 1;
         http_request req(methods::GET);
@@ -353,34 +373,32 @@ void Miner::hostPrepareTaskData() {
             diff.set_str(*data.getDifficulty(), 10);
         }
     }
+
     // clear previous round data
-    nonces.clear();
-    bases.clear();
+    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
+        nonces[i].clear();
+        bases[i].clear();
+    }
 
     // build new round data
     buildBatch();
 }
 
-bool Miner::hostProcessResults() {
-    bool blockHeightStillOk =
-        (updater == nullptr) ||
-        (updater->getData().getHeight() == data.getHeight());
+bool Miner::hostProcessResults() {   
+    auto blockType = testMode() ? 
+        testModeBlockType() : data.getBlockType();
 
-    if (testMode()) {
-        auto bt = testModeBlockType();
-        blockHeightStillOk =
-            ((bt == BLOCK_GPU) && (params->getLanes() == 4)) ||
-            ((bt == BLOCK_CPU) && (params->getLanes() == 1));
-    }
-
-    uint32_t nBatches = getCurrentBatchSize();
+    bool blockHeightStillOk = 
+        testMode() ?
+        (blockType == getCurrentBlockType()) :
+        (!updater || (updater->getData().getHeight() == data.getHeight()));
 
     if (!blockHeightStillOk) {
 #if 0
         if (testMode()) {
             cout
-                << "--- " << nBatches << " "
-                << blockTypeName((params->getLanes() == 4) ? BLOCK_GPU : BLOCK_CPU)
+                << "--- " << getNbHashesPerIteration() << " "
+                << blockTypeName(getCurrentBlockType())
                 << " hashes ignored (because block changed)"
                 << endl;
         }
@@ -388,74 +406,84 @@ bool Miner::hostProcessResults() {
         return false;
     }
 
-    uint32_t nGood = 0;
+    uint32_t nGood = 0, totalHashes = 0;
     uint8_t buffer[32];
-    for (uint32_t j = 0; j < nBatches; ++j) {
-        string encodedArgon;
-        this->params->finalize(buffer, resultBuffers[j]);
-        encode(buffer, 32, encodedArgon);
-        nGood += checkArgon(&bases[j], &encodedArgon, &nonces[j]);
+    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
+        size_t nHashes = memConfig.batchSizes[blockType][i];
+        for (size_t j = 0; j < nHashes; ++j) {
+            this->params->finalize(buffer, resultsPtrs[blockType][j]);
+
+            string encodedArgon;
+            encode(buffer, 32, encodedArgon);
+
+            nGood += checkArgon(&bases[i][j], &encodedArgon, &nonces[i][j]);
+            totalHashes++;
+        }
     }
 
-    if (testMode() && (nGood != nBatches)) {
+    if (testMode() && (nGood != totalHashes)) {
         std::cout << "Warning: found invalid argon results in batch !" << std::endl;
     }
 
-    stats->addHashes(nBatches);
+    stats->addHashes(totalHashes);
 
     return true;
 }
 
-bool Miner::mineBlock(BLOCK_TYPE type) {
+bool Miner::canMineBlock(BLOCK_TYPE type) {
     return testMode() ? 
         true : 
-        (settings && settings->mineBlock(type));
+        (settings && settings->canMineBlock(type));
 }
 
-void Miner::computeCPUBatchSize() {
-    uint32_t nPassesGPU = Miner::getPasses(BLOCK_GPU);
-    uint32_t memCostGPU = Miner::getMemCost(BLOCK_GPU);
-    uint32_t nLanesGPU = Miner::getLanes(BLOCK_GPU);
-
-    Argon2Params prmsInitial(
-        ARGON_OUTLEN, nullptr, ARGON_SALTLEN, nullptr, 0, nullptr, 0, 
-        nPassesGPU, memCostGPU, nLanesGPU);
-
-    size_t memPerBatchInitial = prmsInitial.getMemorySize();
-
-    uint32_t nPassesCPU = Miner::getPasses(BLOCK_CPU);
-    uint32_t memCostCPU = Miner::getMemCost(BLOCK_CPU);
-    uint32_t nLanesCPU = Miner::getLanes(BLOCK_CPU);
-
-    reconfigureArgon(nPassesCPU, memCostCPU, nLanesCPU, 1);
-    {
-        size_t memPerBatch = getMemoryUsedPerBatch();
-
-        cpu_batchSize = 
-            (uint32_t)(((size_t)getInitialBatchSize() * memPerBatchInitial) / memPerBatch);
-        if (cpu_batchSize < 1)
-            cpu_batchSize = 1;
-    }
-
-    // simulate CPU block change right now
-    // so we will crash here and not later if too much mem used
-    reconfigureArgon(nPassesCPU, memCostCPU, nLanesCPU, cpu_batchSize);
-
-    // go back to default, GPU block
-    reconfigureArgon(nPassesGPU, memCostGPU, nLanesGPU, getInitialBatchSize());
-}
+//void Miner::computeCPUBatchSize() {
+//    uint32_t nPassesGPU = Miner::getPasses(BLOCK_GPU);
+//    uint32_t memCostGPU = Miner::getMemCost(BLOCK_GPU);
+//    uint32_t nLanesGPU = Miner::getLanes(BLOCK_GPU);
+//
+//    Argon2Params prmsInitial(
+//        ARGON_OUTLEN, nullptr, ARGON_SALTLEN, nullptr, 0, nullptr, 0, 
+//        nPassesGPU, memCostGPU, nLanesGPU);
+//
+//    size_t memPerBatchInitial = prmsInitial.getMemorySize();
+//
+//    uint32_t nPassesCPU = Miner::getPasses(BLOCK_CPU);
+//    uint32_t memCostCPU = Miner::getMemCost(BLOCK_CPU);
+//    uint32_t nLanesCPU = Miner::getLanes(BLOCK_CPU);
+//
+//    reconfigureArgon(nPassesCPU, memCostCPU, nLanesCPU, 1);
+//    {
+//        size_t memPerBatch = getMemoryUsedPerBatch();
+//
+//        cpu_batchSize = 
+//            (uint32_t)(((size_t)getInitialBatchSize() * memPerBatchInitial) / memPerBatch);
+//        if (cpu_batchSize < 1)
+//            cpu_batchSize = 1;
+//    }
+//
+//    // simulate CPU block change right now
+//    // so we will crash here and not later if too much mem used
+//    reconfigureArgon(nPassesCPU, memCostCPU, nLanesCPU, cpu_batchSize);
+//
+//    // go back to default, GPU block
+//    reconfigureArgon(nPassesGPU, memCostGPU, nLanesGPU, getInitialBatchSize());
+//}
 
 std::string Miner::getInfo() const {
     ostringstream oss;
-    auto vram = (float)(getMemoryUsage()) / (1024.f*1024.f*1024.f);
-    oss
-        << "batchSize GPU=" << getInitialBatchSize() << " CPU=" << getCPUBatchSize()
-        << ", vram=" << std::fixed << std::setprecision(3) << vram << " GB"
-        << ", salt=" << salt;
+    oss << "TODO";
+
+    //ostringstream oss;
+    //auto vram = (float)(getMemoryUsage()) / (1024.f*1024.f*1024.f);
+    //oss
+    //    << "batchSize GPU=" << getInitialBatchSize() << " CPU=" << getCPUBatchSize()
+    //    << ", vram=" << std::fixed << std::setprecision(3) << vram << " GB"
+    //    << ", salt=" << salt;
+
     return oss.str();
 }
 
-t_optParams Miner::precompute(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) {
+t_optParams Miner::precomputeArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) {
     static std::map<uint32_t, t_optParams> s_precomputeCache;
 
     std::map<uint32_t, t_optParams>::const_iterator it = s_precomputeCache.find(m_cost);
@@ -488,19 +516,16 @@ t_optParams Miner::precompute(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) 
     return s_precomputeCache[m_cost];
 }
 
-t_optParams Miner::configure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t bs) {
+t_optParams Miner::configureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes/*, uint32_t bs*/) {
     PERFSCOPE("Miner::configure");
-
-    batchSize = bs;
 
     if (params)
         delete params;
 
     if (testMode()) {
-        if (lanes == 1)
-            salt = "0KVwsNr6yT42uDX9"; // == from_base64("MEtWd3NOcjZ5VDQydURYOQ")
-        else
-            salt = "cifE2rK4nvmbVgQu"; // == from_base64("Y2lmRTJySzRudm1iVmdRdQ")
+        salt = (lanes == 1) ?
+            "0KVwsNr6yT42uDX9" : // == from_base64("MEtWd3NOcjZ5VDQydURYOQ")
+            "cifE2rK4nvmbVgQu";  // == from_base64("Y2lmRTJySzRudm1iVmdRdQ")
     }
 
     params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, t_cost, m_cost, lanes);
@@ -515,16 +540,41 @@ t_optParams Miner::configure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, u
     }
 #else
     if (optPrms.mode == PRECOMPUTE) {
-        optPrms = precompute(t_cost, m_cost, lanes);
+        optPrms = precomputeArgon(t_cost, m_cost, lanes);
     }
 #endif
 
     return optPrms;
 }
 
-bool Miner::needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t newBatchSize) {
-    return (params->getTimeCost() != t_cost ||
+bool Miner::needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) {
+    return
+        params->getTimeCost() != t_cost ||
         params->getMemoryCost() != m_cost ||
-        params->getLanes() != lanes ||
-        newBatchSize != batchSize);
+        params->getLanes() != lanes;
+}
+
+char Miner::genRandom(int v) {
+    return alphanum[v];
+}
+
+std::string Miner::randomStr(int length) {
+    size_t stringLength = strlen(alphanum) - 1;
+    std::stringstream ss;
+    std::random_device rd; // obtain a random number from hardware
+    std::mt19937 eng(rd()); // seed the generator
+    std::uniform_int_distribution<> distr(0, (int)stringLength); // define the range
+
+    for (int i = 0; i < length; ++i) {
+        ss << genRandom(distr(eng));
+    }
+    return ss.str();
+}
+
+uint32_t Miner::getNbHashesPerIteration() {
+    uint32_t nHashes = 0;    
+    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
+        nHashes += (uint32_t)memConfig.batchSizes[getCurrentBlockType()][i];
+    }
+    return nHashes;
 }

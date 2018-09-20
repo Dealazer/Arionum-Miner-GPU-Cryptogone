@@ -20,15 +20,22 @@ private:
     argon2::opencl::GlobalContext *global;
     const argon2::opencl::Device *device;
 
+protected:
+    Miner::MemConfig configure(size_t maxMemUsage);
+    bool initialize(MemConfig &mcfg);
+
 public:
-    OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *pUpdater, size_t *deviceIndex);
+    OpenClMiner::OpenClMiner(
+        size_t deviceIndex, size_t maxMem,
+        Stats *pStats, MinerSettings &settings, Updater *pUpdater);
 
     void deviceUploadTaskDataAsync();
     void deviceLaunchTaskAsync();
     void deviceFetchTaskResultAsync();
     void deviceWaitForResults();
     bool deviceResultsReady();
-    void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize);
+    void reconfigureArgon(
+        uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
     
     size_t getMemoryUsage() const;
     size_t getMemoryUsedPerBatch() const;

@@ -297,7 +297,7 @@ ostream &operator<<(ostream &os, const Stats &stats) {
         ossBlockBestDL, ossEverBestDL;
     bool isMining = 
         stats.getMinerSettings() && 
-        stats.getMinerSettings()->mineBlock(blockType);
+        stats.getMinerSettings()->canMineBlock(blockType);
     if (isMining) {
         oss_hashRate 
             << std::fixed << std::setprecision(1) 

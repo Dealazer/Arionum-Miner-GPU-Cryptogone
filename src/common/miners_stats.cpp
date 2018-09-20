@@ -34,7 +34,7 @@ void minerStatsOnNewTask(int minerId, t_time_point time) {
     }
     else {
         std::chrono::duration<double> duration = time - mstats.lastT;
-        auto nHashes = miner->getCurrentBatchSize();
+        auto nHashes = miner->getNbHashesPerIteration();
         mstats.lastT = time;
         mstats.lastTaskType = miner->getCurrentBlockType();
 

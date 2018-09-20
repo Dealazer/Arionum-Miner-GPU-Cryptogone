@@ -8,9 +8,10 @@
 #include <string>
 
 enum BLOCK_TYPE {
-    BLOCK_MASTERNODE,
     BLOCK_GPU,
-    BLOCK_CPU
+    BLOCK_CPU,
+    BLOCK_TYPE_COUNT,
+    BLOCK_MASTERNODE
 };
 
 const std::string& blockTypeName(BLOCK_TYPE b);

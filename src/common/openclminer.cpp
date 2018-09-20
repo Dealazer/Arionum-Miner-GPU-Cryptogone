@@ -19,12 +19,15 @@ using argon2::BASELINE;
 static std::map<cl_device_id, argon2::opencl::ProgramContext*> s_programCache;
 #endif
 
-OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_t *deviceIndex)
-        : Miner(s, ms, bs, u) {
+OpenClMiner::OpenClMiner(
+    size_t deviceIndex, size_t maxMem, 
+    Stats *pStats, MinerSettings &settings, Updater *pUpdater) : 
+    Miner(maxMem, pStats, settings, pUpdater) {
+
     global = new argon2::opencl::GlobalContext();
 
     auto &devices = global->getAllDevices();
-    device = &devices[*deviceIndex];
+    device = &devices[deviceIndex];
 
 #if USE_PROGRAM_CACHE
     cl_device_id deviceID = device->getCLDevice()();
@@ -47,11 +50,10 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, s
     auto nLanesMax = Miner::getLanes(BLOCK_GPU);
     try {
         bool bySegment = false;
-        t_optParams optPrms = configure(
+        t_optParams optPrms = configureArgon(
             Miner::getPasses(BLOCK_GPU),
             Miner::getMemCost(BLOCK_GPU),
-            nLanesMax, 
-            bs);
+            nLanesMax);
         unit = new argon2::opencl::ProcessingUnit(
             progCtx, params, device, 
             getInitialBatchSize(), bySegment, optPrms);
@@ -62,6 +64,38 @@ OpenClMiner::OpenClMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, s
              << endl;
         exit(1);
     }
+}
+
+Miner::MemConfig OpenClMiner::configure(size_t maxMemUsage) {
+
+    // get n blocks needed for CPU round
+    auto optParamsCPU = configureArgon(
+        Miner::getPasses(BLOCK_CPU),
+        Miner::getMemCost(BLOCK_CPU),
+        Miner::getLanes(BLOCK_CPU));
+    uint32_t cpuBlocksPerHash = (optParamsCPU.mode == PRECOMPUTE) ?
+        optParamsCPU.customBlockCount :
+        params->getMemoryBlocks();
+
+    // get n blocks needed for GPU round
+    auto optParamsGPU = configureArgon(
+        Miner::getPasses(BLOCK_GPU),
+        Miner::getMemCost(BLOCK_GPU),
+        Miner::getLanes(BLOCK_GPU));
+    uint32_t gpuBlocksPerHash = params->getMemoryBlocks();
+
+    auto nBlocks = std::max(cpuBlocksPerHash, gpuBlocksPerHash);
+
+    MemConfig mc;
+    //mc.batchSizes;
+    //mc.blocksBuffers;
+    //mc.in;
+    //mc.index;
+    //mc.out;
+}
+
+bool OpenClMiner::initialize(MemConfig &mcfg) {
+    return true;
 }
 
 void OpenClMiner::reconfigureArgon(
@@ -105,10 +139,10 @@ bool OpenClMiner::deviceResultsReady() {
     return queueFinished;
 }
 
-size_t OpenClMiner::getMemoryUsage() const {
-    return unit->getMemoryUsage();
-}
+//size_t OpenClMiner::getMemoryUsage() const {
+//    return unit->getMemoryUsage();
+//}
 
-size_t OpenClMiner::getMemoryUsedPerBatch() const {
-    return unit->getMemoryUsedPerBatch();
-}
+//size_t OpenClMiner::getMemoryUsedPerBatch() const {
+//    return unit->getMemoryUsedPerBatch();
+//}
