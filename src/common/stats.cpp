@@ -1,10 +1,12 @@
 //
 // Created by guli on 31/01/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
-#include <iostream>
 #include "../../include/stats.h"
 #include "../../include/updater.h"
 #include "../../include/miner.h"
+#include "../../include/testMode.h"
+
+#include <iostream>
 #include <iomanip>
 #include <sstream>
 #include <random>

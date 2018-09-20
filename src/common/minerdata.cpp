@@ -4,23 +4,27 @@
 #include "../../include/minerdata.h"
 #include <sstream>
 
-const std::string BLOCK_TYPE_NAMES[3]{
+using std::string;
+using std::ostringstream;
+using std::ostream;
+
+const string BLOCK_TYPE_NAMES[3]{
     "Masternode",
     "GPU",
     "CPU"
 };
 
-const std::string BLOCK_TYPE_NAMES_SHORT[3]{
+const string BLOCK_TYPE_NAMES_SHORT[3]{
     "MN",
     "GPU",
     "CPU"
 };
 
-const std::string& blockTypeName(BLOCK_TYPE b) {
+const string& blockTypeName(BLOCK_TYPE b) {
     return BLOCK_TYPE_NAMES[b];
 }
 
-const std::string& blockTypeNameShort(BLOCK_TYPE b) {
+const string& blockTypeNameShort(BLOCK_TYPE b) {
     return BLOCK_TYPE_NAMES_SHORT[b];
 }
 

@@ -5,26 +5,19 @@
 #ifndef ARIONUM_GPU_MINER_MINER_H
 #define ARIONUM_GPU_MINER_MINER_H
 
-#include <cpprest/http_client.h>
-#include <iostream>
+#include "minerdata.h"
+
 #include <gmp.h>
 #ifdef _WIN32
 #include <mpirxx.h>
 #else
 #include <gmpxx.h>
 #endif
-#include <argon2-gpu-common/argon2-common.h>
+#include <cpprest/http_client.h>
 #include <argon2-gpu-common/argon2params.h>
 
-#include <locale>
-#include <codecvt>
 #include <string>
-
-#include "stats.h"
-#include "minersettings.h"
-#include "minerdata.h"
-#include "updater.h"
-#include "testMode.h"
+#include <vector>
 
 #define EQ(x, y) ((((0U - ((unsigned)(x) ^ (unsigned)(y))) >> 8) & 0xFF) ^ 0xFF)
 #define GT(x, y) ((((unsigned)(y) - (unsigned)(x)) >> 8) & 0xFF)
@@ -32,16 +25,15 @@
 #define LT(x, y) GT(y, x)
 #define LE(x, y) GE(y, x)
 
-using namespace web;
-using namespace web::http;
-using namespace web::http::client;
-
 const size_t ARGON_OUTLEN = 32;
 const size_t ARGON_SALTLEN = 16;
 
+class MinerSettings;
+class Stats;
+class Updater;
+
 class Miner {
 private:
-    //const char *alphanum = "0123456789!@#$%^&*ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     const char *alphanum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
     char genRandom(int v) {
@@ -75,7 +67,7 @@ protected:
     uint32_t initial_batchSize;
     uint32_t cpu_batchSize;
     MinerData data;
-    http_client *client;
+    web::http::client::http_client *client;
 
     Updater *updater;
 
@@ -84,7 +76,7 @@ protected:
     char *nonceBase64 = new char[64];
     uint8_t *byteBuffer = new uint8_t[32];
 
-    string salt;
+    std::string salt;
 
     std::random_device device;
     std::mt19937 generator;
@@ -101,37 +93,7 @@ protected:
     bool needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t newBatchSize);
 
 public:
-    explicit Miner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u) :
-        stats(s),
-        settings(ms),
-        batchSize(bs),
-        initial_batchSize(bs),
-        rest(0),
-        diff(1),
-        result(0),
-        ZERO(0),
-        BLOCK_LIMIT(240),
-        limit(0),
-        updater(u),
-        params(nullptr),
-        cpu_batchSize(1)
-    {
-        http_client_config config;
-        utility::seconds timeout(2);
-        config.set_timeout(timeout);
-
-        utility::string_t poolAddress = toUtilityString(*ms->getPoolAddress());
-
-        client = new http_client(poolAddress, config);
-        generator = std::mt19937(device());
-        distribution = std::uniform_int_distribution<int>(0, 255);
-        
-        salt = randomStr(16);
-
-        // prepare array of gpu task results buffers
-        auto count = batchSize;
-        resultBuffers.resize(count);
-    };
+    explicit Miner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u);
 
     virtual void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize) = 0;
 
@@ -150,10 +112,10 @@ public:
     virtual void deviceWaitForResults() = 0;
     virtual bool deviceResultsReady() = 0;
 
-    bool checkArgon(string *base, string *argon, string *nonce);
+    bool checkArgon(std::string *base, std::string *argon, std::string *nonce);
 
-    void submit(string *argon, string *nonce, bool d, bool isBlock);
-    void submitReject(string msg, bool isBlock);
+    void submit(std::string *argon, std::string *nonce, bool d, bool isBlock);
+    void submitReject(std::string msg, bool isBlock);
 
     void encode(void *res, size_t reslen, std::string &out);
 

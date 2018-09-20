@@ -2,10 +2,11 @@
 
 #define PROFILE_ENABLED (0)
 
+#include <string>
+
 #if PROFILE_ENABLED
 #include <chrono>
 #include <iomanip>
-#include <string>
 #include <iostream>
 
 using std::chrono::high_resolution_clock;

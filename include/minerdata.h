@@ -5,13 +5,7 @@
 #ifndef ARIONUM_GPU_MINER_MINERDATA_H
 #define ARIONUM_GPU_MINER_MINERDATA_H
 
-#include <cstring>
-#include <iostream>
-#include <mutex>
-#include <atomic>
 #include <string>
-
-using namespace std;
 
 enum BLOCK_TYPE {
     BLOCK_MASTERNODE,
@@ -23,11 +17,11 @@ const std::string& blockTypeName(BLOCK_TYPE b);
 
 class MinerData {
 private:
-    string status = "";
-    string difficulty = "";
-    string limit = "";
-    string block = "";
-    string public_key = "";
+    std::string status = "";
+    std::string difficulty = "";
+    std::string limit = "";
+    std::string block = "";
+    std::string public_key = "";
     long longDiff = 1;
     uint32_t height = 0;
     BLOCK_TYPE type = BLOCK_CPU;
@@ -45,11 +39,11 @@ public:
     MinerData() = default;
 
     MinerData(
-        string s,
-        string d,
-        string l,
-        string b,
-        string p,
+        std::string s,
+        std::string d,
+        std::string l,
+        std::string b,
+        std::string p,
         uint32_t _height,
         uint32_t _argon_memory,
         uint32_t _argon_threads,
@@ -70,24 +64,24 @@ public:
         height = _height;
     };
 
-    const string *getStatus() const;
+    const std::string *getStatus() const;
 
-    const string *getDifficulty() const;
+    const std::string *getDifficulty() const;
 
-    const string *getLimit() const;
+    const std::string *getLimit() const;
 
-    const string *getBlock() const;
+    const std::string *getBlock() const;
 
-    const string *getPublic_key() const;
+    const std::string *getPublic_key() const;
 
     uint32_t getHeight() const;
 
     BLOCK_TYPE getBlockType() const { return type; };
-    string getArgonPrmsStr() const;
+    std::string getArgonPrmsStr() const;
 
-    bool isNewBlock(const string *newBlock);
+    bool isNewBlock(const std::string *newBlock);
 
-    friend ostream &operator<<(ostream &os, const MinerData &data);
+    friend std::ostream &operator<<(std::ostream &os, const MinerData &data);
 
     friend bool operator==(const MinerData &lhs, const MinerData &rhs);
 

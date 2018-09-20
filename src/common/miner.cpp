@@ -3,23 +3,32 @@
 //
 #define DD "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK"
 
-#include <boost/algorithm/string.hpp>
-
-#include <iomanip>
-#include <openssl/sha.h>
-#include <thread>
-#include <map>
-
-#include "../../include/miner.h"
-#include "../../include/timer.h"
 #include "../../include/perfscope.h"
+#include "../../include/timer.h"
+#include "../../include/miner.h"
+#include "../../include/minersettings.h"
+#include "../../include/updater.h"
+#include "../../include/testMode.h"
 
 #include "argon2.h"
 #include "../../argon2/src/core.h"
 #include "argon2-gpu-common/argon2params.h"
 
+#include <iomanip>
+#include <thread>
+#include <map>
+
+#include <openssl/sha.h>
+#include <cpprest/http_client.h>
+
+#include <boost/algorithm/string.hpp>
+
 using namespace std;
 using namespace argon2;
+
+using namespace web;
+using namespace web::http;
+using namespace web::http::client;
 
 static int b64_byte_to_char(unsigned x) {
     return (LT(x, 26) & (x + 'A')) |
@@ -30,6 +39,38 @@ static int b64_byte_to_char(unsigned x) {
 
 // to fix mixed up messages at start
 bool s_miningReady = false;
+
+Miner::Miner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u) :
+    stats(s),
+    settings(ms),
+    batchSize(bs),
+    initial_batchSize(bs),
+    rest(0),
+    diff(1),
+    result(0),
+    ZERO(0),
+    BLOCK_LIMIT(240),
+    limit(0),
+    updater(u),
+    params(nullptr),
+    cpu_batchSize(1)
+{
+    http_client_config config;
+    utility::seconds timeout(2);
+    config.set_timeout(timeout);
+
+    utility::string_t poolAddress = toUtilityString(*ms->getPoolAddress());
+
+    client = new http_client(poolAddress, config);
+    generator = std::mt19937(device());
+    distribution = std::uniform_int_distribution<int>(0, 255);
+
+    salt = randomStr(16);
+
+    // prepare array of gpu task results buffers
+    auto count = batchSize;
+    resultBuffers.resize(count);
+}
 
 void Miner::to_base64(char *dst, size_t dst_len, const void *src, size_t src_len) {
     size_t olen;
