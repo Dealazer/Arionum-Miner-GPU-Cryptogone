@@ -23,12 +23,22 @@ struct TestModeInfo {
     t_time_point lastT = {};
     int nRounds = 0;
     BLOCK_TYPE blockType = BLOCK_GPU;
+    bool testCPU = true;
+    bool testGPU = true;
 };
 
 static TestModeInfo s_testMode;
 
-void enableTestMode() {
-    s_testMode.enabled = true;
+void enableTestMode(bool testCPUBlocks, bool testGPUBlocks) {
+    if (!testCPUBlocks && !testGPUBlocks)
+        return;
+    auto& tm = s_testMode;
+    tm.enabled = true;
+    tm.testCPU = testCPUBlocks;
+    tm.testGPU = testGPUBlocks;
+    if (!tm.testGPU) {
+        tm.blockType = BLOCK_CPU;
+    }
 }
 
 int testModeRoundLengthInSeconds() {
@@ -44,29 +54,31 @@ BLOCK_TYPE testModeBlockType() {
 }
 
 void updateTestMode(Stats &stats) {
-    if (!s_testMode.enabled)
+    auto& tm = s_testMode;
+    if (!tm.enabled)
         return;
-    if (s_testMode.lastT == t_time_point()) {
-        s_testMode.lastT = high_resolution_clock::now();
-        stats.beginRound(s_testMode.blockType);
+    if (tm.lastT == t_time_point()) {
+        tm.lastT = high_resolution_clock::now();
+        stats.beginRound(tm.blockType);
         stats.printRoundStatsHeader();
     }
     chrono::duration<float> duration =
-        high_resolution_clock::now() - s_testMode.lastT;
+        high_resolution_clock::now() - tm.lastT;
     if (duration.count() >= TEST_MODE_STATS_INTERVAL) {
         stats.endRound();
         stats.printRoundStats(duration.count());
 
-        s_testMode.nRounds++;
-        if (s_testMode.nRounds >= TEST_MODE_BLOCK_CHANGE_RATE) {
-            auto &bt = s_testMode.blockType;
+        tm.nRounds++;
+        if (tm.nRounds >= TEST_MODE_BLOCK_CHANGE_RATE &&            
+            tm.testCPU && tm.testGPU) {
+            auto &bt = tm.blockType;
             bt = (bt == BLOCK_GPU) ? BLOCK_CPU : BLOCK_GPU;
-            s_testMode.nRounds = 0;
+            tm.nRounds = 0;
             cout << endl;
             stats.printRoundStatsHeader();
         }
 
-        s_testMode.lastT = high_resolution_clock::now();
-        stats.beginRound(s_testMode.blockType);
+        tm.lastT = high_resolution_clock::now();
+        stats.beginRound(tm.blockType);
     }
 }

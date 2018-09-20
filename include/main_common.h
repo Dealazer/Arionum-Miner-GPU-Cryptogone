@@ -490,8 +490,13 @@ int run(const char *const *argv) {
         return 0;
     }
 
-    if (args.testMode)
-        enableTestMode();
+    if (args.testMode) {
+        if (args.skipCpuBlocks && args.skipGpuBlocks) {
+            std::cout << "Cannot skip both CPU & GPU blocks in test mode, aborting."<< std::endl;
+            exit(1);
+        }
+        enableTestMode(!args.skipCpuBlocks, !args.skipGpuBlocks);
+    }
 
     // basic check to see if CUDA / OpenCL is supported
     std::cout << "Initializing " << API_NAME << std::endl;
