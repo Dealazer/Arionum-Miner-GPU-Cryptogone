@@ -84,7 +84,7 @@ Miner::MemConfig OpenClMiner::configure(size_t maxMemUsage) {
         Miner::getLanes(BLOCK_GPU));
     uint32_t gpuBlocksPerHash = params->getMemoryBlocks();
 
-    auto nBlocks = std::max(cpuBlocksPerHash, gpuBlocksPerHash);
+    //auto nBlocks = std::max(cpuBlocksPerHash, gpuBlocksPerHash);
 
     MemConfig mc;
     //mc.batchSizes;
