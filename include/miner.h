@@ -29,26 +29,12 @@
 const size_t ARGON_OUTLEN = 32;
 const size_t ARGON_SALTLEN = 16;
 
-
 class Stats;
 class Updater;
 
 class Miner {
-public:
-    static const int MAX_BLOCKS_BUFFERS = 4;
-
-protected:
-    argon2::Type type = argon2::ARGON2_I;
-    argon2::Version version = argon2::ARGON2_VERSION_13;
-    argon2::Argon2Params *params;
-    
-    MinerData data;
-    MinerSettings settings;
-    Updater *updater;
-    Stats *stats;
-
 private:
-    std::random_device device;
+    std::random_device rdevice;
     std::mt19937 generator;
     std::uniform_int_distribution<int> distribution;
     const char *alphanum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -57,8 +43,6 @@ private:
     std::string salt;
     char nonceBase64[64];
     uint8_t byteBuffer[32];
-    std::vector<std::string> nonces[MAX_BLOCKS_BUFFERS];
-    std::vector<std::string> bases[MAX_BLOCKS_BUFFERS];
 
     mpz_class ZERO;
     mpz_class BLOCK_LIMIT;
@@ -71,6 +55,19 @@ private:
 
     size_t maxMemUsage;
 
+protected:
+    argon2::Type type = argon2::ARGON2_I;
+    argon2::Version version = argon2::ARGON2_VERSION_13;
+    argon2::Argon2Params *params;
+
+    MinerData data;
+    MinerSettings settings;
+    Updater *updater;
+    Stats *stats;
+    argon2::MemConfig memConfig;
+
+    std::vector<std::string> nonces;
+    std::vector<std::string> bases;
     std::vector<uint8_t*> resultsPtrs[MAX_BLOCKS_BUFFERS];
 
 protected:
@@ -85,26 +82,24 @@ protected:
     void submitReject(std::string msg, bool isBlock);
     void encode(void *res, size_t reslen, std::string &out);
     std::string randomStr(int length);
+    virtual argon2::MemConfig configure(size_t maxMemUsage) = 0;
+    virtual bool createUnit() = 0;
 
 public:
     Miner(size_t maxMemUsage, Stats *s, MinerSettings &ms, Updater *u);
-
+    bool initialize();
     void hostPrepareTaskData();
     bool hostProcessResults();
     bool canMineBlock(BLOCK_TYPE type);
     BLOCK_TYPE getCurrentBlockType();
-
-public:
     virtual void deviceUploadTaskDataAsync() = 0;
     virtual void deviceLaunchTaskAsync() = 0;
     virtual void deviceFetchTaskResultAsync() = 0;
     virtual void deviceWaitForResults() = 0;
     virtual bool deviceResultsReady() = 0;
     virtual void reconfigureArgon(
-        uint32_t t_cost, uint32_t m_cost, uint32_t lanes, 
-        uint32_t batchSize) = 0;
+        uint32_t t_cost, uint32_t m_cost, uint32_t lanes) = 0;
 
-public:
     static uint32_t getMemCost(BLOCK_TYPE type) {
         return (type == BLOCK_CPU) ? 524288 : 16384;
     }
@@ -118,34 +113,6 @@ public:
     }
 
     uint32_t getNbHashesPerIteration();
-
-    // in progress
-public:
-    struct MemConfig {
-        size_t batchSizes[BLOCK_TYPE_COUNT][MAX_BLOCKS_BUFFERS];
-        size_t blocksBuffers[MAX_BLOCKS_BUFFERS];
-        size_t index;
-        size_t in;
-        size_t out;
-    };
-    bool initialize(size_t maxMemUsage);
-
-public:
-    virtual MemConfig configure(size_t maxMemUsage) = 0;
-    virtual bool initialize(MemConfig &mcfg) = 0;
-
-protected:
-    MemConfig memConfig;
-
-    // to review
-public:
-    //uint32_t getInitialBatchSize() const { return initial_batchSize; };
-    //uint32_t getCurrentBatchSize() const { return batchSize; };
-    //uint32_t getCPUBatchSize() const { return cpu_batchSize; };
-    //virtual size_t getMemoryUsage() const = 0;
-    //virtual size_t getMemoryUsedPerBatch() const = 0;
-    std::string getInfo() const;
-    //void computeCPUBatchSize();
 };
 
 

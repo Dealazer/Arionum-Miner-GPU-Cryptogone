@@ -10,7 +10,6 @@
 enum BLOCK_TYPE {
     BLOCK_GPU,
     BLOCK_CPU,
-    BLOCK_TYPE_COUNT,
     BLOCK_MASTERNODE
 };
 
