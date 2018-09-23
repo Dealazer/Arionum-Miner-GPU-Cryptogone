@@ -51,8 +51,95 @@ OpenClMiner::OpenClMiner(
 
 #define VERBOSE_CONFIGURE (1)
 
+std::string toGB(size_t size) {
+    double GB = (double)size / (1024.f * 1024.f * 1024.f);
+    ostringstream os;
+    os << std::fixed << std::setprecision(3) << GB << " GB";
+    return os.str();
+}
+
+void printBlockBuffer(
+    const argon2::MemConfig& mc,
+    int i) {
+    auto size = mc.blocksBuffers[i];
+    if (size == 0) {
+        return;
+    }
+    cout
+        << "buffer " << i << endl
+        << "  size       = "
+        << toGB(size) << endl
+        << "  nHashesCPU = "
+        << mc.batchSizes[BLOCK_CPU][i] << endl
+        << "  nHashesGPU = "
+        << mc.batchSizes[BLOCK_GPU][i] << endl;
+}
+
+namespace cl {
+    bool s_logCLErrors = true;
+}
+
+bool testAlloc(
+    const argon2::opencl::Device *device,
+    argon2::opencl::ProgramContext* progCtx,
+    size_t size)
+{
+    bool ok = true;
+    {
+        bool prev = cl::s_logCLErrors;
+        cl::s_logCLErrors = false;
+        try {
+            auto context = progCtx->getContext();
+            cl::Buffer testBuf(context, CL_MEM_READ_WRITE, size);
+            if (testBuf() == 0)
+                ok = false;
+            cl::CommandQueue queue(context, device->getCLDevice(), 0);
+            uint8_t dummy;
+            queue.enqueueWriteBuffer(testBuf, true, size - 1, 1, &dummy);
+        }
+        catch (exception e) {
+            ok = false;
+        }
+        cl::s_logCLErrors = prev;
+    }
+    return ok;
+}
+
+size_t findMaxAlloc(
+    const argon2::opencl::Device *device, 
+    argon2::opencl::ProgramContext* progCtx,
+    size_t maxMem = 0) {
+    auto cl_dev = device->getCLDevice();
+    size_t min = 0;
+    size_t max = !maxMem ? 
+        cl_dev.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() : maxMem;
+    size_t best = 0;
+
+    while (1) {
+        size_t cur = (max + min) / 2;
+        if (!testAlloc(device, progCtx, cur))
+            max = cur - 1;
+        else {
+            best = cur;
+            min = cur + 1;
+        }
+        if (min >= max) {
+            return testAlloc(device, progCtx, max) ? max : best;
+        }
+    }
+    return 0;
+}
+
 argon2::MemConfig OpenClMiner::configure(size_t maxMemUsage) {
     argon2::MemConfig mc;
+
+    // get device mem info
+    auto cl_dev = device->getCLDevice();
+    size_t deviceTotalMem = cl_dev.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
+    size_t maxAllocCL = cl_dev.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>();
+
+    // cannot use more mem than device has
+    maxMemUsage = std::min(maxMemUsage, deviceTotalMem);
 
     // get mem per hash needed for CPU round
     auto optParamsCPU = configureArgon(
@@ -78,80 +165,92 @@ argon2::MemConfig OpenClMiner::configure(size_t maxMemUsage) {
         mc.index = optParamsCPU.customIndexNbSteps * 3 * sizeof(cl_uint);
     }
 
-    // get mem needed for sending nonces
+    // get max mem needed for sending nonces
     const size_t MAX_LANES = 4;
     const size_t IN_BLOCKS_MAX_SIZE = MAX_LANES * 2 * ARGON2_BLOCK_SIZE;
     size_t maxTotalNonces = maxMemUsage / std::min(memPerHashCPU, memPerHashGPU);
     mc.in = IN_BLOCKS_MAX_SIZE * maxTotalNonces;
 
-    // get mem needed for getting back results
+    // get max mem needed for getting back results
     const size_t OUT_BLOCKS_MAX_SIZE = MAX_LANES * ARGON2_BLOCK_SIZE;
     mc.out = OUT_BLOCKS_MAX_SIZE * maxTotalNonces;
 
-    // !! to review !!
-    // get mem needed for warp shuffle
-    // !! to review !!
-    size_t warpShuffleSize = 32 * MAX_LANES * sizeof(cl_uint) * 2;
+    // get max mem needed for warp shuffle
+    size_t warpShuffleSize = 0; // 32 * MAX_LANES * sizeof(cl_uint) * 2;
     
-    // get device mem info
-    auto cl_dev = device->getCLDevice();
-    size_t deviceTotalMem = cl_dev.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
-    size_t deviceMaxAlloc = cl_dev.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>();
+    // create a queue
+    auto context = progCtx->getContext();
+    cl::CommandQueue queue(context, device->getCLDevice(), 0);
 
-#if VERBOSE_CONFIGURE
-    cout << "maxMemUsage    = " << maxMemUsage << endl;
-    cout << "deviceTotalMem = " << deviceTotalMem << endl;
-    cout << "deviceMaxAlloc = " << deviceMaxAlloc << endl;
-    cout << "memPerHashCPU  = " << memPerHashCPU << endl;
-    cout << "memPerHashGPU  = " << memPerHashGPU << endl;
-    cout << "index          = " << mc.index << endl;
-    cout << "in             = " << mc.in << endl;
-    cout << "out            = " << mc.out << endl;
-    cout << "warpShuffle    = " << warpShuffleSize << endl;
-#endif
+    // bufs management
+    std::vector<cl::Buffer> bufs;
+    auto addBuff = [&] (size_t size) -> void {
+        if (!size)
+            return;
+        bufs.emplace_back(context, CL_MEM_READ_WRITE, size);
+        uint8_t dummy = 0;
+        queue.enqueueWriteBuffer(bufs.back(), true, 0, 1, &dummy);
+    };
 
-    size_t totalAvail = std::min(maxMemUsage, deviceTotalMem);
-    size_t blocksMaxSize = totalAvail - (mc.index + mc.in + mc.out + warpShuffleSize);
+    auto setBlockBuffer = [&](int i, size_t size) -> void {
+        mc.blocksBuffers[i] = (uint32_t)size;
+        mc.batchSizes[BLOCK_CPU][i] = size / memPerHashCPU;
+        mc.batchSizes[BLOCK_GPU][i] = size / memPerHashGPU;
+    };
 
-#if VERBOSE_CONFIGURE
-    double efficiency = ((double)blocksMaxSize / (double)totalAvail);
-    cout << "blocksMaxSize  = " << blocksMaxSize
-        << std::fixed << std::setprecision(2)
-        << " (" << (100.0 * efficiency) << "%)" << endl;
-#endif
+    // temporarily allocate all utility buffers
+    std::vector<size_t> sizes = { mc.in, mc.out, mc.index, warpShuffleSize };
+    for (auto &it : sizes)
+        addBuff(it);
 
-    // buffer 0
-    size_t nHashesCPU = std::min(blocksMaxSize, deviceMaxAlloc) / memPerHashCPU;
-    size_t buf0Size = nHashesCPU * memPerHashCPU;
-    if (nHashesCPU == 0) {
-        cout << "Error: device does not have enough memory to compute a hash !" << endl;
-        exit(1);
-    }
-    size_t nHashesGPU = buf0Size / memPerHashGPU;
-    
-#if VERBOSE_CONFIGURE
-    double usagePercent = 100.0 * 
-        ((double)(nHashesGPU * memPerHashGPU) / (double)buf0Size);
-    cout << "buffer 0" << endl;
-    cout << "  nHashesCPU = " << nHashesCPU << endl;
-    cout 
-        << "  nHashesGPU = " << nHashesGPU 
-        << " (" << usagePercent << "%)"
-        << endl;
-    cout << "  size       = " << buf0Size << endl;
-#endif
+    // clear
+    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++)
+        setBlockBuffer(i, 0);
 
-    mc.blocksBuffers[0] = (uint32_t)buf0Size;
-    mc.batchSizes[BLOCK_CPU][0] = nHashesCPU;
-    mc.batchSizes[BLOCK_GPU][0] = nHashesGPU;
+    // alloc buffer 0
+    size_t curMaxAlloc = findMaxAlloc(device, progCtx, maxMemUsage);
 
-    // other buffers
+    size_t nHashesGPU = curMaxAlloc / memPerHashGPU;
+    size_t size = nHashesGPU * memPerHashGPU;
+    setBlockBuffer(0, size);
+    addBuff(size);
+    size_t memBlocks = size;
+
+    // remaining buffers
     for (int i = 1; i < MAX_BLOCKS_BUFFERS; i++) {
-        mc.blocksBuffers[i] = 0;
-        mc.batchSizes[BLOCK_CPU][i] = 0;
-        mc.batchSizes[BLOCK_GPU][i] = 0;
+        if ((maxMemUsage - memBlocks) < memPerHashGPU)
+            continue;
+        curMaxAlloc = findMaxAlloc(device, progCtx, curMaxAlloc);
+        size_t nHashesGPU = curMaxAlloc / memPerHashGPU;
+        if (!curMaxAlloc || !nHashesGPU)
+            break;
+
+        size_t size = nHashesGPU * memPerHashGPU;
+        setBlockBuffer(i, size);
+        addBuff(size);
+        memBlocks += size;
     }
 
+#if VERBOSE_CONFIGURE
+    auto memMisc = mc.index + mc.in + mc.out + warpShuffleSize;
+    auto memBlocksMax = deviceTotalMem - memMisc;
+    auto maxCPUHashes = memBlocksMax / memPerHashCPU;
+    auto maxGPUHashes = memBlocksMax / memPerHashGPU;
+    cout
+        << "deviceTotalMem  : " << toGB(deviceTotalMem) << endl
+        << "maxMemUsage     : " << toGB(maxMemUsage) << endl
+        << "memBlocks       : " << toGB(memBlocks) << endl
+        << "memMisc         : " << toGB(memMisc) << endl
+        << "theorical       : "
+        << "CPU " << maxCPUHashes
+        << ", GPU " << maxGPUHashes << endl
+        << "current         : "
+        << "CPU " << mc.getTotalHashes(BLOCK_CPU)
+        << ", GPU " << mc.getTotalHashes(BLOCK_GPU) << endl;
+    for (int i = 0; i<MAX_BLOCKS_BUFFERS; i++) {
+        printBlockBuffer(mc, i);
+    }
+#endif
     return mc;
 }
 

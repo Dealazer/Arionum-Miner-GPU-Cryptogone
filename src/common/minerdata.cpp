@@ -9,15 +9,15 @@ using std::ostringstream;
 using std::ostream;
 
 const string BLOCK_TYPE_NAMES[3]{
-    "Masternode",
     "GPU",
-    "CPU"
+    "CPU",
+    "Masternode"
 };
 
 const string BLOCK_TYPE_NAMES_SHORT[3]{
-    "MN",
     "GPU",
-    "CPU"
+    "CPU",
+    "MN"
 };
 
 const string& blockTypeName(BLOCK_TYPE b) {

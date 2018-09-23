@@ -33,6 +33,15 @@ class Stats;
 class Updater;
 
 class Miner {
+public:
+    virtual void reconfigureArgon(
+        uint32_t t_cost, uint32_t m_cost, uint32_t lanes) = 0;
+    virtual void deviceUploadTaskDataAsync() = 0;
+    virtual void deviceLaunchTaskAsync() = 0;
+    virtual void deviceFetchTaskResultAsync() = 0;
+    virtual void deviceWaitForResults() = 0;
+    virtual bool deviceResultsReady() = 0;
+
 private:
     std::random_device rdevice;
     std::mt19937 generator;
@@ -71,35 +80,36 @@ protected:
     std::vector<uint8_t*> resultsPtrs[MAX_BLOCKS_BUFFERS];
 
 protected:
+    bool needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
     argon2::t_optParams configureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
     argon2::t_optParams precomputeArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
-    bool needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
+    bool checkArgon(std::string *base, std::string *argon, std::string *nonce); 
+    std::string randomStr(int length);
     void to_base64(char *dst, size_t dst_len, const void *src, size_t src_len);
     void generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buffer_size);
+    void encode(void *res, size_t reslen, std::string &out);
     void buildBatch();
-    bool checkArgon(std::string *base, std::string *argon, std::string *nonce);
+
     void submit(std::string *argon, std::string *nonce, bool d, bool isBlock);
     void submitReject(std::string msg, bool isBlock);
-    void encode(void *res, size_t reslen, std::string &out);
-    std::string randomStr(int length);
+
+protected:
     virtual argon2::MemConfig configure(size_t maxMemUsage) = 0;
     virtual bool createUnit() = 0;
 
 public:
     Miner(size_t maxMemUsage, Stats *s, MinerSettings &ms, Updater *u);
+    
     bool initialize();
+    
     void hostPrepareTaskData();
     bool hostProcessResults();
+      
     bool canMineBlock(BLOCK_TYPE type);
     BLOCK_TYPE getCurrentBlockType();
-    virtual void deviceUploadTaskDataAsync() = 0;
-    virtual void deviceLaunchTaskAsync() = 0;
-    virtual void deviceFetchTaskResultAsync() = 0;
-    virtual void deviceWaitForResults() = 0;
-    virtual bool deviceResultsReady() = 0;
-    virtual void reconfigureArgon(
-        uint32_t t_cost, uint32_t m_cost, uint32_t lanes) = 0;
+    uint32_t getNbHashesPerIteration();
 
+public:
     static uint32_t getMemCost(BLOCK_TYPE type) {
         return (type == BLOCK_CPU) ? 524288 : 16384;
     }
@@ -111,8 +121,6 @@ public:
     static uint32_t getLanes(BLOCK_TYPE type) {
         return (type == BLOCK_CPU) ? 1 : 4;
     }
-
-    uint32_t getNbHashesPerIteration();
 };
 
 

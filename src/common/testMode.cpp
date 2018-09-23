@@ -69,8 +69,9 @@ void updateTestMode(Stats &stats) {
         stats.printRoundStats(duration.count());
 
         tm.nRounds++;
-        if (tm.nRounds >= TEST_MODE_BLOCK_CHANGE_RATE &&            
-            tm.testCPU && tm.testGPU) {
+        if (tm.nRounds >= TEST_MODE_BLOCK_CHANGE_RATE 
+            && tm.testCPU 
+            && tm.testGPU) {
             auto &bt = tm.blockType;
             bt = (bt == BLOCK_GPU) ? BLOCK_CPU : BLOCK_GPU;
             tm.nRounds = 0;

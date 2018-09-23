@@ -1,5 +1,5 @@
 //
-// Created by guli on 01/02/18.
+// Created by guli on 01/02/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
 #define DD "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK"
 
@@ -524,7 +524,7 @@ std::string Miner::randomStr(int length) {
 }
 
 uint32_t Miner::getNbHashesPerIteration() {
-    uint32_t nHashes = 0;    
+    uint32_t nHashes = 0;
     for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
         nHashes += (uint32_t)memConfig.batchSizes[getCurrentBlockType()][i];
     }
