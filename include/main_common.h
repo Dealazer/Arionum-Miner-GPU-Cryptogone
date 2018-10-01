@@ -136,16 +136,14 @@ void spawnMiners(OpenCLArguments &args, vector<Miner *> &miners, Stats* stats, U
 
         for (int j = 0; j < nThreads; ++j) {
             // choose batch size
-            double maxMemGB = args.maxTaskMemPerDeviceList.back();
+            uint32_t nGPUBatches = (uint32_t)args.maxTaskMemPerDeviceList.back();
             if (deviceListItem < args.maxTaskMemPerDeviceList.size()) {
-                maxMemGB = args.maxTaskMemPerDeviceList[deviceListItem];
+                nGPUBatches = (uint32_t)args.maxTaskMemPerDeviceList[deviceListItem];
             }
-            size_t maxMem = (size_t)(maxMemGB * 1024.0 * 1024.0 * 1024.0);
-
             // create the miner
             cout << " - create miner " << j << endl;
             Miner *miner = new MINER(
-                deviceIndex, maxMem, stats, settings, updater);
+                deviceIndex, nGPUBatches, stats, settings, updater);
             miner->initialize();
             miners.push_back(miner);
         }
@@ -182,7 +180,6 @@ bool parseFloatList(const std::string &s, std::vector<double> &ol) {
         auto idStr = boost::trim_left_copy(it);
         auto count = sscanf_s(idStr.c_str(), "%lf", &v);
         if (count == 1) {
-            std::cout << v << endl;
             ol.push_back(v);
         }
         else {
@@ -375,9 +372,9 @@ int processMinersResults() {
                 printf("T=%4.3f miner %d, %d hashes in %.2fms => %.1f Hs\n",
                     T.count(),
                     i,
-                    s_miners[i]->getCurrentBatchSize(),
+                    s_miners[i]->getNbHashesPerIteration(),
                     duration.count() * 1000.f,
-                    (float)s_miners[i]->getCurrentBatchSize() / duration.count());
+                    (float)s_miners[i]->getNbHashesPerIteration() / duration.count());
             }
             s_minerStartT[i] = high_resolution_clock::now();
 #endif
@@ -399,7 +396,8 @@ int miningLoop(Stats *stats) {
 
         int nIdle = processMinersResults();
         if (nIdle == 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            std::this_thread::yield();
+            //std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
     }
 }
@@ -471,6 +469,24 @@ int run(const char *const *argv) {
     }
 
     spawnMiners<CONTEXT, MINER>(args, s_miners, stats, s_pUpdater, settings);
+
+#if 0
+    // warmup
+    cout << "Warming up..." << endl;
+    for (int i = 0; i < s_miners.size(); i++) {
+        auto &miner = s_miners[i];
+        miner->hostPrepareTaskData();
+        miner->deviceUploadTaskDataAsync();
+        miner->deviceLaunchTaskAsync();
+        miner->deviceFetchTaskResultAsync();
+    }
+    for (int i = 0; i < s_miners.size(); i++) {
+        auto &miner = s_miners[i];
+        miner->deviceWaitForResults();
+    }
+    // warmup
+#endif
+
     s_miningReady = true;
 
     miningLoop(stats);

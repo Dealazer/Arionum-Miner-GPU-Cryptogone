@@ -62,8 +62,6 @@ private:
 
     web::http::client::http_client *client;
 
-    size_t maxMemUsage;
-
 protected:
     argon2::Type type = argon2::ARGON2_I;
     argon2::Version version = argon2::ARGON2_VERSION_13;
@@ -78,6 +76,7 @@ protected:
     std::vector<std::string> nonces;
     std::vector<std::string> bases;
     std::vector<uint8_t*> resultsPtrs[MAX_BLOCKS_BUFFERS];
+    uint32_t nGpuBatches;
 
 protected:
     bool needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
@@ -94,20 +93,20 @@ protected:
     void submitReject(std::string msg, bool isBlock);
 
 protected:
-    virtual argon2::MemConfig configure(size_t maxMemUsage) = 0;
+    virtual argon2::MemConfig configure(uint32_t batchSizeGPU) = 0;
     virtual bool createUnit() = 0;
 
 public:
-    Miner(size_t maxMemUsage, Stats *s, MinerSettings &ms, Updater *u);
-    
+    Miner(uint32_t nGPUBatches, Stats *s, MinerSettings &ms, Updater *u);
+
     bool initialize();
     
     void hostPrepareTaskData();
     bool hostProcessResults();
-      
+    
     bool canMineBlock(BLOCK_TYPE type);
-    BLOCK_TYPE getCurrentBlockType();
-    uint32_t getNbHashesPerIteration();
+    BLOCK_TYPE getCurrentBlockType() const;
+    uint32_t getNbHashesPerIteration() const;
 
 public:
     static uint32_t getMemCost(BLOCK_TYPE type) {

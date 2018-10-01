@@ -21,12 +21,12 @@ private:
     const argon2::opencl::Device *device;
 
 protected:
-    argon2::MemConfig configure(size_t maxMemUsage);
+    argon2::MemConfig configure(uint32_t batchSizeGPU);
     bool createUnit();
 
 public:
     OpenClMiner(
-        size_t deviceIndex, size_t maxMem,
+        size_t deviceIndex, uint32_t batchSizeGPU,
         Stats *pStats, MinerSettings &settings, Updater *pUpdater);
 
     void deviceUploadTaskDataAsync();
@@ -34,8 +34,12 @@ public:
     void deviceFetchTaskResultAsync();
     void deviceWaitForResults();
     bool deviceResultsReady();
-    void reconfigureArgon(
-        uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
+    
+    bool testAlloc(size_t size);
+    size_t findMaxAlloc(size_t maxMem = 0);
+
+    void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
+    cl::CommandQueue configure_queue;
 };
 
 #endif //ARIONUM_GPU_MINER_OPENCLMINER_H

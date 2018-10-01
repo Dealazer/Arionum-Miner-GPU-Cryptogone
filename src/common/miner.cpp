@@ -42,10 +42,9 @@ bool s_miningReady = false;
 
 const size_t SUBMIT_HTTP_TIMEOUT_SECONDS = 2;
 
-Miner::Miner(size_t maxMemUsage, Stats *s, MinerSettings &ms, Updater *u) :
+Miner::Miner(uint32_t nGpuBatches, Stats *s, MinerSettings &ms, Updater *u) :
     stats(s),
     settings(ms),
-    maxMemUsage(maxMemUsage),
     rest(0),
     diff(1),
     result(0),
@@ -53,7 +52,8 @@ Miner::Miner(size_t maxMemUsage, Stats *s, MinerSettings &ms, Updater *u) :
     BLOCK_LIMIT(240),
     limit(0),
     updater(u),
-    params(nullptr)
+    params(nullptr),
+    nGpuBatches(nGpuBatches)
 {
     http_client_config config;
     utility::seconds timeout(SUBMIT_HTTP_TIMEOUT_SECONDS);
@@ -70,7 +70,7 @@ Miner::Miner(size_t maxMemUsage, Stats *s, MinerSettings &ms, Updater *u) :
 
 bool Miner::initialize() {
 
-    memConfig = configure(maxMemUsage);
+    memConfig = configure(nGpuBatches);
 
     for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
         resultsPtrs[i].clear();
@@ -128,7 +128,7 @@ void Miner::generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buf
     to_base64(dst, dst_len, buffer, buffer_size);
 }
 
-BLOCK_TYPE Miner::getCurrentBlockType() {
+BLOCK_TYPE Miner::getCurrentBlockType() const {
     bool isGPU = (params->getLanes() == 4);
     return isGPU ? BLOCK_GPU : BLOCK_CPU;
 }
@@ -403,20 +403,17 @@ bool Miner::hostProcessResults() {
     }
 
     uint32_t nGood = 0, totalHashes = 0;
-    uint8_t buffer[32];
     for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
         size_t nHashes = memConfig.batchSizes[blockType][i];
         for (size_t j = 0; j < nHashes; ++j) {
+            uint8_t buffer[32];
             this->params->finalize(buffer, resultsPtrs[i][j]);
-
             string encodedArgon;
             encode(buffer, 32, encodedArgon);
-
             nGood += checkArgon(&bases[totalHashes], &encodedArgon, &nonces[totalHashes]);
             totalHashes++;
         }
     }
-
     if (testMode() && (nGood != totalHashes)) {
         std::cout 
             << "Warning: found invalid argon results in batch !"
@@ -523,7 +520,7 @@ std::string Miner::randomStr(int length) {
     return ss.str();
 }
 
-uint32_t Miner::getNbHashesPerIteration() {
+uint32_t Miner::getNbHashesPerIteration() const {
     uint32_t nHashes = 0;
     for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
         nHashes += (uint32_t)memConfig.batchSizes[getCurrentBlockType()][i];

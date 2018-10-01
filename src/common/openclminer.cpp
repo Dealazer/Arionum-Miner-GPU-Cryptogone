@@ -21,9 +21,9 @@ static std::map<cl_device_id, argon2::opencl::ProgramContext*> s_programCache;
 #endif
 
 OpenClMiner::OpenClMiner(
-    size_t deviceIndex, size_t maxMem, 
-    Stats *pStats, MinerSettings &settings, Updater *pUpdater) : 
-    Miner(maxMem, pStats, settings, pUpdater) {
+    size_t deviceIndex, uint32_t batchSizeGPU,
+    Stats *pStats, MinerSettings &settings, Updater *pUpdater) :
+    Miner(batchSizeGPU, pStats, settings, pUpdater) {
 
     global = new argon2::opencl::GlobalContext();
 
@@ -47,6 +47,9 @@ OpenClMiner::OpenClMiner(
         global, {*device}, type, version,
         "./argon2-gpu/data/kernels/");
 #endif
+
+//    auto context = progCtx->getContext();
+//    configure_queue = cl::CommandQueue(context, device->getCLDevice(), 0);
 }
 
 #define VERBOSE_CONFIGURE (1)
@@ -79,10 +82,7 @@ namespace cl {
     bool s_logCLErrors = true;
 }
 
-bool testAlloc(
-    const argon2::opencl::Device *device,
-    argon2::opencl::ProgramContext* progCtx,
-    size_t size)
+bool OpenClMiner::testAlloc(size_t size)
 {
     bool ok = true;
     {
@@ -93,9 +93,8 @@ bool testAlloc(
             cl::Buffer testBuf(context, CL_MEM_READ_WRITE, size);
             if (testBuf() == 0)
                 ok = false;
-            cl::CommandQueue queue(context, device->getCLDevice(), 0);
             uint8_t dummy;
-            queue.enqueueWriteBuffer(testBuf, true, size - 1, 1, &dummy);
+            configure_queue.enqueueWriteBuffer(testBuf, true, size - 1, 1, &dummy);
         }
         catch (exception e) {
             ok = false;
@@ -105,41 +104,40 @@ bool testAlloc(
     return ok;
 }
 
-size_t findMaxAlloc(
-    const argon2::opencl::Device *device, 
-    argon2::opencl::ProgramContext* progCtx,
-    size_t maxMem = 0) {
+size_t OpenClMiner::findMaxAlloc(size_t maxMem) {
     auto cl_dev = device->getCLDevice();
     size_t min = 0;
-    size_t max = !maxMem ? 
+    size_t max = !maxMem ?
         cl_dev.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() : maxMem;
     size_t best = 0;
 
     while (1) {
         size_t cur = (max + min) / 2;
-        if (!testAlloc(device, progCtx, cur))
+        if (!testAlloc(cur))
             max = cur - 1;
         else {
             best = cur;
             min = cur + 1;
         }
         if (min >= max) {
-            return testAlloc(device, progCtx, max) ? max : best;
+            return testAlloc(max) ? max : best;
         }
     }
     return 0;
 }
 
-argon2::MemConfig OpenClMiner::configure(size_t maxMemUsage) {
+argon2::MemConfig OpenClMiner::configure(uint32_t batchSizeGPU) {
     argon2::MemConfig mc;
 
     // get device mem info
     auto cl_dev = device->getCLDevice();
     size_t deviceTotalMem = cl_dev.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
     size_t maxAllocCL = cl_dev.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>();
+    auto deviceNComputeUnits = cl_dev.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+    auto deviceMaxWorkGroupSize = cl_dev.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
 
     // cannot use more mem than device has
-    maxMemUsage = std::min(maxMemUsage, deviceTotalMem);
+    //maxMemUsage = std::min(maxMemUsage, deviceTotalMem);
 
     // get mem per hash needed for CPU round
     auto optParamsCPU = configureArgon(
@@ -165,86 +163,54 @@ argon2::MemConfig OpenClMiner::configure(size_t maxMemUsage) {
         mc.index = optParamsCPU.customIndexNbSteps * 3 * sizeof(cl_uint);
     }
 
+    //
+    size_t maxTotalNonces = batchSizeGPU;
+
     // get max mem needed for sending nonces
     const size_t MAX_LANES = 4;
     const size_t IN_BLOCKS_MAX_SIZE = MAX_LANES * 2 * ARGON2_BLOCK_SIZE;
-    size_t maxTotalNonces = maxMemUsage / std::min(memPerHashCPU, memPerHashGPU);
     mc.in = IN_BLOCKS_MAX_SIZE * maxTotalNonces;
+    //mc.in = 1835008;
 
     // get max mem needed for getting back results
     const size_t OUT_BLOCKS_MAX_SIZE = MAX_LANES * ARGON2_BLOCK_SIZE;
     mc.out = OUT_BLOCKS_MAX_SIZE * maxTotalNonces;
+    //mc.out = 917504;
 
-    // get max mem needed for warp shuffle
-    size_t warpShuffleSize = 0; // 32 * MAX_LANES * sizeof(cl_uint) * 2;
-    
-    // create a queue
-    auto context = progCtx->getContext();
-    cl::CommandQueue queue(context, device->getCLDevice(), 0);
-
-    // bufs management
-    std::vector<cl::Buffer> bufs;
-    auto addBuff = [&] (size_t size) -> void {
-        if (!size)
-            return;
-        bufs.emplace_back(context, CL_MEM_READ_WRITE, size);
-        uint8_t dummy = 0;
-        queue.enqueueWriteBuffer(bufs.back(), true, 0, 1, &dummy);
-    };
-
+    // now we can start configuring buffers
     auto setBlockBuffer = [&](int i, size_t size) -> void {
         mc.blocksBuffers[i] = (uint32_t)size;
         mc.batchSizes[BLOCK_CPU][i] = size / memPerHashCPU;
         mc.batchSizes[BLOCK_GPU][i] = size / memPerHashGPU;
     };
 
-    // temporarily allocate all utility buffers
-    std::vector<size_t> sizes = { mc.in, mc.out, mc.index, warpShuffleSize };
-    for (auto &it : sizes)
-        addBuff(it);
-
-    // clear
     for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++)
         setBlockBuffer(i, 0);
 
-    // alloc buffer 0
-    size_t curMaxAlloc = findMaxAlloc(device, progCtx, maxMemUsage);
+    // force test
+    size_t memBlocks = 0;
+    size_t bufSize;
 
-    size_t nHashesGPU = curMaxAlloc / memPerHashGPU;
-    size_t size = nHashesGPU * memPerHashGPU;
-    setBlockBuffer(0, size);
-    addBuff(size);
-    size_t memBlocks = size;
-
-    // remaining buffers
-    for (int i = 1; i < MAX_BLOCKS_BUFFERS; i++) {
-        if ((maxMemUsage - memBlocks) < memPerHashGPU)
-            continue;
-        curMaxAlloc = findMaxAlloc(device, progCtx, curMaxAlloc);
-        size_t nHashesGPU = curMaxAlloc / memPerHashGPU;
-        if (!curMaxAlloc || !nHashesGPU)
-            break;
-
-        size_t size = nHashesGPU * memPerHashGPU;
-        setBlockBuffer(i, size);
-        addBuff(size);
-        memBlocks += size;
-    }
+    bufSize = batchSizeGPU * memPerHashGPU;
+    setBlockBuffer(0, bufSize);
+    memBlocks += bufSize;
 
 #if VERBOSE_CONFIGURE
-    auto memMisc = mc.index + mc.in + mc.out + warpShuffleSize;
+    auto memMisc = mc.index + mc.in + mc.out;
     auto memBlocksMax = deviceTotalMem - memMisc;
     auto maxCPUHashes = memBlocksMax / memPerHashCPU;
     auto maxGPUHashes = memBlocksMax / memPerHashGPU;
     cout
-        << "deviceTotalMem  : " << toGB(deviceTotalMem) << endl
-        << "maxMemUsage     : " << toGB(maxMemUsage) << endl
-        << "memBlocks       : " << toGB(memBlocks) << endl
-        << "memMisc         : " << toGB(memMisc) << endl
-        << "theorical       : "
+        << "deviceTotalMem   : " << toGB(deviceTotalMem) << endl
+        << "computeUnits     : " << deviceNComputeUnits << endl
+        << "maxWorkGroupSize : " << deviceMaxWorkGroupSize << endl
+        << "maxAllocCL       : " << toGB(maxAllocCL) << endl
+        << "memBlocks        : " << toGB(memBlocks) << endl
+        << "memMisc          : " << toGB(memMisc) << endl
+        << "theorical        : "
         << "CPU " << maxCPUHashes
         << ", GPU " << maxGPUHashes << endl
-        << "current         : "
+        << "current          : "
         << "CPU " << mc.getTotalHashes(BLOCK_CPU)
         << ", GPU " << mc.getTotalHashes(BLOCK_GPU) << endl;
     for (int i = 0; i<MAX_BLOCKS_BUFFERS; i++) {
@@ -255,7 +221,7 @@ argon2::MemConfig OpenClMiner::configure(size_t maxMemUsage) {
 }
 
 bool OpenClMiner::createUnit() {
-    const auto INITIAL_BLOCK_TYPE = BLOCK_CPU;
+    const auto INITIAL_BLOCK_TYPE = BLOCK_GPU;
     
     t_optParams optPrms = configureArgon(
         Miner::getPasses(INITIAL_BLOCK_TYPE),
@@ -290,7 +256,9 @@ void OpenClMiner::reconfigureArgon(
 }
 
 void OpenClMiner::deviceUploadTaskDataAsync() {
+#if (!OPEN_CL_SKIP_MEM_TRANSFERS)
     unit->uploadInputDataAsync(bases);
+#endif
 }
 
 void OpenClMiner::deviceLaunchTaskAsync() {
@@ -308,9 +276,9 @@ void OpenClMiner::deviceWaitForResults() {
 bool OpenClMiner::deviceResultsReady() {
     bool queueFinished = unit->resultsReady();
     if (queueFinished) {
+#if (!OPEN_CL_SKIP_MEM_TRANSFERS)
         auto blockType = (params->getLanes() == 1) ? 
             BLOCK_CPU : BLOCK_GPU;
-
         int curHash = 0;
         for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
             auto nHashes = memConfig.batchSizes[blockType][i];
@@ -319,6 +287,7 @@ bool OpenClMiner::deviceResultsReady() {
                 curHash++;
             }
         }
+#endif
     }
     return queueFinished;
 }
