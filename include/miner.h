@@ -26,6 +26,9 @@
 #define LT(x, y) GT(y, x)
 #define LE(x, y) GE(y, x)
 
+const argon2::Type ARGON_TYPE = argon2::ARGON2_I;
+const argon2::Version ARGON_VERSION = argon2::ARGON2_VERSION_13;
+
 const size_t ARGON_OUTLEN = 32;
 const size_t ARGON_SALTLEN = 16;
 
@@ -63,8 +66,6 @@ private:
     web::http::client::http_client *client;
 
 protected:
-    argon2::Type type = argon2::ARGON2_I;
-    argon2::Version version = argon2::ARGON2_VERSION_13;
     argon2::Argon2Params *params;
 
     MinerData data;
@@ -76,12 +77,10 @@ protected:
     std::vector<std::string> nonces;
     std::vector<std::string> bases;
     std::vector<uint8_t*> resultsPtrs[MAX_BLOCKS_BUFFERS];
-    uint32_t nGpuBatches;
 
 protected:
     bool needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
     argon2::t_optParams configureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
-    argon2::t_optParams precomputeArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
     bool checkArgon(std::string *base, std::string *argon, std::string *nonce); 
     std::string randomStr(int length);
     void to_base64(char *dst, size_t dst_len, const void *src, size_t src_len);
@@ -93,20 +92,18 @@ protected:
     void submitReject(std::string msg, bool isBlock);
 
 protected:
-    virtual argon2::MemConfig configure(uint32_t batchSizeGPU) = 0;
-    virtual bool createUnit() = 0;
+    //virtual argon2::MemConfig configure(uint32_t batchSizeGPU) = 0;
 
 public:
-    Miner(uint32_t nGPUBatches, Stats *s, MinerSettings &ms, Updater *u);
+    Miner(argon2::MemConfig memConfig, Stats *s, MinerSettings &ms, Updater *u);
 
-    bool initialize();
-    
     void hostPrepareTaskData();
     bool hostProcessResults();
     
     bool canMineBlock(BLOCK_TYPE type);
     BLOCK_TYPE getCurrentBlockType() const;
     uint32_t getNbHashesPerIteration() const;
+    static argon2::t_optParams precomputeArgon(argon2::Argon2Params * params);
 
 public:
     static uint32_t getMemCost(BLOCK_TYPE type) {

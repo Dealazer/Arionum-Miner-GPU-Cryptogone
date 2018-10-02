@@ -42,7 +42,7 @@ bool s_miningReady = false;
 
 const size_t SUBMIT_HTTP_TIMEOUT_SECONDS = 2;
 
-Miner::Miner(uint32_t nGpuBatches, Stats *s, MinerSettings &ms, Updater *u) :
+Miner::Miner(argon2::MemConfig memConfig, Stats *s, MinerSettings &ms, Updater *u) :
     stats(s),
     settings(ms),
     rest(0),
@@ -53,7 +53,7 @@ Miner::Miner(uint32_t nGpuBatches, Stats *s, MinerSettings &ms, Updater *u) :
     limit(0),
     updater(u),
     params(nullptr),
-    nGpuBatches(nGpuBatches)
+    memConfig(memConfig)
 {
     http_client_config config;
     utility::seconds timeout(SUBMIT_HTTP_TIMEOUT_SECONDS);
@@ -66,11 +66,6 @@ Miner::Miner(uint32_t nGpuBatches, Stats *s, MinerSettings &ms, Updater *u) :
     distribution = std::uniform_int_distribution<int>(0, 255);
 
     salt = randomStr(16);
-}
-
-bool Miner::initialize() {
-
-    memConfig = configure(nGpuBatches);
 
     for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
         resultsPtrs[i].clear();
@@ -79,10 +74,22 @@ bool Miner::initialize() {
             memConfig.batchSizes[BLOCK_GPU][i]);
         resultsPtrs[i].resize(maxResults, nullptr);
     }
-
-    bool ok = createUnit();
-    return ok;
 }
+
+//bool Miner::initialize() {
+//    memConfig = configure(nGpuBatches);
+//
+//    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
+//        resultsPtrs[i].clear();
+//        auto maxResults = std::max(
+//            memConfig.batchSizes[BLOCK_CPU][i],
+//            memConfig.batchSizes[BLOCK_GPU][i]);
+//        resultsPtrs[i].resize(maxResults, nullptr);
+//    }
+//
+//    bool ok = createUnit();
+//    return ok;
+//}
 
 
 void Miner::to_base64(char *dst, size_t dst_len, const void *src, size_t src_len) {
@@ -330,7 +337,7 @@ void Miner::encode(void *res, size_t reslen, std::string &out) {
     ss << "$argon2i";
     
     ss << "$v=";
-    ss << version;
+    ss << ARGON_VERSION;
     
     ss << "$m=";
     ss << params->getMemoryCost();
@@ -427,15 +434,20 @@ bool Miner::hostProcessResults() {
 }
 
 bool Miner::canMineBlock(BLOCK_TYPE type) {
+    if (memConfig.getTotalHashes(type) <= 0)
+        return false;
+
     return testMode() ? 
         true : 
         settings.canMineBlock(type);
 }
 
-t_optParams Miner::precomputeArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) {
+t_optParams Miner::precomputeArgon(argon2::Argon2Params * params) {
     static std::map<uint32_t, t_optParams> s_precomputeCache;
 
-    std::map<uint32_t, t_optParams>::const_iterator it = s_precomputeCache.find(m_cost);
+    auto m_cost = params->getMemoryCost();
+    std::map<uint32_t, t_optParams>::const_iterator it = 
+        s_precomputeCache.find(m_cost);
     if (it == s_precomputeCache.end()) {
         PERFSCOPE("INDEX PRECOMPUTE");
         argon2_instance_t inst;
@@ -481,17 +493,9 @@ t_optParams Miner::configureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lan
 
     t_optParams optPrms;
     optPrms.mode = (lanes == 1 && t_cost == 1) ? PRECOMPUTE : BASELINE;
-
-#define DISABLE_PRECOMPUTE (0)
-#if DISABLE_PRECOMPUTE
     if (optPrms.mode == PRECOMPUTE) {
-        optPrms.mode = BASELINE;
+        optPrms = precomputeArgon(params);
     }
-#else
-    if (optPrms.mode == PRECOMPUTE) {
-        optPrms = precomputeArgon(t_cost, m_cost, lanes);
-    }
-#endif
 
     return optPrms;
 }

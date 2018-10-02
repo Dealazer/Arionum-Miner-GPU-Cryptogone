@@ -13,33 +13,45 @@
 #include <argon2-gpu-common/argon2params.h>
 #include <argon2-opencl/processingunit.h>
 
-class OpenClMiner : public Miner {
-private:
-    argon2::opencl::ProcessingUnit *unit;
-    argon2::opencl::ProgramContext *progCtx;
-    argon2::opencl::GlobalContext *global;
-    const argon2::opencl::Device *device;
+#include <vector>
+
+class OpenClMiningDevice {
+public:
+    OpenClMiningDevice(
+        size_t deviceIndex,
+        uint32_t nTasks, uint32_t batchSizeGPU);
+
+    argon2::MemConfig getMemConfig(int taskId);
+
+    argon2::opencl::ProgramContext *getProgramContext() {
+        return progCtx;
+    }
 
 protected:
-    argon2::MemConfig configure(uint32_t batchSizeGPU);
-    bool createUnit();
+    cl::Buffer indexBuffer;
+    vector<cl::Buffer> buffers;
+    vector<argon2::MemConfig> minersConfigs;
+    argon2::opencl::ProgramContext *progCtx;
+};
 
+class OpenClMiner : public Miner {
 public:
     OpenClMiner(
-        size_t deviceIndex, uint32_t batchSizeGPU,
+        argon2::opencl::ProgramContext *, argon2::MemConfig memConfig,
         Stats *pStats, MinerSettings &settings, Updater *pUpdater);
 
+    void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
+    
     void deviceUploadTaskDataAsync();
     void deviceLaunchTaskAsync();
     void deviceFetchTaskResultAsync();
     void deviceWaitForResults();
     bool deviceResultsReady();
-    
-    bool testAlloc(size_t size);
-    size_t findMaxAlloc(size_t maxMem = 0);
 
-    void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
-    cl::CommandQueue configure_queue;
+private:
+    argon2::opencl::ProcessingUnit *unit;
+    argon2::opencl::ProgramContext *progCtx;
+    cl::CommandQueue queue;
 };
 
 #endif //ARIONUM_GPU_MINER_OPENCLMINER_H

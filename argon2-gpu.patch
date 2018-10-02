@@ -113,7 +113,7 @@ index 3dd95ba..f5130e0 100644
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
 diff --git a/data/kernels/argon2_kernel.cl b/data/kernels/argon2_kernel.cl
-index fa5e12a..870f561 100644
+index fa5e12a..58a52fa 100644
 --- a/data/kernels/argon2_kernel.cl
 +++ b/data/kernels/argon2_kernel.cl
 @@ -79,7 +79,7 @@ ulong u64_shuffle(ulong v, uint thread_src, uint thread,
@@ -125,7 +125,7 @@ index fa5e12a..870f561 100644
  
      lo = buf->lo[thread_src];
      hi = buf->hi[thread_src];
-@@ -413,238 +413,77 @@ struct ref {
+@@ -413,238 +413,75 @@ struct ref {
      uint ref_index;
  };
  
@@ -323,14 +323,14 @@ index fa5e12a..870f561 100644
 -    uint thread = get_local_id(0) % THREADS_PER_LANE;
 +__kernel void argon2_kernel_oneshot_precomputedIndex(
 +    __local struct u64_shuffle_buf *shuffle_bufs,   // 0
-+    __global struct block_g *memory,              // 1
-+    //uint memory_0_count,                            // 2
-+    //__global struct block_g *memory_1,              // 3
-+    //uint memory_1_count,                            // 4
-+    //__global struct block_g *memory_2,              // 5
-+    //uint memory_2_count,                            // 6
-+    //__global struct block_g *memory_3,              // 7
-+    //uint memory_3_count,                            // 8
++    __global struct block_g *memory,                // 1
++    uint memory_0_count,                            // 2
++    __global struct block_g *memory_1,              // 3
++    uint memory_1_count,                            // 4
++    __global struct block_g *memory_2,              // 5
++    uint memory_2_count,                            // 6
++    __global struct block_g *memory_3,              // 7
++    uint memory_3_count,                            // 8
 +    __global const struct index *indexs,            // 9
 +    uint nSteps,                                    // 10
 +    uint blocksPerBatch)                            // 11
@@ -346,12 +346,10 @@ index fa5e12a..870f561 100644
      /* select job's memory region: */
 -    memory += (size_t)job_id * lanes * lane_blocks;
 -
-+ //   __global struct block_g *memory;
-+
-+ /*   if (batch_id>=0 && batch_id < memory_0_count)
-+ */       memory = memory + (size_t)(batch_id * blocksPerBatch);
++    if (batch_id >= 0 && batch_id < memory_0_count)
++        memory = memory + (size_t)(batch_id * blocksPerBatch);
 +    
-+ /*   batch_id -= memory_0_count;
++    batch_id -= memory_0_count;
 +    if (batch_id >= 0 && batch_id < memory_1_count)
 +        memory = memory_1 + (size_t)(batch_id * blocksPerBatch);
 +    
@@ -362,7 +360,7 @@ index fa5e12a..870f561 100644
 +    batch_id -= memory_2_count;
 +    if (batch_id >= 0 && batch_id < memory_3_count)
 +        memory = memory_3 + (size_t)(size_t)(batch_id * blocksPerBatch);
-+ */  
++   
 +    /* hash */
      struct block_th prev, tmp;
 +    load_block(&prev, memory + 1, thread);
@@ -370,12 +368,12 @@ index fa5e12a..870f561 100644
 -    __global struct block_g *mem_lane = memory + lane;
 -    __global struct block_g *mem_prev = mem_lane + 1 * lanes;
 -    __global struct block_g *mem_curr = mem_lane + 2 * lanes;
+-
+-    load_block(&prev, mem_prev, thread);
 +    for (uint i = 2; i < nSteps; ++i) {
 +        uint ref_index = indexs->refSlot;
 +        __global struct block_g *mem_ref = memory + ref_index;
  
--    load_block(&prev, mem_prev, thread);
--
 -#if ARGON2_TYPE == ARGON2_ID
 -    refs += lane * (lane_blocks / 2) + 2;
 -#else
@@ -420,7 +418,7 @@ index fa5e12a..870f561 100644
  #endif /* ARGON2_TYPE == ARGON2_I || ARGON2_TYPE == ARGON2_ID */
  
  void argon2_step(
-@@ -692,12 +531,14 @@ void argon2_step(
+@@ -692,12 +529,21 @@ void argon2_step(
                  ref_index, ref_lane);
  }
  
@@ -428,36 +426,35 @@ index fa5e12a..870f561 100644
 -        __local struct u64_shuffle_buf *shuffle_bufs,
 -        __global struct block_g *memory, uint passes, uint lanes,
 -        uint segment_blocks, uint pass, uint slice)
+-{
+-    uint job_id = get_global_id(1);
 +__kernel void argon2_kernel_oneshot(
 +        __local struct u64_shuffle_buf *shuffle_bufs,   // 0
 +        __global struct block_g *memory,                // 1
-+        uint passes,                                    // 2
-+        uint lanes,                                     // 3
-+        uint segment_blocks)                            // 4     
- {
--    uint job_id = get_global_id(1);
++        uint memory_0_count,                            // 2
++        __global struct block_g *memory_1,              // 3
++        uint memory_1_count,                            // 4
++        __global struct block_g *memory_2,              // 5
++        uint memory_2_count,                            // 6
++        __global struct block_g *memory_3,              // 7
++        uint memory_3_count,                            // 8
++        uint passes,                                    // 9
++        uint lanes,                                     // 10
++        uint segment_blocks)                            // 11
++{
 +    uint batch_id = get_global_id(1);
      uint lane   = get_global_id(0) / THREADS_PER_LANE;
      uint warp   = get_local_id(0) / THREADS_PER_LANE;
      uint thread = get_local_id(0) % THREADS_PER_LANE;
-@@ -707,90 +548,27 @@ __kernel void argon2_kernel_segment(
+@@ -707,90 +553,22 @@ __kernel void argon2_kernel_segment(
      uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
  
      /* select job's memory region: */
 -    memory += (size_t)job_id * lanes * lane_blocks;
-+#if 1
-+    memory += (size_t)(batch_id * lanes * lane_blocks);
-+#else
-+    //__global struct block_g *memory;
-+    if (batch_id >= 0 && batch_id < memory_0_count)
-+        memory = memory + (size_t)(batch_id * lanes * lane_blocks);
- 
+-
 -    struct block_th prev, addr, tmp;
 -    uint thread_input;
-+    batch_id -= memory_0_count;
-+    if (batch_id >= 0 && batch_id < memory_1_count)
-+        memory = memory_1 + (size_t)(batch_id * lanes * lane_blocks);
- 
+-
 -#if ARGON2_TYPE == ARGON2_I || ARGON2_TYPE == ARGON2_ID
 -    switch (thread) {
 -    case 0:
@@ -482,21 +479,15 @@ index fa5e12a..870f561 100644
 -        thread_input = 0;
 -        break;
 -    }
-+    batch_id -= memory_1_count;
-+    if (batch_id >= 0 && batch_id < memory_2_count)
-+        memory = memory_2 + (size_t)(batch_id * lanes * lane_blocks);
- 
+-
 -    if (pass == 0 && slice == 0 && segment_blocks > 2) {
 -        if (thread == 6) {
 -            ++thread_input;
 -        }
 -        next_addresses(&addr, &tmp, thread_input, thread, shuffle_buf);
 -    }
-+    batch_id -= memory_2_count;
-+    if (batch_id >= 0 && batch_id < memory_3_count)
-+        memory = memory_3 + (size_t)(batch_id * lanes * lane_blocks);
- #endif
- 
+-#endif
+-
 -    __global struct block_g *mem_segment =
 -            memory + slice * segment_blocks * lanes + lane;
 -    __global struct block_g *mem_prev, *mem_curr;
@@ -525,7 +516,9 @@ index fa5e12a..870f561 100644
 -        mem_curr += lanes;
 -    }
 -}
--
++    if (batch_id >= 0 && batch_id < memory_0_count)
++        memory = memory + (size_t)(batch_id * lanes * lane_blocks);
+ 
 -__kernel void argon2_kernel_oneshot(
 -        __local struct u64_shuffle_buf *shuffle_bufs,
 -        __global struct block_g *memory, uint passes, uint lanes,
@@ -535,14 +528,23 @@ index fa5e12a..870f561 100644
 -    uint lane   = get_global_id(0) / THREADS_PER_LANE;
 -    uint warp   = get_local_id(0) / THREADS_PER_LANE;
 -    uint thread = get_local_id(0) % THREADS_PER_LANE;
--
++    batch_id -= memory_0_count;
++    if (batch_id >= 0 && batch_id < memory_1_count)
++        memory = memory_1 + (size_t)(batch_id * lanes * lane_blocks);
+ 
 -    __local struct u64_shuffle_buf *shuffle_buf = &shuffle_bufs[warp];
--
++    batch_id -= memory_1_count;
++    if (batch_id >= 0 && batch_id < memory_2_count)
++        memory = memory_2 + (size_t)(batch_id * lanes * lane_blocks);
+ 
 -    uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
 -
 -    /* select job's memory region: */
 -    memory += (size_t)job_id * lanes * lane_blocks;
--
++    batch_id -= memory_2_count;
++    if (batch_id >= 0 && batch_id < memory_3_count)
++        memory = memory_3 + (size_t)(batch_id * lanes * lane_blocks);
+ 
 +    /* hash */
      struct block_th prev, addr, tmp;
      uint thread_input;
@@ -699,7 +701,7 @@ index 2109154..c196f59 100644
  
  } // namespace cuda
 diff --git a/include/argon2-gpu-common/argon2-common.h b/include/argon2-gpu-common/argon2-common.h
-index fbcf67c..fbf268b 100644
+index fbcf67c..4cee758 100644
 --- a/include/argon2-gpu-common/argon2-common.h
 +++ b/include/argon2-gpu-common/argon2-common.h
 @@ -1,6 +1,8 @@
@@ -711,7 +713,7 @@ index fbcf67c..fbf268b 100644
  namespace argon2 {
  
  enum {
-@@ -21,6 +23,42 @@ enum Version {
+@@ -21,6 +23,53 @@ enum Version {
      ARGON2_VERSION_13 = 0x13,
  };
  
@@ -736,9 +738,20 @@ index fbcf67c..fbf268b 100644
 +#define MAX_BLOCKS_BUFFERS (4)
 +
 +struct MemConfig {
++    MemConfig() {
++        for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
++            for (int j = 0; j < BLOCK_TYPE_COUNT; j++) {
++                batchSizes[j][i] = 0;
++                blocksBuffers[j][i] = nullptr;
++            }
++        }
++        indexBuffer = nullptr;
++        in = out = 0;
++    }
++
 +    size_t batchSizes[BLOCK_TYPE_COUNT][MAX_BLOCKS_BUFFERS];
-+    uint32_t blocksBuffers[MAX_BLOCKS_BUFFERS];
-+    size_t index;
++    void* blocksBuffers[BLOCK_TYPE_COUNT][MAX_BLOCKS_BUFFERS];
++    void* indexBuffer;
 +    size_t in;
 +    size_t out;
 +
@@ -768,7 +781,7 @@ index bf2ca75..5756c1f 100644
  
  class Argon2Params
 diff --git a/include/argon2-opencl/cl.hpp b/include/argon2-opencl/cl.hpp
-index ced34f5..2b228e6 100644
+index ced34f5..6178643 100644
 --- a/include/argon2-opencl/cl.hpp
 +++ b/include/argon2-opencl/cl.hpp
 @@ -142,6 +142,14 @@
@@ -806,20 +819,11 @@ index ced34f5..2b228e6 100644
      }
      return err;
  }
-@@ -3155,6 +3165,8 @@ public:
-         void* host_ptr = NULL,
-         cl_int* err = NULL)
-     {
-+        printf("====> Create Buffer, size=%llu, flags=%x\n", size, (unsigned int)flags);
-+
-         cl_int error;
-         object_ = ::clCreateBuffer(context(), flags, size, host_ptr, &error);
- 
 diff --git a/include/argon2-opencl/kernelrunner.h b/include/argon2-opencl/kernelrunner.h
-index a1bba8b..69fc98e 100644
+index a1bba8b..72bbfe3 100644
 --- a/include/argon2-opencl/kernelrunner.h
 +++ b/include/argon2-opencl/kernelrunner.h
-@@ -3,53 +3,87 @@
+@@ -3,53 +3,57 @@
  
  #include "programcontext.h"
  #include "argon2-gpu-common/argon2params.h"
@@ -828,37 +832,9 @@ index a1bba8b..69fc98e 100644
  namespace argon2 {
  namespace opencl {
  
--class KernelRunner
-+class DeviceRessources
+ class KernelRunner
  {
-+public:
-+    DeviceRessources() {};
-+    DeviceRessources(const Device *device);
-+
-+    static DeviceRessources& get(const Device *device);
-+    
-+    cl::Buffer* addBuffer(cl_mem_flags flags, size_t size);
-+    cl::Buffer* getBuffer(cl_mem_flags flags, size_t size);
-+
-+    cl::CommandQueue* addQueue();
-+    cl::CommandQueue* getQueue(int index);
-+
- private:
-+    struct BufferInfo {
-+        cl_mem_flags flags;
-+        size_t size;
-+        cl::Buffer buf;
-+    };
-+
-+    std::vector<cl::CommandQueue> queues;
-+    std::vector<BufferInfo> buffers;
-+    cl::Device device;
-+    cl_device_id id;
-+    cl::Context context;
-+};
-+
-+class KernelRunner
-+{
+-private:
 +public:
      const ProgramContext *programContext;
      const Argon2Params *params;
@@ -880,11 +856,11 @@ index a1bba8b..69fc98e 100644
 -
 -    void precomputeRefs();
 +    cl::Buffer blocksBuffers[MAX_BLOCKS_BUFFERS], indexBuffer;
-+    cl::CommandQueue *queue;
++    cl::CommandQueue &queue;
 +    cl::Event end;
 +    
 +    void setKernelsArgs();
-+    void setupKernel(const Device *device);
++    void setupKernel();
 +    uint32_t getBlockCountPerHash() const;
  
  public:
@@ -893,15 +869,14 @@ index a1bba8b..69fc98e 100644
 -        return bySegment ? 1 : params->getLanes();
 -    }
 +    KernelRunner(
-+        const Device *device,
-+        const Argon2Params *params, 
++        cl::CommandQueue &queue,
++        const Argon2Params *params,
 +        const ProgramContext *programContext,
 +        const MemConfig &mcfg,
 +        t_optParams opt,
 +        int curBlockType);
 +
 +    void reconfigureArgon(
-+        const Device *device,
 +        const Argon2Params *newParams,
 +        const t_optParams &newOptParams,
 +        int blockType);
@@ -934,24 +909,31 @@ index a1bba8b..69fc98e 100644
 -    void run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock);
 -    float finish();
 +    std::uint32_t getHashesPerRun() const;
-+    cl::CommandQueue *getQueue() { return queue; }
 +    int getCurrentBlockType() const { return curBlockType; };
 +    std::size_t getStartBlocksSize();
  };
  
  } // namespace opencl
 diff --git a/include/argon2-opencl/processingunit.h b/include/argon2-opencl/processingunit.h
-index 277272d..e96167c 100644
+index 277272d..0f447de 100644
 --- a/include/argon2-opencl/processingunit.h
 +++ b/include/argon2-opencl/processingunit.h
-@@ -11,27 +11,40 @@ namespace opencl {
+@@ -2,6 +2,7 @@
+ #define ARGON2_OPENCL_PROCESSINGUNIT_H
+ 
+ #include <memory>
++#include <vector>
+ 
+ #include "kernelrunner.h"
+ 
+@@ -11,27 +12,37 @@ namespace opencl {
  class ProcessingUnit
  {
  private:
 -    const ProgramContext *programContext;
 -    const Argon2Params *params;
-     const Device *device;
- 
+-    const Device *device;
+-
      KernelRunner runner;
      std::uint32_t bestLanesPerBlock;
      std::uint32_t bestJobsPerBlock;
@@ -975,15 +957,14 @@ index 277272d..e96167c 100644
 -    void endProcessing();
 +public:
 +    ProcessingUnit(
-+            const Device *device,
-+            const ProgramContext *programContext,
-+            const Argon2Params *params,
-+            const MemConfig &mcfg,
-+            const t_optParams& optPrms,
-+            int curBlockType);
-+
++        cl::CommandQueue &queue,
++        const ProgramContext *programContext,
++        const Argon2Params *params,
++        const MemConfig &memConfig,
++        const t_optParams& optPrms,
++        int curBlockType);
++        
 +    void reconfigureArgon(
-+        const Device *device,
 +        const Argon2Params *newParams,
 +        const t_optParams &newOptParams,
 +        int blockType);
@@ -1891,10 +1872,10 @@ index 22949f3..62bb887 100644
          throw;
      }
 diff --git a/lib/argon2-opencl/kernelrunner.cpp b/lib/argon2-opencl/kernelrunner.cpp
-index 9fe39b4..70df280 100644
+index 9fe39b4..254b223 100644
 --- a/lib/argon2-opencl/kernelrunner.cpp
 +++ b/lib/argon2-opencl/kernelrunner.cpp
-@@ -1,195 +1,358 @@
+@@ -1,196 +1,222 @@
  #include "kernelrunner.h"
  
  #include <stdexcept>
@@ -1909,8 +1890,6 @@ index 9fe39b4..70df280 100644
  
  #define THREADS_PER_LANE 32
  
-+//#define FLUSH_ALL
-+
 +#include "../../include/perfscope.h"
 +
  namespace argon2 {
@@ -1924,10 +1903,6 @@ index 9fe39b4..70df280 100644
 +        return optParams.customBlockCount;
 +    return params->getLanes() * params->getSegmentBlocks() * ARGON2_SYNC_POINTS;
 +}
-+
-+std::uint32_t KernelRunner::getHashesPerRun() const {
-+    return (std::uint32_t)memConfig.getTotalHashes(curBlockType);
-+}
  
 -KernelRunner::KernelRunner(const ProgramContext *programContext,
 -                           const Argon2Params *params, const Device *device,
@@ -1935,105 +1910,52 @@ index 9fe39b4..70df280 100644
 -    : programContext(programContext), params(params), batchSize(batchSize),
 -      bySegment(bySegment), precompute(precompute),
 -      memorySize(params->getMemorySize() * static_cast<std::size_t>(batchSize))
++std::uint32_t KernelRunner::getHashesPerRun() const {
++    return (std::uint32_t)memConfig.getTotalHashes(curBlockType);
++}
++
 +KernelRunner::KernelRunner(
-+        const Device *device,
++        cl::CommandQueue &queue,
 +        const Argon2Params *params,
 +        const ProgramContext *programContext,
 +        const MemConfig &mCfg,
 +        t_optParams opt,
 +        int curBlockType) :
 +    memConfig(mCfg),
-+    programContext(programContext), 
-+    params(params), 
++    programContext(programContext),
++    params(params),
 +    optParams(opt),
-+    curBlockType(curBlockType)
++    curBlockType(curBlockType),
++    queue(queue)
  {
-     auto context = programContext->getContext();
-+    cl_command_queue_properties props = CL_QUEUE_PROFILING_ENABLE;
-+    queue = new cl::CommandQueue(context, device->getCLDevice(), props);
-+
-+    // allocate blocks buffer
-+    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
-+        auto size = memConfig.blocksBuffers[i];
-+        if (size)
-+            blocksBuffers[i] = cl::Buffer(context, CL_MEM_READ_WRITE, size);
-+    }
-+
-+    // allocate & fill index buffer
-+    //auto indexSize = memConfig.index;
-+    //if (indexSize) {
-+    //    indexBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, indexSize);
-+    //    bool blocking = false;
-+    //    cl_int res = queue->enqueueWriteBuffer(
-+    //        indexBuffer,
-+    //        blocking,
-+    //        0,
-+    //        indexSize,
-+    //        optParams.customIndex,
-+    //        NULL,
-+    //        NULL);
-+    //    queue->finish();
-+    //}
-+
-+    setupKernel(device);
+-    auto context = programContext->getContext();
+-    std::uint32_t passes = params->getTimeCost();
+-    std::uint32_t lanes = params->getLanes();
+-    std::uint32_t segmentBlocks = params->getSegmentBlocks();
++    reconfigureArgon(params, opt, curBlockType);
 +}
-+
-+void KernelRunner::reconfigureArgon(
-+    const Device *device,
-+    const Argon2Params *newParams, 
-+    const t_optParams &newOptParams,
-+    int blockType) {
-+    PerfScope p("reconfigureArgon");
-+    curBlockType = blockType;
-+    params = newParams;
-+    optParams = newOptParams;
-+    setupKernel(device);
-+}
-+
-+void KernelRunner::setKernelsArgs() {
-+    PerfScope p("setKernelsArgs");
-+
-     std::uint32_t passes = params->getTimeCost();
-     std::uint32_t lanes = params->getLanes();
-     std::uint32_t segmentBlocks = params->getSegmentBlocks();
  
 -    queue = cl::CommandQueue(context, device->getCLDevice(),
 -                             CL_QUEUE_PROFILING_ENABLE);
-+#if 1
-+    kernel.setArg<cl::Buffer>(1, blocksBuffers[0]);
-+#else
-+    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
-+        kernel.setArg<cl::Buffer>(i * 2 + 1, blocksBuffers[i]);
-+        kernel.setArg<cl_uint>(i * 2 + 2, (cl_uint)memConfig.batchSizes[curBlockType][i]);
-+    }
-+#endif
-+
-+    if (optParams.mode == PRECOMPUTE) {
-+        kernel.setArg<cl::Buffer>(9, indexBuffer);
++void KernelRunner::reconfigureArgon(
++    const Argon2Params *newParams,
++    const t_optParams &newOptParams,
++    int blockType) {
++    PerfScope p("reconfigureArgon");
  
 -#ifndef NDEBUG
 -        std::cerr << "[INFO] Allocating " << memorySize << " bytes for memory..."
 -                  << std::endl;
-+        uint32_t nSteps = ARGON2_SYNC_POINTS * segmentBlocks;
-+        kernel.setArg<cl_uint>(10, nSteps);
-+        kernel.setArg<cl_uint>(11, optParams.customBlockCount);
-+    }
-+    else {
-+#if 1
-+        kernel.setArg<cl_uint>(2, passes);
-+        kernel.setArg<cl_uint>(3, lanes);
-+        kernel.setArg<cl_uint>(4, segmentBlocks);
-+#else
-+        kernel.setArg<cl_uint>(9, passes);
-+        kernel.setArg<cl_uint>(10, lanes);
-+        kernel.setArg<cl_uint>(11, segmentBlocks);
- #endif
-+    }
-+}
+-#endif
++    curBlockType = blockType;
++    params = newParams;
++    optParams = newOptParams;
  
 -    memoryBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, memorySize);
-+void KernelRunner::setupKernel(const Device *device) {
-+    PerfScope p("setupKernel");
++    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
++        auto pBuffer = (cl::Buffer*)memConfig.blocksBuffers[curBlockType][i];
++        blocksBuffers[i] = pBuffer ? *pBuffer : cl::Buffer();
++    }
  
 -    Type type = programContext->getArgon2Type();
 -    if ((type == ARGON2_I || type == ARGON2_ID) && precompute) {
@@ -2041,41 +1963,123 @@ index 9fe39b4..70df280 100644
 -                type == ARGON2_ID
 -                ? lanes * (ARGON2_SYNC_POINTS / 2)
 -                : passes * lanes * ARGON2_SYNC_POINTS;
++    auto pBuffer = (cl::Buffer*)memConfig.indexBuffer;
++    indexBuffer = pBuffer ? *pBuffer : cl::Buffer();
+ 
+-        std::size_t refsSize = segments * segmentBlocks * sizeof(cl_uint) * 2;
++    setupKernel();
++}
+ 
+-#ifndef NDEBUG
+-        std::cerr << "[INFO] Allocating " << refsSize << " bytes for refs..."
+-                  << std::endl;
+-#endif
++void KernelRunner::setKernelsArgs() {
++    PerfScope p("setKernelsArgs");
+ 
+-        refsBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, refsSize);
++    std::uint32_t passes = params->getTimeCost();
++    std::uint32_t lanes = params->getLanes();
++    std::uint32_t segmentBlocks = params->getSegmentBlocks();
+ 
+-        precomputeRefs();
++    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
++        kernel.setArg<cl::Buffer>(i * 2 + 1, blocksBuffers[i]);
++        kernel.setArg<cl_uint>(i * 2 + 2, (cl_uint)memConfig.batchSizes[curBlockType][i]);
+     }
+ 
+-    static const char *KERNEL_NAMES[2][2] = {
+-        {
+-            "argon2_kernel_oneshot",
+-            "argon2_kernel_segment",
+-        },
+-        {
+-            "argon2_kernel_oneshot_precompute",
+-            "argon2_kernel_segment_precompute",
+-        }
+-    };
+-
+-    kernel = cl::Kernel(programContext->getProgram(),
+-                        KERNEL_NAMES[precompute][bySegment]);
+-    kernel.setArg<cl::Buffer>(1, memoryBuffer);
+-    if (precompute) {
+-        kernel.setArg<cl::Buffer>(2, refsBuffer);
+-        kernel.setArg<cl_uint>(3, passes);
+-        kernel.setArg<cl_uint>(4, lanes);
+-        kernel.setArg<cl_uint>(5, segmentBlocks);
+-    } else {
+-        kernel.setArg<cl_uint>(2, passes);
+-        kernel.setArg<cl_uint>(3, lanes);
+-        kernel.setArg<cl_uint>(4, segmentBlocks);
++    if (optParams.mode == PRECOMPUTE) {
++        uint32_t nSteps = ARGON2_SYNC_POINTS * segmentBlocks;
++        kernel.setArg<cl::Buffer>(9, indexBuffer);
++        kernel.setArg<cl_uint>(10, nSteps);
++        kernel.setArg<cl_uint>(11, optParams.customBlockCount);
++    }
++    else {
++        kernel.setArg<cl_uint>(9, passes);
++        kernel.setArg<cl_uint>(10, lanes);
++        kernel.setArg<cl_uint>(11, segmentBlocks);
+     }
+ }
+ 
+-void KernelRunner::precomputeRefs()
+-{
+-    std::uint32_t passes = params->getTimeCost();
+-    std::uint32_t lanes = params->getLanes();
+-    std::uint32_t segmentBlocks = params->getSegmentBlocks();
+-    std::uint32_t segmentAddrBlocks =
+-            (segmentBlocks + ARGON2_REFS_PER_BLOCK - 1)
+-            / ARGON2_REFS_PER_BLOCK;
+-    std::uint32_t segments = programContext->getArgon2Type() == ARGON2_ID
+-            ? lanes * (ARGON2_SYNC_POINTS / 2)
+-            : passes * lanes * ARGON2_SYNC_POINTS;
++void KernelRunner::setupKernel() {
++    PerfScope p("setupKernel");
+ 
+-    std::size_t shmemSize = THREADS_PER_LANE * sizeof(cl_uint) * 2;
 +    static const char *KERNEL_NAMES[2] = {
 +        "argon2_kernel_oneshot",
 +        "argon2_kernel_oneshot_precomputedIndex"
 +    };
 +    const char* kernelName =
 +        KERNEL_NAMES[(optParams.mode == PRECOMPUTE)];
-+
-+    if (optParams.mode == PRECOMPUTE) {
-+        // check that we use argon2I
-+        auto buildOptions =
-+            programContext->getProgram().getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(device->getCLDevice());
-+        std::ostringstream oss;
-+        oss << "-DARGON2_TYPE=" << argon2::ARGON2_I;
-+        if (buildOptions.find(oss.str()) == std::string::npos) {
-+            throw std::logic_error("PRECOMPUTE only supported with ARGON2_I");
-+        }
  
--        std::size_t refsSize = segments * segmentBlocks * sizeof(cl_uint) * 2;
+-    cl::Kernel kernel = cl::Kernel(programContext->getProgram(),
+-                                   "argon2_precompute_kernel");
+-    kernel.setArg<cl::LocalSpaceArg>(0, { shmemSize });
+-    kernel.setArg<cl::Buffer>(1, refsBuffer);
+-    kernel.setArg<cl_uint>(2, passes);
+-    kernel.setArg<cl_uint>(3, lanes);
+-    kernel.setArg<cl_uint>(4, segmentBlocks);
+-
+-    cl::NDRange globalRange { THREADS_PER_LANE * segments * segmentAddrBlocks };
+-    cl::NDRange localRange { THREADS_PER_LANE };
+-    queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalRange, localRange);
+-    queue.finish();
+-}
++    if (optParams.mode == PRECOMPUTE) {
 +        // check that we have only 1 lane, 1 pass etc.
 +        if (params->getLanes() > 1 || params->getTimeCost() > 1) {
 +            throw std::logic_error("PRECOMPUTE only supported with 1 lane, 1 pass and oneshot mode");
 +        }
 +    }
  
--#ifndef NDEBUG
--        std::cerr << "[INFO] Allocating " << refsSize << " bytes for refs..."
--                  << std::endl;
--#endif
+-void *KernelRunner::mapInputMemory(std::uint32_t jobId)
+-{
+-    std::size_t memorySize = params->getMemorySize();
+-    std::size_t mappedSize = params->getLanes() * 2 * ARGON2_BLOCK_SIZE;
+-    return queue.enqueueMapBuffer(memoryBuffer, true, CL_MAP_WRITE,
+-                                  memorySize * jobId, mappedSize);
 +    kernel = cl::Kernel(programContext->getProgram(), kernelName);
- 
--        refsBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, refsSize);
++
 +    setKernelsArgs();
-+}
+ }
  
--        precomputeRefs();
+-void KernelRunner::unmapInputMemory(void *memory)
+-{
+-    queue.enqueueUnmapMemObject(memoryBuffer, memory);
 +std::size_t KernelRunner::getStartBlocksSize() {
 +    return params->getLanes() * 2 * ARGON2_BLOCK_SIZE;
 +}
@@ -2092,7 +2096,7 @@ index 9fe39b4..70df280 100644
 +            size_t offset = batchMemSize * j;
 +            {
 +                PerfScope p("enqueueWriteBuffer (uploadToInputMemoryAsync)");
-+                cl_int res = queue->enqueueWriteBuffer(
++                cl_int res = queue.enqueueWriteBuffer(
 +                    blocksBuffers[i],
 +                    blocking,
 +                    offset,
@@ -2103,21 +2107,18 @@ index 9fe39b4..70df280 100644
 +            }
 +            pBlocks += startBlocksSize;
 +        }
-     }
-+#ifdef FLUSH_ALL
-+    queue->flush();
-+#endif
++    }
 +#endif // SKIP_MEM_TRANSFERS
-+}
+ }
  
--    static const char *KERNEL_NAMES[2][2] = {
--        {
--            "argon2_kernel_oneshot",
--            "argon2_kernel_segment",
--        },
--        {
--            "argon2_kernel_oneshot_precompute",
--            "argon2_kernel_segment_precompute",
+-void *KernelRunner::mapOutputMemory(std::uint32_t jobId)
+-{
+-    std::size_t memorySize = params->getMemorySize();
+-    std::size_t mappedSize = static_cast<std::size_t>(params->getLanes())
+-            * ARGON2_BLOCK_SIZE;
+-    std::size_t mappedOffset = memorySize * (jobId + 1) - mappedSize;
+-    return queue.enqueueMapBuffer(memoryBuffer, true, CL_MAP_READ,
+-                                  mappedOffset, mappedSize);
 +void KernelRunner::fetchOutputMemoryAsync(uint8_t* dstPtr) {
 +#if (!OPEN_CL_SKIP_MEM_TRANSFERS)
 +    std::size_t batchMemSize = getBlockCountPerHash() * ARGON2_BLOCK_SIZE;
@@ -2129,7 +2130,7 @@ index 9fe39b4..70df280 100644
 +            std::size_t offset = batchMemSize * (j + 1) - resultSize;
 +            {
 +                PerfScope p("enqueueReadBuffer (fetchOutputMemoryAsync)");
-+                cl_int res = queue->enqueueReadBuffer(
++                cl_int res = queue.enqueueReadBuffer(
 +                    blocksBuffers[i],
 +                    blocking,
 +                    offset,
@@ -2139,152 +2140,27 @@ index 9fe39b4..70df280 100644
 +                    NULL);
 +            }
 +            dstPtr += resultSize;
-         }
--    };
++        }
 +    }
-+#ifdef FLUSH_ALL
-+    queue->flush();
-+#endif
 +#endif // SKIP_MEM_TRANSFERS
-+}
- 
--    kernel = cl::Kernel(programContext->getProgram(),
--                        KERNEL_NAMES[precompute][bySegment]);
--    kernel.setArg<cl::Buffer>(1, memoryBuffer);
--    if (precompute) {
--        kernel.setArg<cl::Buffer>(2, refsBuffer);
--        kernel.setArg<cl_uint>(3, passes);
--        kernel.setArg<cl_uint>(4, lanes);
--        kernel.setArg<cl_uint>(5, segmentBlocks);
--    } else {
--        kernel.setArg<cl_uint>(2, passes);
--        kernel.setArg<cl_uint>(3, lanes);
--        kernel.setArg<cl_uint>(4, segmentBlocks);
-+void KernelRunner::insertEndEventAndFlush() {
-+    {
-+        PerfScope p("insertEndEventAndFlush");
-+        queue->enqueueMarker(&end);
-+        cl::detail::errHandler(queue->flush(), "KernelRunner::resultsReady, flushing queue");
-     }
- }
- 
--void KernelRunner::precomputeRefs()
-+void KernelRunner::run(std::uint32_t lanesPerBlock)
- {
--    std::uint32_t passes = params->getTimeCost();
-     std::uint32_t lanes = params->getLanes();
--    std::uint32_t segmentBlocks = params->getSegmentBlocks();
--    std::uint32_t segmentAddrBlocks =
--            (segmentBlocks + ARGON2_REFS_PER_BLOCK - 1)
--            / ARGON2_REFS_PER_BLOCK;
--    std::uint32_t segments = programContext->getArgon2Type() == ARGON2_ID
--            ? lanes * (ARGON2_SYNC_POINTS / 2)
--            : passes * lanes * ARGON2_SYNC_POINTS;
-+    std::uint32_t passes = params->getTimeCost();
- 
--    std::size_t shmemSize = THREADS_PER_LANE * sizeof(cl_uint) * 2;
-+    if (lanesPerBlock != lanes) {
-+        throw std::logic_error("Invalid lanesPerBlock!");
-+    }
-+
-+    cl::NDRange globalRange { THREADS_PER_LANE * lanes, memConfig.getTotalHashes(curBlockType) };
-+    cl::NDRange localRange { THREADS_PER_LANE * lanesPerBlock, 1 };
-+
-+    std::size_t shmemSize = THREADS_PER_LANE * lanesPerBlock * sizeof(cl_uint) * 2;
-+
-+    //std::cout << "lanesPerBlock: " << lanesPerBlock << std::endl;
-+    //std::cout << "jobsPerBlock: " << 1 << std::endl;
-+    //std::cout << "shmemSize: " << shmemSize << std::endl;
-+
-+//#if 0
-+//    std::cout << "lanesPerBlock = " << lanesPerBlock << std::endl;
-+//    std::cout << "shmemSize     = " << shmemSize << std::endl;
-+//
-+//    std::cout 
-+//        << "globalRange   = { " 
-+//        << globalRange[0] << ", " << globalRange[1] 
-+//        << " }" << std::endl;
-+//
-+//    std::cout
-+//        << "localRange    = { "
-+//        << localRange[0] << ", " << localRange[1]
-+//        << " }" << std::endl;
-+//#endif
- 
--    cl::Kernel kernel = cl::Kernel(programContext->getProgram(),
--                                   "argon2_precompute_kernel");
-     kernel.setArg<cl::LocalSpaceArg>(0, { shmemSize });
--    kernel.setArg<cl::Buffer>(1, refsBuffer);
--    kernel.setArg<cl_uint>(2, passes);
--    kernel.setArg<cl_uint>(3, lanes);
--    kernel.setArg<cl_uint>(4, segmentBlocks);
-+    {
-+        PerfScope p("enqueueNDRangeKernel");
-+        queue->enqueueNDRangeKernel(kernel, cl::NullRange,
-+            globalRange, localRange);
-+    }
- 
--    cl::NDRange globalRange { THREADS_PER_LANE * segments * segmentAddrBlocks };
--    cl::NDRange localRange { THREADS_PER_LANE };
--    queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalRange, localRange);
--    queue.finish();
-+#ifdef FLUSH_ALL
-+   queue->flush();
-+#endif
- }
- 
--void *KernelRunner::mapInputMemory(std::uint32_t jobId)
--{
--    std::size_t memorySize = params->getMemorySize();
--    std::size_t mappedSize = params->getLanes() * 2 * ARGON2_BLOCK_SIZE;
--    return queue.enqueueMapBuffer(memoryBuffer, true, CL_MAP_WRITE,
--                                  memorySize * jobId, mappedSize);
-+void KernelRunner::waitForResults() {
-+    {
-+        PerfScope p("end.wait()");
-+        end.wait();
-+    }
- }
- 
--void KernelRunner::unmapInputMemory(void *memory)
--{
--    queue.enqueueUnmapMemObject(memoryBuffer, memory);
--}
-+bool KernelRunner::resultsReady() {
-+    cl_int err = NULL;
-+    auto status = end.getInfo<CL_EVENT_COMMAND_EXECUTION_STATUS>(&err);
-+    cl::detail::errHandler(err, "KernelRunner::resultsReady");
- 
--void *KernelRunner::mapOutputMemory(std::uint32_t jobId)
--{
--    std::size_t memorySize = params->getMemorySize();
--    std::size_t mappedSize = static_cast<std::size_t>(params->getLanes())
--            * ARGON2_BLOCK_SIZE;
--    std::size_t mappedOffset = memorySize * (jobId + 1) - mappedSize;
--    return queue.enqueueMapBuffer(memoryBuffer, true, CL_MAP_READ,
--                                  mappedOffset, mappedSize);
-+    if (status == CL_COMPLETE) {
-+        return true;
-+    }
-+    else {
-+        return false;
-+    }
  }
  
 -void KernelRunner::unmapOutputMemory(void *memory)
 -{
 -    queue.enqueueUnmapMemObject(memoryBuffer, memory);
-+DeviceRessources::DeviceRessources(const Device *pDevice) {
-+    id = pDevice->getCLDevice()();
-+    device = pDevice->getCLDevice();
-+    context = cl::Context(device);
++void KernelRunner::insertEndEventAndFlush() {
++    {
++        PerfScope p("insertEndEventAndFlush");
++        queue.enqueueMarker(&end);
++        cl::detail::errHandler(queue.flush(), "KernelRunner::resultsReady, flushing queue");
++    }
  }
  
 -void KernelRunner::run(std::uint32_t lanesPerBlock, std::uint32_t jobsPerBlock)
--{
--    std::uint32_t lanes = params->getLanes();
--    std::uint32_t passes = params->getTimeCost();
-+std::map<cl_device_id, DeviceRessources> s_devicesRessources;
++void KernelRunner::run(std::uint32_t lanesPerBlock)
+ {
+     std::uint32_t lanes = params->getLanes();
+     std::uint32_t passes = params->getTimeCost();
  
 -    if (bySegment) {
 -        if (lanesPerBlock > lanes || lanes % lanesPerBlock != 0) {
@@ -2294,38 +2170,28 @@ index 9fe39b4..70df280 100644
 -        if (lanesPerBlock != lanes) {
 -            throw std::logic_error("Invalid lanesPerBlock!");
 -        }
-+DeviceRessources& DeviceRessources::get(const Device *pDevice) {
-+    cl_device_id cl_device = pDevice->getCLDevice()();
-+    auto it = s_devicesRessources.find(cl_device);
-+    if (it == s_devicesRessources.end()) {
-+        s_devicesRessources.insert(
-+            std::make_pair(cl_device, DeviceRessources(pDevice)));
-     }
-+    return s_devicesRessources[cl_device];
-+}
+-    }
++    if (lanesPerBlock != lanes)
++        throw std::logic_error("Invalid lanesPerBlock");
  
 -    if (jobsPerBlock > batchSize || batchSize % jobsPerBlock != 0) {
 -        throw std::logic_error("Invalid jobsPerBlock!");
 -    }
-+cl::CommandQueue* DeviceRessources::addQueue() {
-+    queues.push_back(cl::CommandQueue(context, device));
-+    return &queues.back();
-+}
++    auto nHashes = memConfig.getTotalHashes(curBlockType);
++    if (nHashes <= 0)
++        throw std::logic_error("Invalid Kernel nHashes");
  
 -    cl::NDRange globalRange { THREADS_PER_LANE * lanes, batchSize };
 -    cl::NDRange localRange { THREADS_PER_LANE * lanesPerBlock, jobsPerBlock };
-+cl::CommandQueue* DeviceRessources::getQueue(int index) {
-+    if (index < queues.size())
-+        return &(queues[index]);
-+    return nullptr;
-+}
++    cl::NDRange globalRange { THREADS_PER_LANE * lanes, nHashes };
++    cl::NDRange localRange { THREADS_PER_LANE * lanesPerBlock, 1 };
  
 -    queue.enqueueMarker(&start);
-+cl::Buffer* DeviceRessources::addBuffer(cl_mem_flags flags, size_t size) {
++    std::size_t shmemSize = THREADS_PER_LANE * lanesPerBlock * sizeof(cl_uint) * 2;
  
 -    std::size_t shmemSize = THREADS_PER_LANE * lanesPerBlock * jobsPerBlock
 -            * sizeof(cl_uint) * 2;
--    kernel.setArg<cl::LocalSpaceArg>(0, { shmemSize });
+     kernel.setArg<cl::LocalSpaceArg>(0, { shmemSize });
 -    if (bySegment) {
 -        for (std::uint32_t pass = 0; pass < passes; pass++) {
 -            for (std::uint32_t slice = 0; slice < ARGON2_SYNC_POINTS; slice++) {
@@ -2336,62 +2202,49 @@ index 9fe39b4..70df280 100644
 -            }
 -        }
 -    } else {
--        queue.enqueueNDRangeKernel(kernel, cl::NullRange,
++    {
++        PerfScope p("enqueueNDRangeKernel");
+         queue.enqueueNDRangeKernel(kernel, cl::NullRange,
 -                                   globalRange, localRange);
-+    BufferInfo b;
-+    b.size = size;
-+    b.flags = flags;
-+
-+    // get a device queue
-+    auto pQueue = getQueue(0);
-+    if (!pQueue) {
-+        pQueue = addQueue();
-+        if (!pQueue)
-+            throw std::logic_error("DeviceRessources::addBuffer: cannot get queue");
++            globalRange, localRange);
      }
- 
+-
 -    queue.enqueueMarker(&end);
--}
-+    try {
-+        // allocate buffer
-+        b.buf = cl::Buffer(context, flags, size);
-+        if (b.buf() == 0)
-+            return nullptr;
+ }
  
 -float KernelRunner::finish()
 -{
 -    end.wait();
-+        // write one byte to it (to make sure that allocation succeeded)
-+        uint8_t dummy = 0xFF;
-+        pQueue->enqueueWriteBuffer(b.buf, true, size - 1, 1, &dummy);
++void KernelRunner::waitForResults() {
++    {
++        PerfScope p("end.wait()");
++        end.wait();
 +    }
-+    catch (const cl::Error) {
-+        return nullptr;
-+    }
++}
  
 -    cl_ulong nsStart = start.getProfilingInfo<CL_PROFILING_COMMAND_END>();
 -    cl_ulong nsEnd   = end.getProfilingInfo<CL_PROFILING_COMMAND_END>();
-+    buffers.push_back(b);
-+    return &(buffers.back().buf);
-+}
++bool KernelRunner::resultsReady() {
++    cl_int err = NULL;
++    auto status = end.getInfo<CL_EVENT_COMMAND_EXECUTION_STATUS>(&err);
++    cl::detail::errHandler(err, "KernelRunner::resultsReady");
  
 -    return (nsEnd - nsStart) / (1000.0F * 1000.0F);
-+cl::Buffer* DeviceRessources::getBuffer(
-+    cl_mem_flags flags,
-+    size_t size) {
-+    for (auto &it : buffers) {
-+        if (it.size == size && it.flags == flags)
-+            return &(it.buf);
++    if (status == CL_COMPLETE) {
++        return true;
 +    }
-+    return nullptr;
++    else {
++        return false;
++    }
  }
- 
+-
  } // namespace opencl
+ } // namespace argon2
 diff --git a/lib/argon2-opencl/processingunit.cpp b/lib/argon2-opencl/processingunit.cpp
-index 598ced7..38b5620 100644
+index 598ced7..78b66c8 100644
 --- a/lib/argon2-opencl/processingunit.cpp
 +++ b/lib/argon2-opencl/processingunit.cpp
-@@ -8,130 +8,113 @@
+@@ -8,130 +8,106 @@
  namespace argon2 {
  namespace opencl {
  
@@ -2411,14 +2264,13 @@ index 598ced7..38b5620 100644
 -             precomputeRefs),
 -      bestLanesPerBlock(runner.getMinLanesPerBlock()),
 -      bestJobsPerBlock(runner.getMinJobsPerBlock())
-+    const Device *device,
++    cl::CommandQueue &queue,
 +    const ProgramContext *programContext,
 +    const Argon2Params *params,
-+    const MemConfig &mcfg,
++    const MemConfig &memConfig,
 +    const t_optParams& optPrms,
 +    int curBlockType)
-+    : device(device),
-+      runner(device, params, programContext, mcfg, optPrms, curBlockType),
++    : runner(queue, params, programContext, memConfig, optPrms, curBlockType),
 +      bestLanesPerBlock(runner.getMinLanesPerBlock())
  {
 -    /* pre-fill first blocks with pseudo-random data: */
@@ -2447,36 +2299,34 @@ index 598ced7..38b5620 100644
 -#endif
 -                break;
 -            }
+-
+-#ifndef NDEBUG
+-            std::cerr << "[INFO]   " << lpb << " lanes per block: "
+-                      << time << " ms" << std::endl;
+-#endif
 +    // preallocate pinned mem for kernel inputs
 +    auto context = programContext->getContext();
-+    std::size_t inSize = mcfg.in;
++    std::size_t inSize = memConfig.in;
 +    inBuffer = cl::Buffer(
 +            context,
 +            CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR, 
 +            inSize);
-+    auto queue = runner.getQueue();
-+    inPtr = (uint8_t*)queue->enqueueMapBuffer(
++    inPtr = (uint8_t*)queue.enqueueMapBuffer(
 +        inBuffer,
 +        true,
 +        CL_MAP_WRITE, 0, inSize);
 +
 +    // preallocate pinned mem for kernel outputs
-+    std::size_t outSize = mcfg.out;
++    std::size_t outSize = memConfig.out;
 +    outBuffer = cl::Buffer(
 +        context,
 +        CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR,
 +        outSize);
-+    outPtr = (uint8_t*)queue->enqueueMapBuffer(
++    outPtr = (uint8_t*)queue.enqueueMapBuffer(
 +        outBuffer,
 +        true,
 +        CL_MAP_READ, 0, outSize);
 +}
- 
--#ifndef NDEBUG
--            std::cerr << "[INFO]   " << lpb << " lanes per block: "
--                      << time << " ms" << std::endl;
--#endif
-+//#define SKIP_MEM_TRANSFERS
  
 -            if (time < bestTime) {
 -                bestTime = time;
@@ -2484,7 +2334,7 @@ index 598ced7..38b5620 100644
 -            }
 +void ProcessingUnit::uploadInputDataAsync(const std::vector<std::string>& bases)
 +{
-+#ifndef SKIP_MEM_TRANSFERS
++#if (!OPEN_CL_SKIP_MEM_TRANSFERS)
 +    std::vector<std::string>::const_iterator it = bases.begin();
 +    auto blockType = runner.getCurrentBlockType();
 +    uint8_t* pIn = inPtr;
@@ -2546,7 +2396,7 @@ index 598ced7..38b5620 100644
 -        std::cerr << "[INFO] Picked " << bestJobsPerBlock
 -                  << " jobs per block." << std::endl;
 +void ProcessingUnit::fetchResultsAsync() {
-+#ifndef SKIP_MEM_TRANSFERS
++#if (!OPEN_CL_SKIP_MEM_TRANSFERS)
 +    runner.fetchOutputMemoryAsync(outPtr);
  #endif
 -    }
@@ -2586,26 +2436,23 @@ index 598ced7..38b5620 100644
  }
  
 -void ProcessingUnit::endProcessing()
-+using namespace std;
-+
 +void ProcessingUnit::reconfigureArgon(
-+    const Device *device,
 +    const Argon2Params *newParams,
 +    const t_optParams &newOptParams,
 +    int blockType)
  {
 -    runner.finish();
-+    runner.reconfigureArgon(device, newParams, newOptParams, blockType);
++    runner.reconfigureArgon(newParams, newOptParams, blockType);
 +    bestLanesPerBlock = runner.getMinLanesPerBlock();
 +
-+    cout << "reconfigureArgon("
-+        << newParams->getTimeCost() << ", "
-+        << newParams->getMemoryCost() << ", "
-+        << newParams->getLanes() << ", "
-+        << "customBlockCount=" << newOptParams.customBlockCount << ", "
-+        << "customIndex=" << static_cast<const void*>(newOptParams.customIndex) << ", "
-+        << "bestLanesPerBlock=" << bestLanesPerBlock
-+        << ")" << endl;
++    //cout << "reconfigureArgon("
++    //    << newParams->getTimeCost() << ", "
++    //    << newParams->getMemoryCost() << ", "
++    //    << newParams->getLanes() << ", "
++    //    << "customBlockCount=" << newOptParams.customBlockCount << ", "
++    //    << "customIndex=" << static_cast<const void*>(newOptParams.customIndex) << ", "
++    //    << "bestLanesPerBlock=" << bestLanesPerBlock
++    //    << ")" << endl;
  }
  
  } // namespace opencl

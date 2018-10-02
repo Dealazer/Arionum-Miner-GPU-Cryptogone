@@ -1,6 +1,6 @@
 #pragma once
 
-#define PROFILE_ENABLED (0)
+#define PROFILE_ENABLED (1)
 
 #include <string>
 
