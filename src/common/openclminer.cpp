@@ -31,11 +31,12 @@ std::string toGB(size_t size) {
 }
 
 OpenClMiner::OpenClMiner(
-    argon2::opencl::ProgramContext *progCtx, argon2::MemConfig memoryConfig,
+    argon2::opencl::ProgramContext *progCtx, cl::CommandQueue & refQueue, 
+    argon2::MemConfig memoryConfig,
     Stats *pStats, MinerSettings &settings, Updater *pUpdater) :
     Miner(memoryConfig, pStats, settings, pUpdater),
     progCtx(progCtx),
-    queue(progCtx->getContext())
+    queue(refQueue)
 {
     const auto INITIAL_BLOCK_TYPE = BLOCK_GPU;
 
@@ -157,15 +158,19 @@ OpenClMiningDevice::OpenClMiningDevice(
 #endif
     auto context = progCtx->getContext();
 
+    // create queues
+    for (int i = 0; i < nTasks; i++) {
+        queues.emplace_back(context, device->getCLDevice(), 0);
+    }
+
     // utility to create a buffer
     auto allocBuffer = [&](
         size_t size, cl_mem_flags flags = CL_MEM_READ_WRITE) -> cl::Buffer {
         // allocate buffer
         cl::Buffer buf(context, flags, size);
         // warm it up
-        cl::CommandQueue queue(context, device->getCLDevice(), 0);
         uint8_t dummy = 0xFF;
-        queue.enqueueWriteBuffer(buf, true, size-1, 1, &dummy);
+        queues[0].enqueueWriteBuffer(buf, true, size-1, 1, &dummy);
         return buf;
     };
 
@@ -179,8 +184,7 @@ OpenClMiningDevice::OpenClMiningDevice(
     if (optPrmsCPU.mode == PRECOMPUTE) {
         indexSize = optPrmsCPU.customIndexNbSteps * 3 * sizeof(cl_uint);
         indexBuffer = allocBuffer(indexSize, CL_MEM_READ_ONLY);
-        cl::CommandQueue queue(context, device->getCLDevice(), 0);
-        queue.enqueueWriteBuffer(
+        queues[0].enqueueWriteBuffer(
             indexBuffer, true, 0, indexSize, optPrmsCPU.customIndex);
     }
 

@@ -146,6 +146,7 @@ void spawnMiners(OpenCLArguments &args, vector<Miner *> &miners, Stats* stats, U
             cout << " - create miner " << j << endl;
             Miner *miner = new MINER(
                 pMiningDevice->getProgramContext(),
+                pMiningDevice->getQueue(j),
                 pMiningDevice->getMemConfig(j),
                 stats, settings, updater);
             miners.push_back(miner);

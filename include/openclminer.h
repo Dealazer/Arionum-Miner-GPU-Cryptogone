@@ -27,17 +27,23 @@ public:
         return progCtx;
     }
 
+    cl::CommandQueue& getQueue(int index) {
+        return queues[index];
+    }
+
 protected:
     cl::Buffer indexBuffer;
     vector<cl::Buffer> buffers;
     vector<argon2::MemConfig> minersConfigs;
     argon2::opencl::ProgramContext *progCtx;
+    vector<cl::CommandQueue> queues;
 };
 
 class OpenClMiner : public Miner {
 public:
     OpenClMiner(
-        argon2::opencl::ProgramContext *, argon2::MemConfig memConfig,
+        argon2::opencl::ProgramContext *, cl::CommandQueue &queue,
+        argon2::MemConfig memConfig,
         Stats *pStats, MinerSettings &settings, Updater *pUpdater);
 
     void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
@@ -51,7 +57,7 @@ public:
 private:
     argon2::opencl::ProcessingUnit *unit;
     argon2::opencl::ProgramContext *progCtx;
-    cl::CommandQueue queue;
+    cl::CommandQueue& queue;
 };
 
 #endif //ARIONUM_GPU_MINER_OPENCLMINER_H
