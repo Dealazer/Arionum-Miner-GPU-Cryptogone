@@ -44,6 +44,7 @@ public:
     virtual void deviceFetchTaskResultAsync() = 0;
     virtual void deviceWaitForResults() = 0;
     virtual bool deviceResultsReady() = 0;
+    virtual std::string getInfo() = 0;
 
 private:
     std::random_device rdevice;
@@ -104,6 +105,8 @@ public:
     BLOCK_TYPE getCurrentBlockType() const;
     uint32_t getNbHashesPerIteration() const;
     static argon2::t_optParams precomputeArgon(argon2::Argon2Params * params);
+
+    argon2::OPT_MODE getMode(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
 
 public:
     static uint32_t getMemCost(BLOCK_TYPE type) {

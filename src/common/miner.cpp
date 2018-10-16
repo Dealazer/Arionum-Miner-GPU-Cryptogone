@@ -9,6 +9,7 @@
 #include "../../include/minersettings.h"
 #include "../../include/updater.h"
 #include "../../include/testMode.h"
+#include "../../include/perfscope.h"
 
 #include "argon2.h"
 #include "../../argon2/src/core.h"
@@ -388,6 +389,8 @@ void Miner::hostPrepareTaskData() {
 }
 
 bool Miner::hostProcessResults() {
+    PerfScope p("hostProcessResults()");
+
     auto blockType = testMode() ? 
         testModeBlockType() : data.getBlockType();
 
@@ -467,7 +470,6 @@ t_optParams Miner::precomputeArgon(argon2::Argon2Params * params) {
         uint32_t blockCount = argon2i_precompute(&inst, (argon2_precomputed_index_t*)pIndex);
 
         t_optParams prms;
-        prms.mode = PRECOMPUTE;
         prms.customBlockCount = blockCount;
         prms.customIndex = pIndex;
         prms.customIndexNbSteps = nSteps;
@@ -477,7 +479,16 @@ t_optParams Miner::precomputeArgon(argon2::Argon2Params * params) {
     return s_precomputeCache[m_cost];
 }
 
-t_optParams Miner::configureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes/*, uint32_t bs*/) {
+argon2::OPT_MODE Miner::getMode(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) {
+    auto mode = BASELINE;
+    if (lanes == 1 && t_cost == 1) {
+        mode = PRECOMPUTE_LOCAL_STATE;
+        //mode = PRECOMPUTE_SHUFFLE;
+    }
+    return mode;
+}
+
+t_optParams Miner::configureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) {
     PERFSCOPE("Miner::configure");
 
     if (params)
@@ -492,11 +503,10 @@ t_optParams Miner::configureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lan
     params = new argon2::Argon2Params(32, salt.data(), 16, nullptr, 0, nullptr, 0, t_cost, m_cost, lanes);
 
     t_optParams optPrms;
-    optPrms.mode = (lanes == 1 && t_cost == 1) ? PRECOMPUTE : BASELINE;
-    if (optPrms.mode == PRECOMPUTE) {
+    if (lanes == 1 && t_cost == 1) {
         optPrms = precomputeArgon(params);
     }
-
+    optPrms.mode = getMode(t_cost, m_cost, lanes);
     return optPrms;
 }
 

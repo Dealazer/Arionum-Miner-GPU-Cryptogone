@@ -37,6 +37,9 @@ protected:
     vector<argon2::MemConfig> minersConfigs;
     argon2::opencl::ProgramContext *progCtx;
     vector<cl::CommandQueue> queues;
+
+private:
+    void testArgon();
 };
 
 class OpenClMiner : public Miner {
@@ -53,6 +56,7 @@ public:
     void deviceFetchTaskResultAsync();
     void deviceWaitForResults();
     bool deviceResultsReady();
+    std::string getInfo();
 
 private:
     argon2::opencl::ProcessingUnit *unit;

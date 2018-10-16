@@ -75,7 +75,27 @@ extern bool s_miningReady;
 
 Updater* s_pUpdater = nullptr;
 vector<Miner *> s_miners;
+vector<vector<size_t>> s_devicesMiners;
 vector<bool> s_minerIdle;
+
+size_t getMinerDeviceIndex(size_t minerIndex) {
+    for (size_t i = 0; i < s_devicesMiners.size(); i++) {
+        for (auto &it : s_devicesMiners[i]) {
+            if (it == minerIndex)
+                return i;
+        }
+    }
+    throw std::logic_error("cannot find miner device !");
+    return 0;
+}
+
+bool allDeviceMinersIdle(size_t deviceIndex) {
+    for (auto &it : s_devicesMiners[deviceIndex]) {
+        if (!s_minerIdle[it])
+            return false;
+    }
+    return true;
+}
 
 vector<t_time_point> s_minerStartT(256);
 t_time_point s_start = high_resolution_clock::now();
@@ -142,14 +162,17 @@ void spawnMiners(OpenCLArguments &args, vector<Miner *> &miners, Stats* stats, U
         auto pMiningDevice = new OpenClMiningDevice(
             deviceIndex, nThreads, nGPUBatches);
 
-        for (uint32_t j = 0; j < nThreads; ++j) {
-            cout << " - create miner " << j << endl;
+        s_devicesMiners.push_back({});
+
+        for (uint32_t j = 0; j < nThreads; ++j) {            
+            s_devicesMiners.back().push_back(miners.size());
             Miner *miner = new MINER(
                 pMiningDevice->getProgramContext(),
                 pMiningDevice->getQueue(j),
                 pMiningDevice->getMemConfig(j),
                 stats, settings, updater);
             miners.push_back(miner);
+			cout << " - miner " << j << " " << miner->getInfo() << endl;
         }
         cout << endl;
     }
@@ -174,24 +197,6 @@ bool parseUInt32List(const std::string &s, std::vector<uint32_t> &ol) {
     }
     return true;
 }
-
-//bool parseFloatList(const std::string &s, std::vector<double> &ol) {
-//    std::vector<string> ls;
-//    boost::split(ls, s, boost::is_any_of(","));
-//    ol.clear();
-//    for (auto& it : ls) {
-//        double v;
-//        auto idStr = boost::trim_left_copy(it);
-//        auto count = sscanf_s(idStr.c_str(), "%lf", &v);
-//        if (count == 1) {
-//            ol.push_back(v);
-//        }
-//        else {
-//            return false;
-//        }
-//    }
-//    return true;
-//}
 
 CommandLineParser<OpenCLArguments> buildCmdLineParser() {
     static const auto positional = PositionalArgumentHandler<OpenCLArguments>(
@@ -299,6 +304,8 @@ string generateUniqid() {
     return ss.str();
 }
 
+#define DEBUG_DURATIONS (0)
+
 bool feedMiners(Stats *stats) {
     for (int i = 0; i < s_miners.size(); i++) {
         
@@ -319,7 +326,6 @@ bool feedMiners(Stats *stats) {
             s_miningStartedMsgShown = true;
         }
 
-        minerStatsOnNewTask(i, now);
 
         updateTestMode(*stats);
 
@@ -338,12 +344,36 @@ bool feedMiners(Stats *stats) {
         if (!miner->canMineBlock(blockType)) {
             continue;
         }
+        
+        minerStatsOnNewTask(i, now);
+
+        // cannot start a new block type task until all other miners for the same device are done
+        auto deviceIndex = getMinerDeviceIndex(i);
+        bool needWait = false;
+        for (auto &it : s_devicesMiners[deviceIndex]) {
+            if (it !=i && !s_minerIdle[it] && s_miners[it]->getCurrentBlockType() != blockType) {
+                needWait = true;
+                break;
+            }
+        }
+        if (needWait) {
+            continue;
+        }
 
         PROFILE("reconfigure",
-            s_miners[i]->reconfigureArgon(
+            miner->reconfigureArgon(
                 Miner::getPasses(blockType),
                 Miner::getMemCost(blockType),
                 Miner::getLanes(blockType)));
+
+#if DEBUG_DURATIONS
+        std::chrono::duration<float> T = high_resolution_clock::now() - s_start;
+        printf("T=%4.3f miner %d, start %s task\n", T.count(), i, blockTypeName(s_miners[i]->getCurrentBlockType()).c_str());
+        if (s_minerStartT[i] == t_time_point()) {
+            s_minerStartT[i] = high_resolution_clock::now();
+        }
+#endif
+
         PROFILE("prepareHashes", miner->hostPrepareTaskData());
         PROFILE("uploadHashes", miner->deviceUploadTaskDataAsync());
         PROFILE("runKernel", miner->deviceLaunchTaskAsync());
@@ -354,7 +384,6 @@ bool feedMiners(Stats *stats) {
         printf("miner %d, new task set in %.2fms\n",
             i, duration.count() * 1000.f);
 #endif
-
         s_minerIdle[i] = false;
     }
     return true;
@@ -368,15 +397,15 @@ int processMinersResults() {
             continue;
         }
         if (s_miners[i]->deviceResultsReady()) {
-#define DEBUG_DURATIONS (0)
 #if DEBUG_DURATIONS
             if (s_minerStartT[i] != t_time_point()) {
                 std::chrono::duration<float> T = high_resolution_clock::now() - s_start;
                 std::chrono::duration<float> duration = high_resolution_clock::now() - s_minerStartT[i];
-                printf("T=%4.3f miner %d, %d hashes in %.2fms => %.1f Hs\n",
+                printf("T=%4.3f miner %d, %d %s hashes in %.2fms => %.1f Hs\n",
                     T.count(),
                     i,
                     s_miners[i]->getNbHashesPerIteration(),
+                    blockTypeName(s_miners[i]->getCurrentBlockType()).c_str(),
                     duration.count() * 1000.f,
                     (float)s_miners[i]->getNbHashesPerIteration() / duration.count());
             }
@@ -400,8 +429,8 @@ int miningLoop(Stats *stats) {
 
         int nIdle = processMinersResults();
         if (nIdle == 0) {
-            //std::this_thread::yield();
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            std::this_thread::yield();
+            //std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
 }
