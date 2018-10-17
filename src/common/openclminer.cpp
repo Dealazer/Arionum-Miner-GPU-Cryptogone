@@ -227,6 +227,8 @@ OpenClMiningDevice::OpenClMiningDevice(
         mc.batchSizes[BLOCK_GPU][0] = batchSizeGPU;
         mc.blocksBuffers[BLOCK_GPU][0] = &buffers[i];
 
+#define USE_SINGLE_TASK_FOR_CPU_BLOCKS (1)
+#if USE_SINGLE_TASK_FOR_CPU_BLOCKS
         if (i == 0) {
             for (uint32_t j = 0; j < nTasks; j++) {
                 mc.batchSizes[BLOCK_CPU][j] = memPerTaskGPU / memPerHashCPU;
@@ -234,6 +236,11 @@ OpenClMiningDevice::OpenClMiningDevice(
             }
             mc.indexBuffer = &indexBuffer;
         }
+#else
+        mc.batchSizes[BLOCK_CPU][0] = memPerTaskGPU / memPerHashCPU;
+        mc.blocksBuffers[BLOCK_CPU][0] = &buffers[i];
+        mc.indexBuffer = &indexBuffer;
+#endif
 
         uint32_t totalNonces = (uint32_t)std::max(
             mc.getTotalHashes(BLOCK_GPU),

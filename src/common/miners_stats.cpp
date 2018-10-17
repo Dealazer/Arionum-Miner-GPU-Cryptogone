@@ -51,10 +51,11 @@ void minerStatsOnTaskEnd(int minerId, bool hashesAccepted) {
     s_minerStats[minerId].lastTaskValidated = hashesAccepted;
 }
 
-double minerStatsGetLastHashrate() {
+double minerStatsGetLastHashrate(BLOCK_TYPE b) {
     double tot = 0.0;
     for (const auto &it : s_minerStats) {
-        tot += it.lastTaskHashrate;
+        if (it.lastTaskType == b)
+            tot += it.lastTaskHashrate;
     }
     return tot;
 }

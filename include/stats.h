@@ -16,7 +16,7 @@
 
 using namespace std;
 
-double minerStatsGetLastHashrate();
+double minerStatsGetLastHashrate(BLOCK_TYPE);
 
 //#define DEBUG_ROUNDS
 class MinerSettings;

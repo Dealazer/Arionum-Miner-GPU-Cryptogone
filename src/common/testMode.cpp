@@ -16,7 +16,7 @@ using std::chrono::high_resolution_clock;
 typedef std::chrono::time_point<high_resolution_clock> t_time_point;
 
 const int TEST_MODE_STATS_INTERVAL = 5;
-const int TEST_MODE_BLOCK_CHANGE_RATE = 2;
+const int TEST_MODE_BLOCK_CHANGE_RATE = 4;
 
 struct TestModeInfo {
     bool enabled = false;
