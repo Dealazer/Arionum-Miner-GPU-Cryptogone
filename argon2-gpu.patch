@@ -113,7 +113,7 @@ index 3dd95ba..f5130e0 100644
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
 diff --git a/data/kernels/argon2_kernel.cl b/data/kernels/argon2_kernel.cl
-index fa5e12a..667cfce 100644
+index fa5e12a..eb6f513 100644
 --- a/data/kernels/argon2_kernel.cl
 +++ b/data/kernels/argon2_kernel.cl
 @@ -79,7 +79,7 @@ ulong u64_shuffle(ulong v, uint thread_src, uint thread,
@@ -157,7 +157,7 @@ index fa5e12a..667cfce 100644
  void store_block(__global struct block_g *dst, const struct block_th *src,
                   uint thread)
  {
-@@ -413,238 +431,206 @@ struct ref {
+@@ -413,238 +431,202 @@ struct ref {
      uint ref_index;
  };
  
@@ -458,19 +458,15 @@ index fa5e12a..667cfce 100644
 +        barrier(CLK_LOCAL_MEM_FENCE);
 +
 +        g_alt(p1 + offs[0], p1 + offs[1], p1 + offs[2], p1 + offs[3]);
-+        barrier(CLK_LOCAL_MEM_FENCE);
-+
 +        g_alt(p1 + offs[4], p1 + offs[5], p1 + offs[6], p1 + offs[7]);
 +        barrier(CLK_LOCAL_MEM_FENCE);
 +
 +        g_alt(p2 + offs[8], p2 + offs[9], p2 + offs[10], p2 + offs[11]);
-+        barrier(CLK_LOCAL_MEM_FENCE);
-+        
 +        g_alt(p2 + offs[12], p2 + offs[13], p2 + offs[14], p2 + offs[15]);
 +        barrier(CLK_LOCAL_MEM_FENCE);
 +
 +        th_state = vload4(thread, full_state) ^ th_tmp;
-+        barrier(CLK_LOCAL_MEM_FENCE);
++        //barrier(CLK_LOCAL_MEM_FENCE);
 +
 +        uint store = indexs->store;
 +        if (store != 0)
@@ -575,7 +571,7 @@ index fa5e12a..667cfce 100644
  #endif /* ARGON2_TYPE == ARGON2_I || ARGON2_TYPE == ARGON2_ID */
  
  void argon2_step(
-@@ -692,94 +678,21 @@ void argon2_step(
+@@ -692,94 +674,21 @@ void argon2_step(
                  ref_index, ref_lane);
  }
  
@@ -684,7 +680,7 @@ index fa5e12a..667cfce 100644
      uint lane   = get_global_id(0) / THREADS_PER_LANE;
      uint warp   = get_local_id(0) / THREADS_PER_LANE;
      uint thread = get_local_id(0) % THREADS_PER_LANE;
-@@ -788,9 +701,11 @@ __kernel void argon2_kernel_oneshot(
+@@ -788,9 +697,11 @@ __kernel void argon2_kernel_oneshot(
  
      uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
  
