@@ -13,12 +13,12 @@ using std::vector;
 
 typedef struct MinerStats {
     t_time_point lastT = {};
-    BLOCK_TYPE lastTaskType = BLOCK_GPU;
+    BLOCK_TYPE lastTaskType = BLOCK_MAX;
     double lastTaskHashrate = -1.0;
-    bool lastTaskValidated = true;
+    bool lastTaskValidated = false;
 }t_minerStats;
 
-extern vector<Miner *> s_miners;
+extern vector<AroMiner *> s_miners;
 
 vector<t_minerStats> s_minerStats;
 
@@ -34,9 +34,9 @@ void minerStatsOnNewTask(int minerId, t_time_point time) {
     }
     else {
         std::chrono::duration<double> duration = time - mstats.lastT;
-        auto nHashes = miner->getNbHashesPerIteration();
+        auto nHashes = miner->nHashesPerRun();
         mstats.lastT = time;
-        mstats.lastTaskType = miner->getCurrentBlockType();
+        mstats.lastTaskType = miner->providerBlockType();
 
         if (!mstats.lastTaskValidated) {
             mstats.lastTaskHashrate = 0;

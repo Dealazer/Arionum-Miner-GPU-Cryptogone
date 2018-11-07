@@ -7,11 +7,7 @@
 
 #include <string>
 
-enum BLOCK_TYPE {
-    BLOCK_GPU,
-    BLOCK_CPU,
-    BLOCK_MASTERNODE
-};
+#include "block_type.h"
 
 const std::string& blockTypeName(BLOCK_TYPE b);
 

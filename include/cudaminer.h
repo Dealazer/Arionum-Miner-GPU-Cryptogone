@@ -7,22 +7,38 @@
 
 #include <argon2-cuda/globalcontext.h>
 #include <argon2-cuda/processingunit.h>
+
+#include "../argon2-gpu/include/argon2-cuda/programcontext.h"
+#include "../argon2-gpu/include/argon2-cuda/device.h"
+
 #include "miner.h"
 #include "updater.h"
 
-#include "../argon2-gpu/include/argon2-cuda/processingunit.h"
-#include "../argon2-gpu/include/argon2-cuda/programcontext.h"
-#include "../argon2-gpu/include/argon2-cuda/device.h"
-#include "../argon2-gpu/include/argon2-cuda/globalcontext.h"
+typedef argon2::MiningDeviceBase<
+    argon2::cuda::ProgramContext,
+    cudaStream_t,
+    void*> DeviceBase;
+
+class CudaMiningDevice : public DeviceBase
+{
+public:
+    CudaMiningDevice(const Params &p) {
+        initialize(p);
+    }
+
+    virtual void initialize(const Params &p);
+private:
+    std::unique_ptr<argon2::cuda::GlobalContext> globalCtx;
+    std::unique_ptr<argon2::cuda::ProgramContext> progCtx;
+};
 
 class CudaMiner : public Miner {
-private:
-    argon2::cuda::ProcessingUnit *unit;
-    argon2::cuda::ProgramContext *progCtx;
-    argon2::cuda::GlobalContext *global;
-    const argon2::cuda::Device *device;
-
 public:
+   CudaMiner(
+       argon2::cuda::ProgramContext *, cudaStream_t &stream,
+       argon2::MemConfig memConfig,
+       Stats *pStats, MinerSettings &settings, Updater *pUpdater);
+   
    void deviceUploadTaskDataAsync();
    void deviceLaunchTaskAsync();
    void deviceFetchTaskResultAsync();
@@ -32,7 +48,12 @@ public:
    size_t getMemoryUsage() const;
    size_t getMemoryUsedPerBatch() const;
 
-   explicit CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_t *deviceIndex);
+private:
+    argon2::cuda::ProgramContext * progCtx;
+    cudaStream_t &stream;
+
+    argon2::cuda::ProcessingUnit *unit;
+    argon2::cuda::GlobalContext *global;
 };
 
 #endif //ARIONUM_GPU_MINER_CUDAMINER_H

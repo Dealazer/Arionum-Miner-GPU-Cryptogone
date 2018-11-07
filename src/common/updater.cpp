@@ -92,7 +92,7 @@ void Updater::update() {
             .wait();
 }
 
-extern bool s_miningReady;
+bool s_miningReady = false;
 
 void Updater::start() {
     try {

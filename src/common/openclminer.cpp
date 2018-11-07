@@ -2,99 +2,108 @@
 // Created by guli on 31/01/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
 
-#include <iostream>
-#include <iomanip>
-
 #include "../../include/openclminer.h"
 #include "../../include/perfscope.h"
 
+#include <iostream>
+#include <iomanip>
+#include <map>
+
 using namespace argon2;
 using namespace std;
-using argon2::t_optParams;
+using argon2::OptParams;
 
-#define USE_PROGRAM_CACHE (1)
-#if USE_PROGRAM_CACHE
-#include <map>
-static std::map<cl_device_id, argon2::opencl::ProgramContext*> s_programCache;
-#endif
+void OpenClMiningDevice::initializeDevice(uint32_t deviceIndex) {
+    device = globalCtx.getAllDevices()[deviceIndex];
 
-namespace cl {
-    bool s_logCLErrors = true;
+    static std::map<
+        cl_device_id,
+        std::unique_ptr<argon2::opencl::ProgramContext>> s_programCache;
+
+    cl_device_id deviceID = device.getCLDevice()();
+    auto it = s_programCache.find(deviceID);
+    if (it == s_programCache.end()) {
+        s_programCache.insert(
+            std::make_pair(
+                deviceID,
+                new argon2::opencl::ProgramContext(
+                    &globalCtx, { device }, ARGON_TYPE, ARGON_VERSION,
+                    "./argon2-gpu/data/kernels/")));
+    }
+
+    progCtx = s_programCache[deviceID].get();
 }
 
-std::string toGB(size_t size) {
-    double GB = (double)size / (1024.f * 1024.f * 1024.f);
-    ostringstream os;
-    os << std::fixed << std::setprecision(3) << GB << " GB";
-    return os.str();
+void* OpenClMiningDevice::newBuffer(size_t size) {
+    // add a new buffer
+    const cl::Context& context = progCtx->getContext();
+    buffers.emplace_back(new cl::Buffer(context, CL_MEM_READ_WRITE, size));
+    
+    // warm it up
+    uint8_t dummy = 0xFF;
+    queue(0).enqueueWriteBuffer(*buffers.back(), true, size - 1, 1, &dummy);
+    
+    return buffers.back().get();
+}
+
+void OpenClMiningDevice::writeBuffer(void* buf, const void* src, size_t size) {
+    cl::Buffer& clBuf = *((cl::Buffer*)buf);
+    queue(0).enqueueWriteBuffer(clBuf, true, 0, size, src);
+}
+
+void* OpenClMiningDevice::newQueue() {
+    queues.emplace_back(new cl::CommandQueue(
+        progCtx->getContext(),
+        device.getCLDevice(),
+        CL_QUEUE_PROFILING_ENABLE));
+    
+    return queues.back().get();
 }
 
 OpenClMiner::OpenClMiner(
-    argon2::opencl::ProgramContext *progCtx, cl::CommandQueue & refQueue, 
-    argon2::MemConfig memoryConfig,
-    Stats *pStats, MinerSettings &settings, Updater *pUpdater) :
-    Miner(memoryConfig, pStats, settings, pUpdater),
-    progCtx(progCtx),
-    queue(refQueue)
-{
-    const auto INITIAL_BLOCK_TYPE = BLOCK_GPU;
-
-    t_optParams optPrms = configureArgon(
-        Miner::getPasses(INITIAL_BLOCK_TYPE),
-        Miner::getMemCost(INITIAL_BLOCK_TYPE),
-        Miner::getLanes(INITIAL_BLOCK_TYPE));
-
-    unit = new argon2::opencl::ProcessingUnit(
-                queue,
-                progCtx,
-                params,
-                memConfig,
-                optPrms,
-                INITIAL_BLOCK_TYPE);
+    argon2::opencl::ProgramContext *progCtx, cl::CommandQueue & refQueue,
+    const argon2::MemConfig &memConfig, const Services& services,
+    argon2::OPT_MODE gpuOptimizationMode) :
+    AroMiner(memConfig, services, gpuOptimizationMode),
+    ctx{refQueue, *progCtx},
+    pUnit(new argon2::opencl::ProcessingUnit(cfg, ctx)) {
 }
 
-void OpenClMiner::reconfigureArgon(
-    uint32_t t_cost, uint32_t m_cost, uint32_t lanes) {
-    if (!needReconfigure(t_cost, m_cost, lanes))
-        return;
-
-    t_optParams optPrms =
-        configureArgon(t_cost, m_cost, lanes);
-
-    unit->reconfigureArgon(params, optPrms, (t_cost == 1) ? BLOCK_CPU : BLOCK_GPU);
+void OpenClMiner::reconfigureKernel() {
+    pUnit->reconfigureArgon(cfg);
 }
 
-void OpenClMiner::deviceUploadTaskDataAsync() {
+void OpenClMiner::uploadInputs_Async() {
 #if (!OPEN_CL_SKIP_MEM_TRANSFERS)
-    unit->uploadInputDataAsync(bases);
+    pUnit->uploadInputDataAsync(nonces.bases);
 #endif
 }
 
-void OpenClMiner::deviceLaunchTaskAsync() {
-    unit->runKernelAsync();
+void OpenClMiner::run_Async() {
+    pUnit->runKernelAsync();
 }
 
-void OpenClMiner::deviceFetchTaskResultAsync() {
-    unit->fetchResultsAsync();
+void OpenClMiner::fetchResults_Async() {
+    pUnit->fetchResultsAsync();
 }
 
-void OpenClMiner::deviceWaitForResults() {
-    unit->waitForResults();
+void OpenClMiner::waitResults() {
+    pUnit->waitForResults();
 }
 
-bool OpenClMiner::deviceResultsReady() {
+bool OpenClMiner::resultsReady() {
     PerfScope p("deviceResultsReady()");
 
-    bool queueFinished = unit->resultsReady();
+    bool queueFinished = pUnit->resultsReady();
     if (queueFinished) {
 #if (!OPEN_CL_SKIP_MEM_TRANSFERS)
-        auto blockType = (params->getLanes() == 1) ? 
+        auto blockType = (argon_params->getLanes() == 1) ? 
             BLOCK_CPU : BLOCK_GPU;
         int curHash = 0;
         for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
             auto nHashes = memConfig.batchSizes[blockType][i];
             for (auto j = 0; j < nHashes; j++) {
-                resultsPtrs[i][j] = unit->getResultPtr(curHash);
+                resultsPtrs[i][j] = pUnit->getResultPtr(curHash);
                 curHash++;
             }
         }
@@ -103,163 +112,16 @@ bool OpenClMiner::deviceResultsReady() {
     return queueFinished;
 }
 
-std::string OpenClMiner::getInfo()
-{
-    std::ostringstream oss;
-    auto &pCPUSizes = this->memConfig.batchSizes[BLOCK_CPU];
-    auto &pGPUSizes = this->memConfig.batchSizes[BLOCK_GPU];
-
-    oss << "CPU: ";
-    auto mode = getMode(1, 1, 1);
-    if (mode == PRECOMPUTE_LOCAL_STATE)
-        oss << "(LOCAL_STATE) ";
-    else if (mode == PRECOMPUTE_SHUFFLE)
-        oss << "(SHUFFLE_BUF) ";
-    else
-        oss << "(BASELINE) ";
-    oss << "(";
-    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
-        oss << pCPUSizes[i];
-        oss << ((i == (MAX_BLOCKS_BUFFERS - 1)) ? ")" : " ");
-    }    
-
-    oss << ", ";
-
-    oss << "GPU: (";
-    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
-        oss << pGPUSizes[i];
-        oss << ((i == (MAX_BLOCKS_BUFFERS - 1)) ? ")" : " ");
-    }
-
-    return oss.str();
+#if 0
+std::string toGB(size_t size) {
+    double GB = (double)size / (1024.f * 1024.f * 1024.f);
+    ostringstream os;
+    os << std::fixed << std::setprecision(3) << GB << " GB";
+    return os.str();
 }
-
-OpenClMiningDevice::OpenClMiningDevice(
-    size_t deviceIndex,
-    uint32_t nTasks, uint32_t batchSizeGPU)
-{
-    // only support up to 4 buffers for now
-    if (nTasks > MAX_BLOCKS_BUFFERS) {
-        std::ostringstream oss;
-        oss << "-t value must be <= " << nTasks;
-        throw std::logic_error(oss.str());
-    }
-
-    // compute GPU blocks mem cost
-    auto tGPU = Miner::getPasses(BLOCK_GPU);
-    auto mGPU = Miner::getMemCost(BLOCK_GPU);
-    auto lGPU = Miner::getLanes(BLOCK_GPU);
-    argon2::Argon2Params paramsBlockGPU(
-        32, "cifE2rK4nvmbVgQu", 16, nullptr, 0, nullptr, 0, tGPU, mGPU, lGPU);
-    uint32_t blocksPerHashGPU = paramsBlockGPU.getMemoryBlocks();
-    size_t memPerHashGPU = blocksPerHashGPU * ARGON2_BLOCK_SIZE;
-    size_t memPerTaskGPU = batchSizeGPU * memPerHashGPU;
-
-    // compute CPU blocks mem cost
-    auto tCPU = Miner::getPasses(BLOCK_CPU);
-    auto mCPU = Miner::getMemCost(BLOCK_CPU);
-    auto lCPU = Miner::getLanes(BLOCK_CPU);
-    argon2::Argon2Params paramsBlockCPU(
-        32, "0KVwsNr6yT42uDX9", 16, nullptr, 0, nullptr, 0, tCPU, mCPU, lCPU);
-    t_optParams optPrmsCPU = Miner::precomputeArgon(&paramsBlockCPU);
-    optPrmsCPU.mode = PRECOMPUTE_SHUFFLE;
-    uint32_t blocksPerHashCPU = optPrmsCPU.customBlockCount;
-    size_t memPerHashCPU = blocksPerHashCPU * ARGON2_BLOCK_SIZE;
-
-    // create context
-    argon2::opencl::GlobalContext global;
-    auto &devices = global.getAllDevices();
-    auto device = &devices[deviceIndex];
-
-#if USE_PROGRAM_CACHE
-    cl_device_id deviceID = device->getCLDevice()();
-    auto it = s_programCache.find(deviceID);
-    if (it == s_programCache.end()) {
-        s_programCache.insert(
-            std::make_pair(
-                deviceID,
-                new argon2::opencl::ProgramContext(
-                    &global, { *device }, ARGON_TYPE, ARGON_VERSION,
-                    "./argon2-gpu/data/kernels/")));
-    }
-    progCtx = s_programCache[deviceID];
-#else
-    progCtx = new argon2::opencl::ProgramContext(
-        &global, { *device }, type, version,
-        "./argon2-gpu/data/kernels/");
-#endif
-    auto context = progCtx->getContext();
-
-    // create queues
-    for (uint32_t i = 0; i < nTasks; i++) {
-        queues.emplace_back(context, device->getCLDevice(), CL_QUEUE_PROFILING_ENABLE);
-    }
-
-    // utility to create a buffer
-    auto allocBuffer = [&](
-        size_t size, cl_mem_flags flags = CL_MEM_READ_WRITE) -> cl::Buffer {
-        // allocate buffer
-        cl::Buffer buf(context, flags, size);
-        // warm it up
-        uint8_t dummy = 0xFF;
-        queues[0].enqueueWriteBuffer(buf, true, size-1, 1, &dummy);
-        return buf;
-    };
-
-    // create nTasks block buffers
-    for (uint32_t i = 0; i < nTasks; i++) {
-        buffers.push_back(allocBuffer(memPerTaskGPU));
-    }
-
-    // create index buffer
-    size_t indexSize = 0;
-    if (optPrmsCPU.mode == argon2::PRECOMPUTE_LOCAL_STATE ||
-        optPrmsCPU.mode == argon2::PRECOMPUTE_SHUFFLE) {
-        indexSize = optPrmsCPU.customIndexNbSteps * 3 * sizeof(cl_uint);
-        indexBuffer = allocBuffer(indexSize, CL_MEM_READ_ONLY);
-        queues[0].enqueueWriteBuffer(
-            indexBuffer, true, 0, indexSize, optPrmsCPU.customIndex);
-    }
-
-    // create mem configs for GPU tasks
-    for (uint32_t i = 0; i < nTasks; i++) {
-        MemConfig mc;
-        mc.batchSizes[BLOCK_GPU][0] = batchSizeGPU;
-        mc.blocksBuffers[BLOCK_GPU][0] = &buffers[i];
-
-#define USE_SINGLE_TASK_FOR_CPU_BLOCKS (1)
-#if USE_SINGLE_TASK_FOR_CPU_BLOCKS
-        if (i == 0) {
-            for (uint32_t j = 0; j < nTasks; j++) {
-                mc.batchSizes[BLOCK_CPU][j] = memPerTaskGPU / memPerHashCPU;
-                mc.blocksBuffers[BLOCK_CPU][j] = &buffers[j];
-            }
-            mc.indexBuffer = &indexBuffer;
-        }
-#else
-        mc.batchSizes[BLOCK_CPU][0] = memPerTaskGPU / memPerHashCPU;
-        mc.blocksBuffers[BLOCK_CPU][0] = &buffers[i];
-        mc.indexBuffer = &indexBuffer;
 #endif
 
-        uint32_t totalNonces = (uint32_t)std::max(
-            mc.getTotalHashes(BLOCK_GPU),
-            mc.getTotalHashes(BLOCK_CPU));
-
-        const size_t MAX_LANES = 4;
-        const size_t IN_BLOCKS_MAX_SIZE = MAX_LANES * 2 * ARGON2_BLOCK_SIZE;
-        mc.in = IN_BLOCKS_MAX_SIZE * totalNonces;
-
-        const size_t OUT_BLOCKS_MAX_SIZE = MAX_LANES * ARGON2_BLOCK_SIZE;
-        mc.out = OUT_BLOCKS_MAX_SIZE * totalNonces;
-
-        minersConfigs.push_back(mc);
-    }
-}
-
-argon2::MemConfig OpenClMiningDevice::getMemConfig(int taskId) {
-    return minersConfigs[taskId];
-}
+//////////////////////////////////////////////////////////////////////////////////////
 
 #if 0
 

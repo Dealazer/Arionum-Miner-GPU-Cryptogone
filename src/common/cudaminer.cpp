@@ -12,12 +12,9 @@
 #include "../../argon2-gpu/include/argon2-cuda/cudaexception.h"
 
 using namespace std;
-using argon2::t_optParams;
-using argon2::PRECOMPUTE;
-using argon2::BASELINE;
 
 static void setCudaDevice(int deviceIndex)
-{	
+{
     int currentIndex = -1;
     argon2::cuda::CudaException::check(cudaGetDevice(&currentIndex));
     if (currentIndex != deviceIndex) {
@@ -25,7 +22,41 @@ static void setCudaDevice(int deviceIndex)
     }
 }
 
+void CudaMiningDevice::initialize(const Params & p)
+{
+    globalCtx.reset(
+        new argon2::cuda::GlobalContext());
+    
+    auto &devices = globalCtx->getAllDevices();
+    auto device = &devices[p.deviceIndex];
+
+    setCudaDevice(p.deviceIndex);
+    progCtx.reset(
+        new argon2::cuda::ProgramContext(
+            globalCtx.get(), { *device }, ARGON_TYPE, ARGON_VERSION));
+}
+
+// we MUST set device here
+// when creating ProcessingUnit, cudaMalloc & cudaStreamCreate are called and they will operate on the current device
+
+CudaMiner::CudaMiner(
+    argon2::cuda::ProgramContext *progCtx, cudaStream_t & stream,
+    argon2::MemConfig memoryConfig,
+    Stats * pStats, MinerSettings & settings, Updater * pUpdater) :
+    Miner(memoryConfig, pStats, settings, pUpdater),
+    progCtx(progCtx),
+    stream(stream)
+{
+    const auto INITIAL_BLOCK_TYPE = BLOCK_GPU;
+
+    OptParams optPrms = configureArgon(
+        AroConfig::passes(INITIAL_BLOCK_TYPE),
+        AroConfig::memCost(INITIAL_BLOCK_TYPE),
+        AroConfig::lanes(INITIAL_BLOCK_TYPE));
+}
+
 CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_t *deviceIndex) : Miner(s, ms, bs, u) {
+    
     global = new argon2::cuda::GlobalContext();
     auto &devices = global->getAllDevices();
 
@@ -40,13 +71,13 @@ CudaMiner::CudaMiner(Stats *s, MinerSettings *ms, uint32_t bs, Updater *u, size_
     setCudaDevice(device->getDeviceIndex());
     progCtx = new argon2::cuda::ProgramContext(global, {*device}, type, version);
 
-     auto nLanesMax = Miner::getLanes(BLOCK_GPU);
+     auto nLanesMax = AroConfig::lanes(BLOCK_GPU);
      try {
         bool bySegment = false;
 
-        t_optParams optPrms = configure(
-            Miner::getPasses(BLOCK_GPU),
-            Miner::getMemCost(BLOCK_GPU),
+        OptParams optPrms = configure(
+            AroConfig::passes(BLOCK_GPU),
+            AroConfig::memCost(BLOCK_GPU),
             nLanesMax,
             bs);
 
@@ -73,7 +104,7 @@ void CudaMiner::reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lane
     if (!needReconfigure(t_cost, m_cost, lanes, newBatchSize))
         return;
     //printf("-- CudaMiner::reconfigureArgon %d,%d,%d\n", t_cost, m_cost, lanes);
-    t_optParams optPrms = configure(t_cost, m_cost, lanes, newBatchSize);
+    OptParams optPrms = configure(t_cost, m_cost, lanes, newBatchSize);
     unit->reconfigureArgon(params, batchSize, optPrms);
 }
 
@@ -112,5 +143,4 @@ size_t CudaMiner::getMemoryUsage() const {
 size_t CudaMiner::getMemoryUsedPerBatch() const {
     return unit->getMemoryUsedPerBatch();
 }
-
 
