@@ -369,7 +369,7 @@ const auto INITIAL_BLOCK_TYPE = BLOCK_GPU;
 
 AroMiner::AroMiner(
     const argon2::MemConfig &memConfig, const Services& services, 
-    argon2::OPT_MODE gpuOptimizationMode) :
+    argon2::OPT_MODE cpuOptimizationMode) :
     services(services), 
     memConfig(memConfig), 
     argon_params{},
@@ -380,7 +380,7 @@ AroMiner::AroMiner(
     cfg(memConfig, *argon_params, optPrms, INITIAL_BLOCK_TYPE),
     resultsPtrs{},
     nonces{},
-    cpuBlocksOptimizationMode(gpuOptimizationMode)
+    cpuBlocksOptimizationMode(cpuOptimizationMode)
 {
     for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
         resultsPtrs[i].clear();
@@ -427,7 +427,7 @@ OptParams AroMiner::configureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t la
     return optPrms;
 }
 
-bool AroMiner::updateNonceProvider() {  
+bool AroMiner::updateNonceProvider() {
     bool ok = services.nonceProvider.update();
     auto bt = services.nonceProvider.currentBlockType();
     if (ok) {

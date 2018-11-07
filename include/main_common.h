@@ -332,15 +332,14 @@ void checkShowStartMessage(Stats *stats) {
     }
 }
 
-bool needToWaitOtherMiners(int i) {
-    // cannot start a new block type task until all other miners for the same device are done
-    auto deviceIndex = getMinerDeviceIndex(i);
-    for (auto &it : s_devicesMiners[deviceIndex])
-        if (it != i && !s_minerIdle[it] &&
-            s_miners[it]->taskBlockType() != s_miners[i]->taskBlockType()) {
-            return true;
-        }
-    return false;
+bool canStartMiner(size_t deviceIndex, BLOCK_TYPE blockType) {
+    for (auto minerID : s_devicesMiners[deviceIndex]) {
+        if (s_minerIdle[minerID])
+            continue;
+        if (s_miners[minerID]->taskBlockType() != blockType)
+            return false;
+    }
+    return true;
 }
 
 bool feedMiners(Stats *stats) {
@@ -357,7 +356,7 @@ bool feedMiners(Stats *stats) {
         
         minerStatsOnNewTask(i, now);
 
-        if (needToWaitOtherMiners(i))
+        if (!canStartMiner(getMinerDeviceIndex(i), miner->providerBlockType()))
             continue;
 
 #if DEBUG_DURATIONS
