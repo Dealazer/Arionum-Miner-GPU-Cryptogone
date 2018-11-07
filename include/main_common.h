@@ -182,7 +182,7 @@ void spawnMiners(OpenCLArguments &args, vector<AroMiner *> &miners,
                 args.cpuBlocksOptimizationMode
             );
             miners.push_back(miner);
-            cout << " - miner " << j << " " << miner->describe() << endl;
+            cout << "miner " << j << " : " << miner->describe() << endl;
         }
         cout << endl;
     }

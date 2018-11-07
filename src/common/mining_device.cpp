@@ -8,7 +8,6 @@
 const bool USE_SINGLE_TASK_FOR_CPU_BLOCKS = true;
 
 argon2::OptParams precomputeArgon(argon2::Argon2Params * params) {
-
     static std::map<uint32_t, argon2::OptParams> s_precomputeCache;
 
     auto m_cost = params->getMemoryCost();

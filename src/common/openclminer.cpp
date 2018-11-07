@@ -66,11 +66,11 @@ OpenClMiner::OpenClMiner(
     argon2::OPT_MODE gpuOptimizationMode) :
     AroMiner(memConfig, services, gpuOptimizationMode),
     ctx{refQueue, *progCtx},
-    pUnit(new argon2::opencl::ProcessingUnit(cfg, ctx)) {
+    pUnit(new argon2::opencl::ProcessingUnit(miningConfig, ctx)) {
 }
 
 void OpenClMiner::reconfigureKernel() {
-    pUnit->reconfigureArgon(cfg);
+    pUnit->reconfigureArgon(miningConfig);
 }
 
 void OpenClMiner::uploadInputs_Async() {

@@ -48,14 +48,8 @@ private:
 };
 
 struct BlockDesc {
-
-    // !! TO BE USED !!
-    bool isValid() const { return type != BLOCK_MAX; };
-    // !! TO BE USED !!
-
-    BlockDesc() :
-        mpz_diff(0),mpz_limit(0),public_key(),type(BLOCK_MAX) {
-    }
+    BlockDesc() : 
+        mpz_diff(0), mpz_limit(0), public_key(), type(BLOCK_MAX) {};
 
     mpz_class mpz_diff;
     mpz_class mpz_limit;
@@ -66,8 +60,7 @@ struct BlockDesc {
 class IAroNonceProvider {
 public:
     struct Nonces {
-        BLOCK_TYPE blockType{ BLOCK_MAX };
-        std::size_t count{};
+        BlockDesc blockDesc{};
         std::vector<std::string> nonces{};
         std::vector<std::string> bases{};
     };
@@ -75,7 +68,7 @@ public:
     virtual ~IAroNonceProvider() {};
     virtual const string& salt(BLOCK_TYPE bt) const = 0;
     virtual bool update() = 0;
-    virtual void generateNonces(Nonces &batch) = 0;
+    virtual void generateNonces(std::size_t count, Nonces &nonces) = 0;
     virtual BLOCK_TYPE currentBlockType() const = 0;
     virtual BlockDesc currentBlockDesc() const = 0;
 };
@@ -84,8 +77,8 @@ class AroNonceProviderPool : public IAroNonceProvider,
     public RandomBytesGenerator {
 public:
     AroNonceProviderPool(Updater & updater);
-    virtual bool update() override;
-    virtual void generateNonces(Nonces &batch) override;
+    bool update() override;
+    void generateNonces(std::size_t count, Nonces &nonces) override;
     const string& salt(BLOCK_TYPE bt) const override;
     BLOCK_TYPE currentBlockType() const override { return bd.type; };
     BlockDesc currentBlockDesc() const override { return bd; };
@@ -103,8 +96,8 @@ class AroNonceProviderTestMode : public IAroNonceProvider {
 public:
     AroNonceProviderTestMode(Stats & stats) : stats(stats) {};
     const string& salt(BLOCK_TYPE bt) const override;
-    virtual bool update() override;
-    virtual void generateNonces(Nonces &batch) override;
+    bool update() override;
+    void generateNonces(std::size_t count, Nonces &nonces) override;
     BLOCK_TYPE currentBlockType() const override { return blockType; };
     BlockDesc currentBlockDesc() const override {
         BlockDesc bd;
@@ -188,8 +181,7 @@ public:
         uint32_t nHashes, nGood;
     };
 
-    AroMiner(
-        const argon2::MemConfig &memConfig, const Services& services,
+    AroMiner(const argon2::MemConfig &memConfig, const Services& services,
         argon2::OPT_MODE cpuBlocksOptimizationMode);
     
     bool updateNonceProvider();
@@ -199,22 +191,24 @@ public:
 
     uint32_t nHashesPerRun() const;
     BLOCK_TYPE taskBlockType() const 
-    { return nonces.blockType; };
+    { return nonces.blockDesc.type; };
     BLOCK_TYPE providerBlockType() const 
     { return services.nonceProvider.currentBlockType(); };
     std::string describe() const;
 
 protected:
-    bool needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) const;
     argon2::OptParams configureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes);
-    argon2::OPT_MODE getMode(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) const;
-    void encode(void *res, size_t reslen, std::string &out);
+    
+    void encode(void *res, size_t reslen, std::string &out) const;
+    bool needReconfigure(uint32_t t_cost, uint32_t m_cost, uint32_t lanes) const;
+    argon2::OPT_MODE optimizationMode(BLOCK_TYPE blockType) const;
+    std::string describeKernel(BLOCK_TYPE bt) const;
 
     Services services;
     argon2::MemConfig memConfig;
     std::unique_ptr<argon2::Argon2Params> argon_params;
     argon2::OptParams optPrms;
-    argon2::Argon2iMiningConfig cfg;
+    argon2::Argon2iMiningConfig miningConfig;
     std::vector<uint8_t*> resultsPtrs[MAX_BLOCKS_BUFFERS];
     IAroNonceProvider::Nonces nonces;
     argon2::OPT_MODE cpuBlocksOptimizationMode;
