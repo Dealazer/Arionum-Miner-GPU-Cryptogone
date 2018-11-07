@@ -51,6 +51,8 @@ list(APPEND COMMON_SRCS
     "include/miners_stats.h"
     "include/main_common.h"
     "include/timer.h"
+    "include/mining_device.h"
+
     "src/common/updater.cpp"
     "src/common/stats.cpp"
     "src/common/minerdata.cpp"
@@ -60,7 +62,7 @@ list(APPEND COMMON_SRCS
     "src/common/timer.cpp"
     "src/common/win_tools.cpp"
     "src/common/testMode.cpp"
-    
+    "src/common/miningDevice.cpp"
     "argon2/include/argon2.h"
     "argon2/src/opt.c"
     "argon2/src/argon2.c"
