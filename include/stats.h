@@ -12,7 +12,7 @@
 #include <climits>
 #include <cmath>
 
-#include "minerdata.h"
+#include "block_type.h"
 
 using namespace std;
 

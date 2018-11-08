@@ -2,7 +2,8 @@
 #include "perfscope.h"
 #include "testMode.h"
 #include "miners_stats.h"
-#include "mining_device.h"
+#include "test_services.h"
+#include "pool_services.h"
 
 #include "../../argon2-gpu/include/commandline/commandlineparser.h"
 #include "../../argon2-gpu/include/commandline/argumenthandlers.h"

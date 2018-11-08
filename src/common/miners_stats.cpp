@@ -1,10 +1,3 @@
-//#include <iostream>
-//#include <vector>
-//#include <thread>
-//#include <cstring>
-//#include <iomanip>
-//#include <boost/algorithm/string.hpp>
-
 #include "../../include/miner.h"
 #include "../../include/miners_stats.h"
 #include "../../include/minerdata.h"

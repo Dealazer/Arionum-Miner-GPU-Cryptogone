@@ -52,6 +52,10 @@ list(APPEND COMMON_SRCS
     "include/main_common.h"
     "include/timer.h"
     "include/mining_device.h"
+    "include/mining_services.h"
+    "include/pool_services.h"
+    "include/test_services.h"
+	"include/to_base64.h"
 
     "src/common/updater.cpp"
     "src/common/stats.cpp"
@@ -63,14 +67,17 @@ list(APPEND COMMON_SRCS
     "src/common/win_tools.cpp"
     "src/common/testMode.cpp"
     "src/common/mining_device.cpp"
+    "src/common/pool_services.cpp"
+    "src/common/test_services.cpp"
 
     "argon2/include/argon2.h"
+    "argon2/src/encoding.h"
+    "argon2/src/thread.h"
+
     "argon2/src/opt.c"
     "argon2/src/argon2.c"
     "argon2/src/core.c"
-    "argon2/src/encoding.h"
     "argon2/src/encoding.c"
-    "argon2/src/thread.h"
     "argon2/src/thread.c"
     "argon2/src/blake2/blake2b.c"
 )
