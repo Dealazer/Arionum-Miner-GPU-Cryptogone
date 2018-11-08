@@ -12,14 +12,11 @@
 #include <climits>
 #include <cmath>
 
-#include "block_type.h"
+#include "minerdata.h"
 
 using namespace std;
 
-double minerStatsGetLastHashrate(BLOCK_TYPE);
-
 //#define DEBUG_ROUNDS
-class MinerSettings;
 
 class Stats {
 private:
@@ -46,13 +43,12 @@ private:
 
     std::mutex mutex;
 
-    MinerSettings *minerSettings{};
-
 public:
 
-    Stats(MinerSettings *pSettings) :
+    Stats() :
         roundType(-1),
         roundHashes(0),
+        roundStart(std::chrono::system_clock::now()),
         totalHashes_cpu(0),
         totalHashes_gpu(0),
         totalTime_cpu_sec(0.0),
@@ -65,9 +61,7 @@ public:
         roundHashRate(0.0),
         bestDl_cpu(UINT32_MAX),
         bestDl_gpu(UINT32_MAX),
-        blockBestDl(UINT32_MAX),
-        roundStart(std::chrono::system_clock::now()),
-        minerSettings(pSettings) {
+        blockBestDl(UINT32_MAX) {
     };
 
     bool dd();
@@ -82,6 +76,11 @@ public:
 
     void printTimePrefix() const;
     void printRoundStats(float nSeconds) const;
+    void printMiningStats(
+        const MinerData & data,
+        bool useLastHashrateInsteadOfRoundAvg,
+        bool isMining);
+
     void printRoundStatsHeader() const;
 
     const atomic<long> &getRounds(BLOCK_TYPE t) const;
@@ -99,13 +98,7 @@ public:
     const atomic<long> &getBlocks() const;
     const atomic<long> &getRejections() const;
 
-    friend ostream &operator<<(ostream &os, const Stats &stats);
-
     void blockChange(BLOCK_TYPE blockType);
-
-    const MinerSettings * getMinerSettings() const {
-        return minerSettings;
-    }
 
 private:
     uint32_t rndRange(uint32_t n);

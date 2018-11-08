@@ -25,11 +25,10 @@ const int POOL_UPDATE_RATE_SECONDS = 5;
 class Updater {
 
 protected:
-    Stats *stats{};
+    Stats &stats;
     MinerData *data{};
-    MinerSettings *settings{};
+    MinerSettings settings{};
     http_client *client{};
-
     std::mutex mutex;
 
 public:
@@ -37,7 +36,7 @@ public:
 
     void start();
 
-    explicit Updater(Stats *s, MinerSettings *ms);
+    explicit Updater(Stats &s, MinerSettings ms);
 
     void processResponse(const json::value *value);
 

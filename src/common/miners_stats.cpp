@@ -11,25 +11,22 @@ typedef struct MinerStats {
     bool lastTaskValidated = false;
 }t_minerStats;
 
-extern vector<AroMiner *> s_miners;
-
 vector<t_minerStats> s_minerStats;
 
-void minerStatsOnNewTask(int minerId, t_time_point time) {
+void minerStatsOnNewTask(AroMiner & miner, int minerIndex, int nMiners, t_time_point time) {
     if (s_minerStats.size() == 0)
-        s_minerStats.resize(s_miners.size());
+        s_minerStats.resize(nMiners);
 
-    auto &miner = s_miners[minerId];
-    auto &mstats = s_minerStats[minerId];
+    auto &mstats = s_minerStats[minerIndex];
 
     if (mstats.lastT == t_time_point()) {
         mstats.lastT = time;
     }
     else {
         std::chrono::duration<double> duration = time - mstats.lastT;
-        auto nHashes = miner->nHashesPerRun();
+        auto nHashes = miner.nHashesPerRun();
         mstats.lastT = time;
-        mstats.lastTaskType = miner->providerBlockType();
+        mstats.lastTaskType = miner.providerBlockType();
 
         if (!mstats.lastTaskValidated) {
             mstats.lastTaskHashrate = 0;

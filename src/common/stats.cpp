@@ -5,6 +5,7 @@
 #include "../../include/updater.h"
 #include "../../include/miner.h"
 #include "../../include/testMode.h"
+#include "../../include/miners_stats.h"
 
 #include <iostream>
 #include <iomanip>
@@ -159,8 +160,6 @@ void Stats::beginRound(BLOCK_TYPE blockType) {
 #endif
 }
 
-extern Updater* s_pUpdater;
-
 void Stats::endRound() {
     std::lock_guard<std::mutex> lg(mutex);
 
@@ -231,7 +230,8 @@ void Stats::printRoundStats(float nSeconds) const {
         << endl;
 }
 
-ostream &operator<<(ostream &os, const Stats &stats) {
+void Stats::printMiningStats(const MinerData & data, 
+    bool useLastHashrateInsteadOfRoundAvg, bool isMining) {
     const int COL_TYPE          = 8;
     const int COL_HEIGHT        = 8;
     const int COL_HS            = 10;
@@ -243,11 +243,6 @@ ostream &operator<<(ostream &os, const Stats &stats) {
     const int COL_EVER_BEST_DL  = 16;
     const int COL_MIN_DL        = 16;
 
-    auto data = s_pUpdater->getData();
-
-    bool useNewHashrateDisplay = 
-        stats.getMinerSettings()->useLastHashrateInsteadOfRoundAvg();
-
     static unsigned long r = -1;
     r++;
     if (s_forceShowHeaders || (r % 5 == 0)) {
@@ -257,7 +252,7 @@ ostream &operator<<(ostream &os, const Stats &stats) {
         }
 
         ostringstream oss_hashrate_instant;
-        if (useNewHashrateDisplay) {
+        if (useLastHashrateInsteadOfRoundAvg) {
             oss_hashrate_instant 
                 << "H/S-last";
         }
@@ -282,33 +277,26 @@ ostream &operator<<(ostream &os, const Stats &stats) {
             << endl;
     }
 
-    stats.printTimePrefix();
+    printTimePrefix();
 
-    auto blockType = 
-        data.getBlockType();
-
-    cout << setw(COL_HEIGHT) << left << 
-        (s_pUpdater ? data.getHeight() : (-1));
-    cout << setw(COL_TYPE) << left << 
-        (s_pUpdater ? blockTypeName(blockType) : "??");
+    auto blockType = data.getBlockType();
+    cout << setw(COL_HEIGHT) << left << data.getHeight();
+    cout << setw(COL_TYPE) << left << blockTypeName(blockType);
  
     ostringstream 
         oss_hashRate, oss_avgHashRate, 
         ossBlockBestDL, ossEverBestDL;
-    bool isMining = 
-        stats.getMinerSettings() && 
-        stats.getMinerSettings()->canMineBlock(blockType);
     if (isMining) {
         oss_hashRate 
             << std::fixed << std::setprecision(1) 
-            << (useNewHashrateDisplay ? 
-                    minerStatsGetLastHashrate(blockType) : stats.getRoundHashRate().load());
+            << (useLastHashrateInsteadOfRoundAvg ?
+                    minerStatsGetLastHashrate(blockType) : getRoundHashRate().load());
         oss_avgHashRate << std::fixed << std::setprecision(1)
-            << stats.getAvgHashrate(blockType);
+            << getAvgHashrate(blockType);
         ossBlockBestDL 
-            << stats.getBlockBestDl();
+            << getBlockBestDl();
         uint32_t bestEver = 
-            stats.getBestDl(blockType);
+            getBestDl(blockType);
         ossEverBestDL << bestEver;
     }
     else {
@@ -320,9 +308,9 @@ ostream &operator<<(ostream &os, const Stats &stats) {
 
     cout << setw(COL_HS) << left << oss_hashRate.str()
         << setw(COL_HS_AVG) << left << oss_avgHashRate.str()
-        << setw(COL_SHARES) << left << stats.getShares()
-        << setw(COL_BLOCKS) << left << stats.getBlocks()
-        << setw(COL_REJECTS) << left << stats.getRejections()
+        << setw(COL_SHARES) << left << getShares()
+        << setw(COL_BLOCKS) << left << getBlocks()
+        << setw(COL_REJECTS) << left << getRejections()
         << setw(COL_BEST_DL) << left << ossBlockBestDL.str()
         << setw(COL_EVER_BEST_DL) << left << ossEverBestDL.str();
 
@@ -330,6 +318,5 @@ ostream &operator<<(ostream &os, const Stats &stats) {
     cout << (isMining ? *data.getLimit() : "N/A");
 
     cout << endl;
-    return os;
 }
 

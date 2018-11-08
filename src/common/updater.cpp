@@ -17,8 +17,8 @@ using namespace std;
 void Updater::update() {
     // start building path
     stringstream paths;
-    paths << "/mine.php?q=info&worker=" << *settings->getUniqid()
-          << "&address=" << *settings->getPrivateKey();
+    paths << "/mine.php?q=info&worker=" << settings.getUniqid()
+          << "&address=" << settings.getPrivateKey();
 
     // see if we need to send hashrates (pools recommend every 10 minutes)
     static auto start = std::chrono::system_clock::now();    
@@ -31,7 +31,7 @@ void Updater::update() {
     double hrSendRate_mins = (nHashRateSends == 0) ? 0.5 : 5.0;
 
     // as soon as we get the first cpu hashrate value, set rate to zero to force send it
-    auto hrCPU = std::round(stats->getAvgHashrate(BLOCK_CPU));
+    auto hrCPU = std::round(stats.getAvgHashrate(BLOCK_CPU));
     static bool s_hrCpuOkOneTime = false;
     if (hrCPU > 0 &&
         !s_hrCpuOkOneTime) {
@@ -49,7 +49,7 @@ void Updater::update() {
     // send hashrates when update period reached
     if ((double)timeSinceLastHrUpdateMs >= hrSendRate_mins * 60.0 * 1000.0) {
         paths << "&hashrate=" << hrCPU
-              << "&hrgpu=" << std::round(stats->getAvgHashrate(BLOCK_GPU));
+              << "&hrgpu=" << std::round(stats.getAvgHashrate(BLOCK_GPU));
         if (nHashRateSends != 0) {
             start = now;
         }
@@ -119,13 +119,17 @@ void Updater::start() {
         // loop
         while (true) {
             MinerData newData = getData();
-            stats->beginRound(newData.getBlockType());
+            stats.beginRound(newData.getBlockType());
             {
                 update();
                 std::this_thread::sleep_for(std::chrono::seconds(POOL_UPDATE_RATE_SECONDS));
             }
-            stats->endRound();
-            cout << *stats;
+            stats.endRound();
+           
+            stats.printMiningStats(
+                newData,
+                settings.useLastHashrateInsteadOfRoundAvg(),
+                settings.canMineBlock(newData.getBlockType()));
         }
     }
     catch (exception e) {
@@ -180,7 +184,7 @@ void Updater::processResponse(const json::value *value) {
                         if (s_miningReady) {
                             cout << endl << "-- NEW BLOCK --" << endl << *data;
                         }
-                        stats->blockChange(data->getBlockType());
+                        stats.blockChange(data->getBlockType());
                     }
                 }
             }
@@ -198,12 +202,12 @@ MinerData Updater::getData() {
     return *data;
 }
 
-Updater::Updater(Stats *s, MinerSettings *ms) : stats(s), settings(ms) {
+Updater::Updater(Stats &s, MinerSettings ms) : stats(s), settings(ms) {
     http_client_config config;
     utility::seconds timeout(2);
     config.set_timeout(timeout);
 
-    auto _poolAddress = toUtilityString(*ms->getPoolAddress());
+    auto _poolAddress = toUtilityString(*ms.getPoolAddress());
     client = new http_client(_poolAddress, config);
 }
 

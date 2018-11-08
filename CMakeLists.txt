@@ -53,9 +53,10 @@ list(APPEND COMMON_SRCS
     "include/timer.h"
     "include/mining_device.h"
     "include/mining_services.h"
+	"include/mining_system.h"
     "include/pool_services.h"
     "include/test_services.h"
-	"include/to_base64.h"
+    "include/to_base64.h"
 
     "src/common/updater.cpp"
     "src/common/stats.cpp"

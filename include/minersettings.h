@@ -33,6 +33,11 @@ public:
         showLastHashrate(showLastHashrate) {
     };
 
+    MinerSettings() : 
+        poolAddress{}, privateKey{}, uniqid{}, 
+        mineGpuBlocks{}, mineCpuBlocks{}, showLastHashrate{} {
+    };
+
     friend ostream &operator<<(ostream &os, const MinerSettings &settings);
 
     string *getPoolAddress() const;
