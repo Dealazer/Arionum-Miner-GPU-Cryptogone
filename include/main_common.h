@@ -263,7 +263,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
 
         new FlagOption<OpenCLArguments>(
                 [](OpenCLArguments &state) { state.cpuBlocksOptimizationMode = PRECOMPUTE_SHUFFLE; },
-                "use-shuffle-kernel-cpu", '\0', "use shuffle kernel instead of local_state for cpu blocks"),
+                "use-shuffle-kernel-cpu", '\0', "use index_shuffle kernel for cpu blocks, may be faster on some systems"),
 
         new FlagOption<OpenCLArguments>(
                 [](OpenCLArguments &state) { state.skipCpuBlocks = true; },

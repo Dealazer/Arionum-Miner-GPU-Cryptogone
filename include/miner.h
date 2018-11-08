@@ -57,31 +57,56 @@ struct BlockDesc {
     BLOCK_TYPE type;
 };
 
+struct Nonces {
+    BlockDesc blockDesc{};
+    std::vector<std::string> nonces{};
+    std::vector<std::string> bases{};
+
+    void prepareAdd(BlockDesc &new_blockDesc, std::size_t count) {
+        if (blockDesc.type != new_blockDesc.type) {
+            nonces.clear();
+            bases.clear();
+        }
+        blockDesc = new_blockDesc;
+        auto n = nonces.size() + count;
+        nonces.reserve(n);
+        bases.reserve(n);
+    }
+};
+
 class IAroNonceProvider {
 public:
-    struct Nonces {
-        BlockDesc blockDesc{};
-        std::vector<std::string> nonces{};
-        std::vector<std::string> bases{};
-    };
-
     virtual ~IAroNonceProvider() {};
     virtual const string& salt(BLOCK_TYPE bt) const = 0;
     virtual bool update() = 0;
-    virtual void generateNonces(std::size_t count, Nonces &nonces) = 0;
     virtual BLOCK_TYPE currentBlockType() const = 0;
     virtual BlockDesc currentBlockDesc() const = 0;
+    virtual void generateNonces(std::size_t count, Nonces &nonces) = 0;
+
+protected:
+    virtual void generateNoncesImpl(std::size_t count, Nonces &nonces) = 0;
 };
 
-class AroNonceProviderPool : public IAroNonceProvider, 
+class AroNonceProvider : public IAroNonceProvider {
+public:
+    void generateNonces(std::size_t count, Nonces &nonces) override {
+        auto new_blockDesc = currentBlockDesc();
+        nonces.prepareAdd(new_blockDesc, count);
+        generateNoncesImpl(count, nonces);
+    };
+};
+
+class AroNonceProviderPool : public AroNonceProvider,
     public RandomBytesGenerator {
 public:
     AroNonceProviderPool(Updater & updater);
     bool update() override;
-    void generateNonces(std::size_t count, Nonces &nonces) override;
     const string& salt(BLOCK_TYPE bt) const override;
     BLOCK_TYPE currentBlockType() const override { return bd.type; };
     BlockDesc currentBlockDesc() const override { return bd; };
+
+protected:
+    void generateNoncesImpl(std::size_t count, Nonces &nonces) override;
 
 private:
     Updater & updater;
@@ -92,19 +117,22 @@ private:
     BlockDesc bd;
 };
 
-class AroNonceProviderTestMode : public IAroNonceProvider {
+class AroNonceProviderTestMode : public AroNonceProvider {
 public:
     AroNonceProviderTestMode(Stats & stats) : stats(stats) {};
     const string& salt(BLOCK_TYPE bt) const override;
     bool update() override;
-    void generateNonces(std::size_t count, Nonces &nonces) override;
     BLOCK_TYPE currentBlockType() const override { return blockType; };
     BlockDesc currentBlockDesc() const override {
         BlockDesc bd;
         bd.type = blockType;
         return bd;
     };
+
 protected:
+    void generateNoncesImpl(std::size_t count, Nonces &nonces) override;
+
+private:
     BLOCK_TYPE blockType;
     Stats & stats;
 };
@@ -210,7 +238,7 @@ protected:
     argon2::OptParams optPrms;
     argon2::Argon2iMiningConfig miningConfig;
     std::vector<uint8_t*> resultsPtrs[MAX_BLOCKS_BUFFERS];
-    IAroNonceProvider::Nonces nonces;
+    Nonces nonces;
     argon2::OPT_MODE cpuBlocksOptimizationMode;
 };
 

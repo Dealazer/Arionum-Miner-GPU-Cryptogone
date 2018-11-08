@@ -130,13 +130,7 @@ bool AroNonceProviderPool::update() {
     return true;
 }
 
-void AroNonceProviderPool::generateNonces(std::size_t count, Nonces &nonces) {
-    for (auto it : { &nonces.nonces, &nonces.bases }) {
-        it->clear();
-        it->reserve(count);
-    }
-    nonces.blockDesc = currentBlockDesc();
-
+void AroNonceProviderPool::generateNoncesImpl(std::size_t count, Nonces &nonces) {
     for (uint32_t j = 0; j < count; ++j) {
         generateBytes(nonceBase64, 64, byteBuffer, 32);
         std::string nonce(nonceBase64);
@@ -164,7 +158,7 @@ bool AroNonceProviderTestMode::update() {
     return true;
 }
 
-void AroNonceProviderTestMode::generateNonces(std::size_t count, Nonces &nonces) {
+void AroNonceProviderTestMode::generateNoncesImpl(std::size_t count, Nonces &nonces) {
     // $base = $this->publicKey."-".$nonce."-".$this->block."-".$this->difficulty;
     const string REF_NONCE_GPU = "swGetfIyLrh8XYHcL7cM5kEElAJx3XkSrgTGveDN2w";
     const string REF_BASE_GPU =
@@ -184,7 +178,6 @@ void AroNonceProviderTestMode::generateNonces(std::size_t count, Nonces &nonces)
     string REF_NONCE = isGPU ? REF_NONCE_GPU : REF_NONCE_CPU;
     string REF_BASE = isGPU ? REF_BASE_GPU : REF_BASE_CPU;
     
-    nonces.blockDesc = currentBlockDesc();
     for (uint32_t j = 0; j < count; j++) {
         nonces.nonces.push_back(REF_NONCE);
         nonces.bases.push_back(REF_BASE);
@@ -435,7 +428,6 @@ bool AroMiner::updateNonceProvider() {
         auto lanes = AroConfig::lanes(bt);
         if (!needReconfigure(t_cost, m_cost, lanes))
             return ok;
-
         optPrms = configureArgon(t_cost, m_cost, lanes);
         miningConfig = Argon2iMiningConfig(memConfig, *argon_params, optPrms, (int)bt);
         reconfigureKernel();
@@ -448,6 +440,7 @@ bool AroMiner::generateNonces() {
     if (nHashes <= 0)
         return false;
 
+    nonces = {};
     services.nonceProvider.generateNonces(nHashes, nonces);
     return true;
 }
