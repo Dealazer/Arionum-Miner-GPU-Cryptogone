@@ -444,7 +444,11 @@ bool AroMiner::updateNonceProvider() {
 }
 
 bool AroMiner::generateNonces() {
-    services.nonceProvider.generateNonces(nHashesPerRun(), nonces);
+    auto nHashes = nHashesPerRun();
+    if (nHashes <= 0)
+        return false;
+
+    services.nonceProvider.generateNonces(nHashes, nonces);
     return true;
 }
 
@@ -531,6 +535,8 @@ std::string AroMiner::describe() const {
     std::ostringstream oss;
     auto describeMiner = [&](BLOCK_TYPE bt) {
         auto &pSizes = memConfig.batchSizes[bt];
+        if (pSizes[0] == 0)
+            return;
         oss << describeKernel(bt) << "(";
         for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
             if (i != 0 && pSizes[i])
