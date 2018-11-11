@@ -791,7 +791,7 @@ index 59eab4c..89bcf9f 100644
  
  } // namespace cuda
 diff --git a/include/argon2-cuda/kernels.h b/include/argon2-cuda/kernels.h
-index 16418b4..3f5ff44 100644
+index 16418b4..35723c6 100644
 --- a/include/argon2-cuda/kernels.h
 +++ b/include/argon2-cuda/kernels.h
 @@ -5,6 +5,8 @@
@@ -845,7 +845,7 @@ index 16418b4..3f5ff44 100644
 -                 bool bySegment, bool precompute);
 -    ~KernelRunner();
 +    struct MiningContext {
-+        cudaStream_t &stream;
++        const cudaStream_t &stream;
 +        const ProgramContext& programContext;
 +    };
 +
@@ -872,7 +872,7 @@ index 16418b4..3f5ff44 100644
  
  } // cuda
 diff --git a/include/argon2-cuda/processingunit.h b/include/argon2-cuda/processingunit.h
-index 2109154..2f9eb17 100644
+index 2109154..4e12d45 100644
 --- a/include/argon2-cuda/processingunit.h
 +++ b/include/argon2-cuda/processingunit.h
 @@ -3,8 +3,6 @@
@@ -913,7 +913,7 @@ index 2109154..2f9eb17 100644
 -    void getHash(std::size_t index, void *hash);
 +        const Device *device,
 +        const Argon2iMiningConfig & miningConfig,
-+        KernelRunner::MiningContext & miningCtx);
++        const KernelRunner::MiningContext & miningCtx);
 +    ~ProcessingUnit();
  
 +    void configure();
@@ -961,7 +961,7 @@ index 2109154..2f9eb17 100644
 -    void endProcessing() { }
 +        const Device *device,
 +        const Argon2iMiningConfig & miningConfig,
-+        KernelRunner::MiningContext & miningCtx) {};
++        const KernelRunner::MiningContext & miningCtx) {};
 +
 +    void configure() {};
 +    void uploadInputDataAsync(const std::vector<std::string>& bases) {};
@@ -2488,7 +2488,7 @@ index 79fb767..2608590 100644
  
  } // cuda
 diff --git a/lib/argon2-cuda/processingunit.cpp b/lib/argon2-cuda/processingunit.cpp
-index 7768427..1c4aa9e 100644
+index 7768427..a4e66b1 100644
 --- a/lib/argon2-cuda/processingunit.cpp
 +++ b/lib/argon2-cuda/processingunit.cpp
 @@ -7,11 +7,13 @@
@@ -2530,7 +2530,7 @@ index 7768427..1c4aa9e 100644
 -{
 +    const Device *device,
 +    const Argon2iMiningConfig & cfg,
-+    KernelRunner::MiningContext & miningCtx) :
++    const KernelRunner::MiningContext & miningCtx) :
 +    runner(cfg, miningCtx),
 +    device(device),
 +    inBuffer{}, outBuffer{} {
