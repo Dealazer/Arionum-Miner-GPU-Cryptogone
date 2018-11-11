@@ -85,10 +85,8 @@ private:
         BUFFER * indexBuffer = nullptr;
         if (aro.optPrmsCPU.mode == argon2::PRECOMPUTE_LOCAL_STATE ||
             aro.optPrmsCPU.mode == argon2::PRECOMPUTE_SHUFFLE) {
-            size_t test = sizeof(argon2_precomputed_index_t);
-            std::cout << test << std::endl;
             size_t indexSize = 
-                aro.optPrmsCPU.customIndexNbSteps * test;
+                aro.optPrmsCPU.customIndexNbSteps * sizeof(argon2_precomputed_index_t);
             indexBuffer = this->newBuffer(indexSize); // missing CL_MEM_READ_ONLY
             this->writeBuffer(indexBuffer, aro.optPrmsCPU.customIndex, indexSize);
         }
