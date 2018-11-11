@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 3dd95ba..f5130e0 100644
+index 3dd95ba..d8e67d9 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -1,4 +1,4 @@
@@ -27,17 +27,21 @@ index 3dd95ba..f5130e0 100644
      lib/argon2-gpu-common/argon2params.cpp
      lib/argon2-gpu-common/blake2b.cpp
  )
-@@ -44,7 +52,7 @@ target_include_directories(argon2-gpu-common PRIVATE
+@@ -44,15 +52,19 @@ target_include_directories(argon2-gpu-common PRIVATE
  )
  
  if(CUDA_FOUND)
 -    cuda_add_library(argon2-cuda SHARED
++    cuda_compile_ptx (ptxfiles
++	lib/argon2-cuda/kernels.cu)
++
 +    cuda_add_library(argon2-cuda STATIC
          lib/argon2-cuda/device.cpp
          lib/argon2-cuda/globalcontext.cpp
          lib/argon2-cuda/programcontext.cpp
-@@ -52,7 +60,7 @@ if(CUDA_FOUND)
+         lib/argon2-cuda/processingunit.cpp
          lib/argon2-cuda/kernels.cu
++        ${ptxfiles}
      )
  else()
 -    add_library(argon2-cuda SHARED
@@ -45,7 +49,7 @@ index 3dd95ba..f5130e0 100644
          lib/argon2-cuda/nocuda.cpp
      )
  endif()
-@@ -67,7 +75,7 @@ target_include_directories(argon2-cuda INTERFACE
+@@ -67,7 +79,7 @@ target_include_directories(argon2-cuda INTERFACE
  )
  target_link_libraries(argon2-cuda argon2-gpu-common)
  
@@ -54,7 +58,7 @@ index 3dd95ba..f5130e0 100644
      lib/argon2-opencl/device.cpp
      lib/argon2-opencl/globalcontext.cpp
      lib/argon2-opencl/kernelloader.cpp
-@@ -84,56 +92,5 @@ target_include_directories(argon2-opencl PRIVATE
+@@ -84,56 +96,5 @@ target_include_directories(argon2-opencl PRIVATE
      lib/argon2-opencl
  )
  target_link_libraries(argon2-opencl
@@ -1959,11 +1963,10 @@ index 79fb767..2608590 100644
  }
  
  template<uint32_t type, uint32_t version>
-@@ -588,98 +590,32 @@ __device__ void argon2_step(
-                          ref_index, ref_lane);
+@@ -589,97 +591,31 @@ __device__ void argon2_step(
  }
  
--template<uint32_t type, uint32_t version>
+ template<uint32_t type, uint32_t version>
 -__global__ void argon2_kernel_segment(
 -        struct block_g *memory, uint32_t passes, uint32_t lanes,
 -        uint32_t segment_blocks, uint32_t pass, uint32_t slice)
@@ -2042,7 +2045,7 @@ index 79fb767..2608590 100644
 -    }
 -}
 -
- template<uint32_t type, uint32_t version>
+-template<uint32_t type, uint32_t version>
  __global__ void argon2_kernel_oneshot(
 -        struct block_g *memory, uint32_t passes, uint32_t lanes,
 +        struct block_g *memory,
