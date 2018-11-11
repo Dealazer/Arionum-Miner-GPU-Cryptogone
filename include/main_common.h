@@ -250,7 +250,7 @@ int run(const char *const *argv) {
     if (args.allDevices) {
         args.deviceIndexList.clear();
 
-        auto ctx = std::make_unique<CONTEXT>();
+        std::unique_ptr<CONTEXT> ctx(new CONTEXT());
         auto &devices = ctx->getAllDevices();
         for (int i = 0; i < devices.size(); ++i)
             args.deviceIndexList.push_back(i);
@@ -308,19 +308,22 @@ int run(const char *const *argv) {
     std::unique_ptr<thread> updateThread;
 
     auto miningSystem = [&]() -> auto {
-        if (testMode())
-            return std::make_unique<MiningSystem_t>(
+        if (testMode()) {
+            return std::unique_ptr<MiningSystem_t>(new MiningSystem_t(
                 devicesConfigs,
-                std::make_unique<AroNonceProviderTestMode>(stats),
-                std::make_unique<AroResultsProcessorTestMode>(), stats);
+                std::unique_ptr<AroNonceProviderTestMode>(new AroNonceProviderTestMode(stats)),
+                std::unique_ptr<AroResultsProcessorTestMode>(new AroResultsProcessorTestMode()),
+                stats));
+        }
 
-        updater = std::make_unique<Updater>(stats, minerSettings);
-        updateThread = std::make_unique<thread>(&Updater::start, updater.get());
+        updater.reset(new Updater(stats, minerSettings));
+        updateThread.reset(new std::thread(&Updater::start, updater.get()));
         updateThread->detach();
-        return std::make_unique<MiningSystem_t>(
+        return std::unique_ptr<MiningSystem_t>(new MiningSystem_t(
             devicesConfigs,
-            std::make_unique<AroNonceProviderPool>(*updater),
-            std::make_unique<AroResultsProcessorPool>(minerSettings, stats), stats);
+            std::unique_ptr<AroNonceProviderPool>(new AroNonceProviderPool(*updater)),
+            std::unique_ptr<AroResultsProcessorPool>(new AroResultsProcessorPool(minerSettings, stats)), 
+            stats));
     }();
 
     // create miners

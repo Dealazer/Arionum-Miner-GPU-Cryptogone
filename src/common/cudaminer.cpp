@@ -58,8 +58,8 @@ CudaMiner::CudaMiner(
 
     using ProcessingUnit = argon2::cuda::ProcessingUnit;
     using MiningContext = argon2::cuda::KernelRunner::MiningContext;
-    unit = std::make_unique<ProcessingUnit>(
-        &device, miningConfig, MiningContext { queue.stream, progCtx });
+    unit.reset(new ProcessingUnit(
+        &device, miningConfig, MiningContext { queue.stream, progCtx }));
     argon2::cuda::CudaException::check(cudaGetLastError());
 }
 
