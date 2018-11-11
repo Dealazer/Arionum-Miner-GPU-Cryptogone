@@ -23,10 +23,10 @@ typedef AroMiningDevice<cl::CommandQueue, cl::Buffer> MiningDeviceBase;
 class OpenClMiningDevice : public MiningDeviceBase
 {
 public:
-    void initializeDevice(uint32_t deviceIndex) override;
-    void* newQueue() override;
-    void* newBuffer(size_t size) override;
-    void writeBuffer(void * buf, const void * str, size_t size) override;
+    void initialize(uint32_t deviceIndex) override;
+    cl::CommandQueue* newQueue() override;
+    cl::Buffer* newBuffer(size_t size) override;
+    void writeBuffer(cl::Buffer * buf, const void * str, size_t size) override;
     argon2::opencl::ProgramContext* programContext() { return progCtx; }
 
 private:
@@ -43,13 +43,13 @@ public:
         argon2::OPT_MODE gpuOptimizationMode);
 
     bool resultsReady() override;
-    void waitResults() override;
     
 protected:
     void reconfigureKernel() override;
     void uploadInputs_Async() override;
     void run_Async() override;
     void fetchResults_Async() override;
+    uint8_t * resultsPtr() override;
 
 private:
     argon2::opencl::KernelRunner::MiningContext ctx;

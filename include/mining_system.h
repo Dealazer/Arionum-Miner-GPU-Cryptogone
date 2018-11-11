@@ -70,6 +70,7 @@ public:
                     deviceIndex, nMiners, gpuBatchSize));
             devicesMiners.push_back({});
             auto & miningDevice = *miningDevices.back();
+
             for (uint32_t j = 0; j < nMiners; ++j) {
                 auto pMiner = new MINER(
                     miningDevice.programContext(),
@@ -233,78 +234,3 @@ protected:
         return nIdle;
     }
 };
-
-
-
-
-//int deviceListItem = -1;
-//for (const auto &it : deviceIndexList) {
-//    deviceListItem++;
-//    if (it >= devices.size()) {
-//        cout << endl;
-//        cout << "--- Device " << it << " does not exist, skipping it" << endl;
-//        cout << endl;
-//        continue;
-//    }
-
-//    // skip CPU devices (only needed for OpenCL)
-//    if (!strcmp(API_NAME, "OPENCL")) {
-//        auto devInfo = devices[it].getInfo();
-//        if (devInfo.find("Type: GPU") == std::string::npos) {
-//            //std::cout << std::endl;
-//            //std::cout 
-//            //  << "--- Device " << it << " is not a GPU, skipping it" 
-//            //  << std::endl << devices[it].getName() << std::endl;
-//            continue;
-//        }
-//    }
-
-//    uint32_t deviceIndex = it;
-//    uint32_t nThreads = nTasksPerDeviceList.back();
-//    if (deviceListItem < nTasksPerDeviceList.size()) {
-//        nThreads = nTasksPerDeviceList[deviceListItem];
-//    }
-
-//    uint32_t nGPUBatches = gpuBatchSizePerDeviceList.back();
-//    if (deviceListItem < gpuBatchSizePerDeviceList.size()) {
-//        nGPUBatches = gpuBatchSizePerDeviceList[deviceListItem];
-//    }
-
-//    cout << "--- Device " << deviceIndex << ", " << devices[it].getName() << " ---" << endl;
-//    miningDevices.emplace_back(
-//        AroMiningDeviceFactory::create<MINING_DEVICE>(
-//            deviceIndex, nThreads, nGPUBatches));
-
-//    auto & miningDevice = *miningDevices.back();
-//    devicesMiners.push_back({});
-//    for (uint32_t j = 0; j < nThreads; ++j) {
-//        devicesMiners.back().push_back(miners.size());
-//        miners.push_back(new MINER(
-//            miningDevice.programContext(),
-//            miningDevice.queue(j),
-//            miningDevice.memConfig(j),
-//            { *nonceProvider, *resultsProcessor },
-//            args.cpuBlocksOptimizationMode));
-//        cout << "miner " << j << " : " << miners.back()->describe() << endl;
-//    }
-//    cout << endl;
-//}
-
-//minerIdle = std::vector<bool>(s_miners.size(), true);
-
-// -u option
-//if (args.allDevices) {
-//    args.deviceIndexList.clear();
-//    for (int i = 0; i < devices.size(); ++i) {
-//        args.deviceIndexList.push_back(i);
-//    }
-//}
-
-//
-//if (args.deviceIndexList.size() == 0) {
-//    std::cout << "Error: no device found, aborting" << std::endl;
-//    exit(1);
-//}
-
-// create miners
-// cout << endl;

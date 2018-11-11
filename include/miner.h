@@ -8,24 +8,24 @@
 #include "mining_services.h"
 
 #include <argon2-gpu-common/argon2-common.h>
+#include <argon2-gpu-common/argon2params.h>
+
 #include <memory>
 
 const argon2::Type ARGON_TYPE = argon2::ARGON2_I;
 const argon2::Version ARGON_VERSION = argon2::ARGON2_VERSION_13;
 
-
-
 class IGPUMiner {
 public:
     virtual ~IGPUMiner() {};
     virtual bool resultsReady() = 0;
-    virtual void waitResults() = 0;
 
 protected:
     virtual void reconfigureKernel() = 0;
     virtual void uploadInputs_Async() = 0;
     virtual void fetchResults_Async() = 0;
     virtual void run_Async() = 0;
+    virtual uint8_t * resultsPtr() = 0;
 };
 
 class AroMiner : public IGPUMiner {
@@ -68,7 +68,6 @@ protected:
     std::unique_ptr<argon2::Argon2Params> argon_params;
     argon2::OptParams optPrms;
     argon2::Argon2iMiningConfig miningConfig;
-    std::vector<uint8_t*> resultsPtrs[MAX_BLOCKS_BUFFERS];
     Nonces nonces;
     argon2::OPT_MODE cpuBlocksOptimizationMode;
 };

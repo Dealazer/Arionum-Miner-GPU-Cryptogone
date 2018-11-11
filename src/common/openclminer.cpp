@@ -13,7 +13,7 @@ using namespace argon2;
 using namespace std;
 using argon2::OptParams;
 
-void OpenClMiningDevice::initializeDevice(uint32_t deviceIndex) {
+void OpenClMiningDevice::initialize(uint32_t deviceIndex) {
     device = globalCtx.getAllDevices()[deviceIndex];
 
     static std::map<
@@ -34,7 +34,7 @@ void OpenClMiningDevice::initializeDevice(uint32_t deviceIndex) {
     progCtx = s_programCache[deviceID].get();
 }
 
-void* OpenClMiningDevice::newBuffer(size_t size) {
+cl::Buffer* OpenClMiningDevice::newBuffer(size_t size) {
     // add a new buffer
     const cl::Context& context = progCtx->getContext();
     buffers.emplace_back(new cl::Buffer(context, CL_MEM_READ_WRITE, size));
@@ -46,17 +46,15 @@ void* OpenClMiningDevice::newBuffer(size_t size) {
     return buffers.back().get();
 }
 
-void OpenClMiningDevice::writeBuffer(void* buf, const void* src, size_t size) {
-    cl::Buffer& clBuf = *((cl::Buffer*)buf);
-    queue(0).enqueueWriteBuffer(clBuf, true, 0, size, src);
+void OpenClMiningDevice::writeBuffer(cl::Buffer* buf, const void* src, size_t size) {
+    queue(0).enqueueWriteBuffer(*buf, true, 0, size, src);
 }
 
-void* OpenClMiningDevice::newQueue() {
+cl::CommandQueue* OpenClMiningDevice::newQueue() {
     queues.emplace_back(new cl::CommandQueue(
         progCtx->getContext(),
         device.getCLDevice(),
         CL_QUEUE_PROFILING_ENABLE));
-    
     return queues.back().get();
 }
 
@@ -70,13 +68,11 @@ OpenClMiner::OpenClMiner(
 }
 
 void OpenClMiner::reconfigureKernel() {
-    pUnit->reconfigureArgon(miningConfig);
+    pUnit->configure();
 }
 
 void OpenClMiner::uploadInputs_Async() {
-#if (!OPEN_CL_SKIP_MEM_TRANSFERS)
     pUnit->uploadInputDataAsync(nonces.bases);
-#endif
 }
 
 void OpenClMiner::run_Async() {
@@ -87,29 +83,14 @@ void OpenClMiner::fetchResults_Async() {
     pUnit->fetchResultsAsync();
 }
 
-void OpenClMiner::waitResults() {
-    pUnit->waitForResults();
-}
-
 bool OpenClMiner::resultsReady() {
     PerfScope p("deviceResultsReady()");
-
     bool queueFinished = pUnit->resultsReady();
-    if (queueFinished) {
-#if (!OPEN_CL_SKIP_MEM_TRANSFERS)
-        auto blockType = (argon_params->getLanes() == 1) ? 
-            BLOCK_CPU : BLOCK_GPU;
-        int curHash = 0;
-        for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
-            auto nHashes = memConfig.batchSizes[blockType][i];
-            for (auto j = 0; j < nHashes; j++) {
-                resultsPtrs[i][j] = pUnit->getResultPtr(curHash);
-                curHash++;
-            }
-        }
-#endif
-    }
     return queueFinished;
+}
+
+uint8_t * OpenClMiner::resultsPtr() {
+    return pUnit->results();
 }
 
 #if 0

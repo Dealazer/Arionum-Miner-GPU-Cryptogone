@@ -15,7 +15,22 @@
 using namespace std;
 using std::cout;
 
-#define DEBUG_ROUNDS (0)
+const bool DEBUG_ROUNDS = false;
+const int COL_TIME = 20;
+const int COL_TYPE = 8;
+const int COL_HEIGHT = 8;
+const int COL_HS = 10;
+const int COL_HS_AVG = 10;
+const int COL_SHARES = 8;
+const int COL_BLOCKS = 8;
+const int COL_REJECTS = 8;
+const int COL_BEST_DL = 16;
+const int COL_EVER_BEST_DL = 16;
+const int COL_MIN_DL = 16;
+const uint32_t DP = 100;
+const uint32_t DR = 10000;
+
+static bool s_forceShowHeaders = false;
 
 const atomic<long> &Stats::getRoundHashes() const {
     return roundHashes;
@@ -89,17 +104,12 @@ void Stats::addHashes(long newHashes) {
     roundHashes += newHashes;
 }
 
-const uint32_t DP = 100;
-const uint32_t DR = 10000;
-
 void Stats::newShare(bool dd) {
     if (!dd) {
         std::lock_guard<std::mutex> lg(mutex);
         shares++;
     }
 }
-
-static bool s_forceShowHeaders = false;
 
 bool Stats::dd() {
     auto r = rndRange(DR);
@@ -155,9 +165,8 @@ void Stats::beginRound(BLOCK_TYPE blockType) {
     roundType = blockType;
     roundHashes = 0;    
     roundStart = std::chrono::system_clock::now();
-#if DEBUG_ROUNDS
-    cout << "---- START ROUND, type=" << roundType << endl;
-#endif
+    if (DEBUG_ROUNDS)
+        cout << "---- START ROUND, type=" << roundType << endl;
 }
 
 void Stats::endRound() {
@@ -188,13 +197,11 @@ void Stats::endRound() {
         totalHashes_cpu += roundHashes;
         totalTime_cpu_sec = totalTime_cpu_sec + (double)roundDurationMs / 1000.0;
     }
-#if DEBUG_ROUNDS
-    cout << "---- END ROUND, duration=" << std::fixed << std::setprecision(1) 
-        << roundDurationMs << "ms" << endl;
-#endif
+    if (DEBUG_ROUNDS)
+        cout << "---- END ROUND, duration=" << std::fixed << std::setprecision(1) 
+            << roundDurationMs << "ms" << endl;
 }
 
-const int COL_TIME = 20;
 
 void Stats::printTimePrefix() const {
 #pragma warning(disable : 4996)
@@ -232,17 +239,6 @@ void Stats::printRoundStats(float nSeconds) const {
 
 void Stats::printMiningStats(const MinerData & data, 
     bool useLastHashrateInsteadOfRoundAvg, bool isMining) {
-    const int COL_TYPE          = 8;
-    const int COL_HEIGHT        = 8;
-    const int COL_HS            = 10;
-    const int COL_HS_AVG        = 10;
-    const int COL_SHARES        = 8;
-    const int COL_BLOCKS        = 8;
-    const int COL_REJECTS       = 8;
-    const int COL_BEST_DL       = 16;
-    const int COL_EVER_BEST_DL  = 16;
-    const int COL_MIN_DL        = 16;
-
     static unsigned long r = -1;
     r++;
     if (s_forceShowHeaders || (r % 5 == 0)) {
@@ -319,4 +315,3 @@ void Stats::printMiningStats(const MinerData & data,
 
     cout << endl;
 }
-

@@ -5,55 +5,51 @@
 #ifndef ARIONUM_GPU_MINER_CUDAMINER_H
 #define ARIONUM_GPU_MINER_CUDAMINER_H
 
-#include <argon2-cuda/globalcontext.h>
-#include <argon2-cuda/processingunit.h>
-
-#include "../argon2-gpu/include/argon2-cuda/programcontext.h"
-#include "../argon2-gpu/include/argon2-cuda/device.h"
-
 #include "miner.h"
 #include "updater.h"
+#include "mining_device.h"
 
-typedef argon2::MiningDeviceBase<
-    argon2::cuda::ProgramContext,
-    cudaStream_t,
-    void*> DeviceBase;
+#include <argon2-cuda/globalcontext.h>
+#include <argon2-cuda/processingunit.h>
+#include <argon2-cuda/programcontext.h>
+#include <argon2-cuda/device.h>
 
-class CudaMiningDevice : public DeviceBase
+using QueueWrapper = argon2::cuda::QueueWrapper;
+using BufferWrapper = argon2::cuda::BufferWrapper;
+using MiningDeviceBase = AroMiningDevice<QueueWrapper, BufferWrapper>;
+
+class CudaMiningDevice : public MiningDeviceBase
 {
 public:
-    CudaMiningDevice(const Params &p) {
-        initialize(p);
-    }
+    void initialize(uint32_t deviceIndex) override;
+    QueueWrapper * newQueue() override;
+    BufferWrapper * newBuffer(size_t size) override;
+    void writeBuffer(BufferWrapper * buf, const void * str, size_t size) override;
+    argon2::cuda::ProgramContext& programContext() { return *progCtx; };
 
-    virtual void initialize(const Params &p);
 private:
     std::unique_ptr<argon2::cuda::GlobalContext> globalCtx;
     std::unique_ptr<argon2::cuda::ProgramContext> progCtx;
 };
 
-class CudaMiner : public Miner {
+class CudaMiner : public AroMiner {
 public:
-   CudaMiner(
-       argon2::cuda::ProgramContext *, cudaStream_t &stream,
-       argon2::MemConfig memConfig,
-       Stats *pStats, MinerSettings &settings, Updater *pUpdater);
-   
-   void deviceUploadTaskDataAsync();
-   void deviceLaunchTaskAsync();
-   void deviceFetchTaskResultAsync();
-   bool deviceResultsReady();
-   void deviceWaitForResults();
-   void reconfigureArgon(uint32_t t_cost, uint32_t m_cost, uint32_t lanes, uint32_t batchSize);
-   size_t getMemoryUsage() const;
-   size_t getMemoryUsedPerBatch() const;
+    CudaMiner(
+       argon2::cuda::ProgramContext &, QueueWrapper &,
+       argon2::MemConfig, const Services &,
+       argon2::OPT_MODE);
+
+   bool resultsReady() override;
+
+protected:
+    void reconfigureKernel() override;
+    void uploadInputs_Async() override;
+    void fetchResults_Async() override;
+    void run_Async() override;
+    uint8_t * resultsPtr() override;
 
 private:
-    argon2::cuda::ProgramContext * progCtx;
-    cudaStream_t &stream;
-
-    argon2::cuda::ProcessingUnit *unit;
-    argon2::cuda::GlobalContext *global;
+    std::unique_ptr<argon2::cuda::ProcessingUnit> unit;
 };
 
 #endif //ARIONUM_GPU_MINER_CUDAMINER_H

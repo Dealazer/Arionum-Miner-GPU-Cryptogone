@@ -17,27 +17,18 @@
 const auto INITIAL_BLOCK_TYPE = BLOCK_GPU;
 
 AroMiner::AroMiner(
-    const argon2::MemConfig &memConfig, const Services& services, 
+    const argon2::MemConfig &cfg, const Services& services, 
     argon2::OPT_MODE cpuOptimizationMode) :
     services(services), 
-    memConfig(memConfig), 
+    memConfig(cfg), 
     argon_params{},
     optPrms(configureArgon(
         AroConfig::passes(INITIAL_BLOCK_TYPE),
         AroConfig::memCost(INITIAL_BLOCK_TYPE),
         AroConfig::lanes(INITIAL_BLOCK_TYPE))),
     miningConfig(memConfig, *argon_params, optPrms, INITIAL_BLOCK_TYPE),
-    resultsPtrs{},
     nonces{},
-    cpuBlocksOptimizationMode(cpuOptimizationMode)
-{
-    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
-        resultsPtrs[i].clear();
-        auto maxResults = std::max(
-            memConfig.batchSizes[BLOCK_CPU][i],
-            memConfig.batchSizes[BLOCK_GPU][i]);
-        resultsPtrs[i].resize(maxResults, nullptr);
-    }
+    cpuBlocksOptimizationMode(cpuOptimizationMode) {
 }
 
 uint32_t AroMiner::nHashesPerRun() const {
@@ -171,8 +162,10 @@ AroMiner::ProcessedResults AroMiner::processResults() {
     for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
         size_t batchSize = memConfig.batchSizes[blockType][i];
         for (size_t j = 0; j < batchSize; ++j) {
+            uint8_t* resultPtr = resultsPtr() + 
+                nHashes * (argon_params->getLanes() * ARGON2_BLOCK_SIZE);
             uint8_t buffer[32];
-            this->argon_params->finalize(buffer, resultsPtrs[i][j]);
+            this->argon_params->finalize(buffer, resultPtr);
             
             std::string encodedArgon;
             encode(buffer, 32, encodedArgon);
