@@ -117,7 +117,7 @@ index 3dd95ba..d8e67d9 100644
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
 diff --git a/data/kernels/argon2_kernel.cl b/data/kernels/argon2_kernel.cl
-index fa5e12a..25d503c 100644
+index fa5e12a..d1509a2 100644
 --- a/data/kernels/argon2_kernel.cl
 +++ b/data/kernels/argon2_kernel.cl
 @@ -35,6 +35,8 @@ typedef ptrdiff_t intptr_t;
@@ -194,22 +194,12 @@ index fa5e12a..25d503c 100644
 -    uint thread = get_local_id(0) % THREADS_PER_LANE;
 -
 -    __local struct u64_shuffle_buf *shuffle_buf = &shuffle_bufs[warp];
-+struct index {
-+    uint refSlot;
-+    uint storeSlot;
-+};
- 
+-
 -    uint segment_addr_blocks = (segment_blocks + ARGON2_QWORDS_IN_BLOCK - 1)
 -            / ARGON2_QWORDS_IN_BLOCK;
 -    uint block = block_id % segment_addr_blocks;
 -    uint segment = block_id / segment_addr_blocks;
-+void g_alt(local ulong *pA, local ulong *pB, local ulong *pC, local ulong *pD)
-+{
-+    ulong a = *pA;
-+    ulong b = *pB;
-+    ulong c = *pC;
-+    ulong d = *pD;
- 
+-
 -    uint slice, pass, lane;
 -#if ARGON2_TYPE == ARGON2_ID
 -    slice = segment % (ARGON2_SYNC_POINTS / 2);
@@ -217,36 +207,32 @@ index fa5e12a..25d503c 100644
 -    pass = 0;
 -#else
 -    uint pass_id;
++struct index {
++    uint refSlot;
++    uint storeSlot;
++};
+ 
+-    slice = segment % ARGON2_SYNC_POINTS;
+-    pass_id = segment / ARGON2_SYNC_POINTS;
++void g_alt(local ulong *pA, local ulong *pB, local ulong *pC, local ulong *pD)
++{
++    ulong a = *pA;
++    ulong b = *pB;
++    ulong c = *pC;
++    ulong d = *pD;
+ 
+-    pass = pass_id % passes;
+-    lane = pass_id / passes;
+-#endif
 +    a = f(a, b);
 +    d = rotr64(d ^ a, 32);
 +    c = f(c, d);
 +    b = rotr64(b ^ c, 24);
  
--    slice = segment % ARGON2_SYNC_POINTS;
--    pass_id = segment / ARGON2_SYNC_POINTS;
+-    struct block_th addr, tmp;
 +    a = f(a, b);
 +    d = rotr64(d ^ a, 16);
 +    c = f(c, d);
-+    b = rotr64(b ^ c, 63);
- 
--    pass = pass_id % passes;
--    lane = pass_id / passes;
--#endif
-+    *pA = a;
-+    *pB = b;
-+    *pC = c;
-+    *pD = d;
-+}
- 
--    struct block_th addr, tmp;
-+#define COMPUTE \
-+    a = f(a, b);               \
-+    d = rotr64(d ^ a, 32);     \
-+    c = f(c, d);               \
-+    b = rotr64(b ^ c, 24);     \
-+    a = f(a, b);               \
-+    d = rotr64(d ^ a, 16);     \
-+    c = f(c, d);               \
 +    b = rotr64(b ^ c, 63);
  
 -    uint thread_input;
@@ -275,17 +261,33 @@ index fa5e12a..25d503c 100644
 -    default:
 -        thread_input = 0;
 -        break;
-+//#define fBlaMka(x, y) ((x) + (y) + 2 * upsample(mul_hi((uint)(x), (uint)(y)), (uint)(x) * (uint)y))
-+//
++    *pA = a;
++    *pB = b;
++    *pC = c;
++    *pD = d;
++}
++
 +//#define COMPUTE \
-+//    a = fBlaMka(a, b);          \
-+//    d = rotate(d ^ a, (ulong)32);      \
-+//    c = fBlaMka(c, d);          \
-+//    b = rotate(b ^ c, (ulong)40);      \
-+//    a = fBlaMka(a, b);          \
-+//    d = rotate(d ^ a, (ulong)48);      \
-+//    c = fBlaMka(c, d);          \
-+//    b = rotate(b ^ c, (ulong)1);
++//    a = f(a, b);               \
++//    d = rotr64(d ^ a, 32);     \
++//    c = f(c, d);               \
++//    b = rotr64(b ^ c, 24);     \
++//    a = f(a, b);               \
++//    d = rotr64(d ^ a, 16);     \
++//    c = f(c, d);               \
++//    b = rotr64(b ^ c, 63);
++
++#define fBlaMka(x, y) ((x) + (y) + 2 * upsample(mul_hi((uint)(x), (uint)(y)), (uint)(x) * (uint)y))
++
++#define COMPUTE \
++    a = fBlaMka(a, b);          \
++    d = rotate(d ^ a, (ulong)32);      \
++    c = fBlaMka(c, d);          \
++    b = rotate(b ^ c, (ulong)40);      \
++    a = fBlaMka(a, b);          \
++    d = rotate(d ^ a, (ulong)48);      \
++    c = fBlaMka(c, d);          \
++    b = rotate(b ^ c, (ulong)1);
 +
 +__constant int OFFS[4][16] = {
 +    {
@@ -378,11 +380,11 @@ index fa5e12a..25d503c 100644
 +        batch_id, memory, memory_0_count, memory_1, memory_1_count,
 +        memory_2, memory_2_count, memory_3, memory_3_count, blocksPerBatch);
 +
-+#if 0
++#if 1
 +    uint thGroup = thread / 4;
 +    uint subId = thread % 4;
 +    __local ulong full_state[BLOCK_SIZE_ULONG];
-+    
++
 +    __local ulong* statePtr1 = full_state + 16 * thGroup;
 +    __local ulong* statePtr2 = full_state + 2 * thGroup;
 +    __constant int* offs = OFFS[subId];
@@ -468,7 +470,7 @@ index fa5e12a..25d503c 100644
 +
 +        uint slot = indexs->storeSlot;
 +        if (slot != UINT_MAX) // read index 2
-+            vstore4(th_state, 0, 
++            vstore4(th_state, 0,
 +                pMem + slot * BLOCK_SIZE_ULONG + offset); // read index 3
 +
 +        indexs++;
