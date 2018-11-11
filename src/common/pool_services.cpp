@@ -3,6 +3,7 @@
 #include "../../include/updater.h"
 
 #include <boost/algorithm/string.hpp>
+#include <thread>
 
 #define DD "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK"
 
@@ -115,7 +116,8 @@ bool AroResultsProcessorPool::processResult(const Input& input) {
             gmp_printf("-- Submitting - %Zd - %s - %.50s...\n",
                 mpz_rest.get_mpz_t(), r.nonce.data(), r.encodedArgon.data());
         }
-        submit(SubmitParams{ r.nonce, r.encodedArgon, bd.public_key, dd, isBlock });
+	SubmitParams p{ r.nonce, r.encodedArgon, bd.public_key, dd, isBlock };
+	submit(p);
     }
 
     mpz_class maxDL = UINT32_MAX;

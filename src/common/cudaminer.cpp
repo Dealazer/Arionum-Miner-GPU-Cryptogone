@@ -52,8 +52,8 @@ CudaMiner::CudaMiner(
     argon2::OPT_MODE cpuBlocksOptimizationMode) :
     AroMiner(memConfig, services, cpuBlocksOptimizationMode),
     unit{} {
-    auto & device = 
-        progCtx.getGlobalContext()->getAllDevices()[0];    
+    auto & device =
+        progCtx.getGlobalContext()->getAllDevices()[0];
     cudaSetDevice(device.getDeviceIndex());
 
     using ProcessingUnit = argon2::cuda::ProcessingUnit;

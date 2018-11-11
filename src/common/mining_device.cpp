@@ -4,6 +4,7 @@
 
 #include <map>
 #include <algorithm>
+#include <cstring> // memset
 
 argon2::OptParams precomputeArgon(argon2::Argon2Params * params) {
     static std::map<uint32_t, argon2::OptParams> s_precomputeCache;

@@ -77,16 +77,16 @@ private:
 
         std::vector<void*> buffers;
         for (uint32_t i = 0; i < nTasks; i++) {
-            newQueue();
-            buffers.push_back(newBuffer(aro.memPerTaskGPU));
+            this->newQueue();
+            buffers.push_back(this->newBuffer(aro.memPerTaskGPU));
         }
 
         BUFFER * indexBuffer = nullptr;
         if (aro.optPrmsCPU.mode == argon2::PRECOMPUTE_LOCAL_STATE ||
             aro.optPrmsCPU.mode == argon2::PRECOMPUTE_SHUFFLE) {
             size_t indexSize = aro.optPrmsCPU.customIndexNbSteps * 3 * sizeof(uint32_t);
-            indexBuffer = newBuffer(indexSize); // missing CL_MEM_READ_ONLY
-            writeBuffer(indexBuffer, aro.optPrmsCPU.customIndex, indexSize);
+            indexBuffer = this->newBuffer(indexSize); // missing CL_MEM_READ_ONLY
+            this->writeBuffer(indexBuffer, aro.optPrmsCPU.customIndex, indexSize);
         }
 
         minersConfigs.clear();
@@ -118,9 +118,9 @@ private:
                 mc.getTotalHashes(BLOCK_GPU),
                 mc.getTotalHashes(BLOCK_CPU));
             const size_t MAX_LANES = 4;
-            const size_t IN_BLOCKS_MAX_SIZE = MAX_LANES * 2 * ARGON2_BLOCK_SIZE;
+            const size_t IN_BLOCKS_MAX_SIZE = MAX_LANES * 2 * argon2::ARGON2_BLOCK_SIZE;
             mc.in = IN_BLOCKS_MAX_SIZE * totalNonces;
-            const size_t OUT_BLOCKS_MAX_SIZE = MAX_LANES * ARGON2_BLOCK_SIZE;
+            const size_t OUT_BLOCKS_MAX_SIZE = MAX_LANES * argon2::ARGON2_BLOCK_SIZE;
             mc.out = OUT_BLOCKS_MAX_SIZE * totalNonces;
 
             // save miner mem config
