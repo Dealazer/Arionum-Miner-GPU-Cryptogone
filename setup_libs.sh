@@ -19,7 +19,7 @@ ARGON_PATH=argon2
 rm -rf "$ARGON_PATH"
 git clone https://bitbucket.org/cryptogone/phc-winner-argon2-for-ario-cpp-miner.git "$ARGON_PATH"
 cd "$ARGON_PATH"
-git checkout opt_arionum
+git checkout smaller_index
 cd ..
 
 if [ "$1" = "linux" ]; then
