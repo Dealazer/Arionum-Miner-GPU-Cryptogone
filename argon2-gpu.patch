@@ -1959,10 +1959,11 @@ index 79fb767..2608590 100644
  }
  
  template<uint32_t type, uint32_t version>
-@@ -589,97 +591,31 @@ __device__ void argon2_step(
+@@ -588,98 +590,32 @@ __device__ void argon2_step(
+                          ref_index, ref_lane);
  }
  
- template<uint32_t type, uint32_t version>
+-template<uint32_t type, uint32_t version>
 -__global__ void argon2_kernel_segment(
 -        struct block_g *memory, uint32_t passes, uint32_t lanes,
 -        uint32_t segment_blocks, uint32_t pass, uint32_t slice)
@@ -2041,7 +2042,7 @@ index 79fb767..2608590 100644
 -    }
 -}
 -
--template<uint32_t type, uint32_t version>
+ template<uint32_t type, uint32_t version>
  __global__ void argon2_kernel_oneshot(
 -        struct block_g *memory, uint32_t passes, uint32_t lanes,
 +        struct block_g *memory,
