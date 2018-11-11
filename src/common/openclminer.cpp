@@ -23,9 +23,9 @@ void OpenClMiningDevice::initialize(uint32_t deviceIndex) {
     cl_device_id deviceID = device.getCLDevice()();
     auto it = s_programCache.find(deviceID);
     if (it == s_programCache.end()) {
-        s_programCache.insert(
-            std::make_pair(
-                deviceID,
+        s_programCache.emplace(
+            deviceID,
+            std::unique_ptr<argon2::opencl::ProgramContext>(
                 new argon2::opencl::ProgramContext(
                     &globalCtx, { device }, ARGON_TYPE, ARGON_VERSION,
                     "./argon2-gpu/data/kernels/")));

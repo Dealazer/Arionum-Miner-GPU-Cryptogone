@@ -205,8 +205,6 @@ string generateUniqid() {
 
 template <class CONTEXT, class DEVICE, class MINER>
 int run(const char *const *argv) {
-    using MiningSystem_t = MiningSystem<CONTEXT, DEVICE, MINER>;
-
 #ifdef _MSC_VER
     // set a fixed console size (default is not wide enough)
     setConsoleSize(150, 40, 2000);
@@ -275,14 +273,14 @@ int run(const char *const *argv) {
     }
 
     // devices configurations
-    auto devicesConfigs = [&] () -> auto {
+    auto devicesConfigs = [&] () -> std::vector<DeviceConfig> {
         auto itemOrLast = [](int index, std::vector<uint32_t> v) -> uint32_t {
             if (index < v.size())
                 return v[index];
             return v[v.size() - 1];
         };
 
-        std::vector<MiningSystem_t::DeviceConfig> configs;
+        std::vector<DeviceConfig> configs;
         for (auto deviceIndex : args.deviceIndexList)
             configs.push_back({
             deviceIndex,
@@ -304,27 +302,29 @@ int run(const char *const *argv) {
     Stats stats;
 
     // create mining system
+    using MiningSystem_t = MiningSystem<CONTEXT, DEVICE, MINER>;
     std::unique_ptr<Updater> updater;
     std::unique_ptr<thread> updateThread;
+    std::unique_ptr<MiningSystem_t> miningSystem{};
 
-    auto miningSystem = [&]() -> auto {
-        if (testMode()) {
-            return std::unique_ptr<MiningSystem_t>(new MiningSystem_t(
-                devicesConfigs,
-                std::unique_ptr<AroNonceProviderTestMode>(new AroNonceProviderTestMode(stats)),
-                std::unique_ptr<AroResultsProcessorTestMode>(new AroResultsProcessorTestMode()),
-                stats));
-        }
-
+    if (testMode()) {
+        miningSystem.reset(new MiningSystem_t(
+            devicesConfigs,
+            std::unique_ptr<AroNonceProviderTestMode>(new AroNonceProviderTestMode(stats)),
+            std::unique_ptr<AroResultsProcessorTestMode>(new AroResultsProcessorTestMode()),
+            stats));
+    }
+    else {
         updater.reset(new Updater(stats, minerSettings));
         updateThread.reset(new std::thread(&Updater::start, updater.get()));
         updateThread->detach();
-        return std::unique_ptr<MiningSystem_t>(new MiningSystem_t(
+
+        miningSystem.reset(new MiningSystem_t(
             devicesConfigs,
             std::unique_ptr<AroNonceProviderPool>(new AroNonceProviderPool(*updater)),
-            std::unique_ptr<AroResultsProcessorPool>(new AroResultsProcessorPool(minerSettings, stats)), 
+            std::unique_ptr<AroResultsProcessorPool>(new AroResultsProcessorPool(minerSettings, stats)),
             stats));
-    }();
+    }
 
     // create miners
     miningSystem->createMiners(devicesConfigs);
@@ -338,7 +338,7 @@ int run(const char *const *argv) {
 
 template <class CONTEXT, class DEVICE, class MINER>
 int commonMain(const char *const *argv) {
-    try {        
+    try {
         return run<CONTEXT, DEVICE, MINER>(argv);
     }
     catch (std::logic_error e) {

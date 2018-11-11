@@ -1,7 +1,5 @@
 #pragma once
 
-#include <chrono>
-#include <vector>
 #include "miner.h"
 #include "stats.h"
 #include "updater.h"
@@ -9,18 +7,22 @@
 #include "miners_stats.h"
 #include "perfscope.h"
 
+#include <chrono>
+#include <vector>
+#include <thread>
+
 const size_t MAX_MINERS_PER_DEVICE = 256;
+
+struct DeviceConfig {
+    uint32_t deviceIndex;
+    uint32_t nMiners;
+    uint32_t gpuBatchSize;
+    argon2::OPT_MODE cpuBlocksOptimizationMode;
+};
 
 template <class CONTEXT, class MINING_DEVICE, class MINER>
 class MiningSystem {
 public:
-    struct DeviceConfig {
-        uint32_t deviceIndex;
-        uint32_t nMiners;
-        uint32_t gpuBatchSize;
-        argon2::OPT_MODE cpuBlocksOptimizationMode;
-    };
-
     MiningSystem(
         const std::vector<DeviceConfig> & deviceConfigs,
         std::unique_ptr<IAroNonceProvider> nonceProvider,
