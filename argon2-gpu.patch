@@ -117,7 +117,7 @@ index 3dd95ba..d8e67d9 100644
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
 diff --git a/data/kernels/argon2_kernel.cl b/data/kernels/argon2_kernel.cl
-index fa5e12a..cab853a 100644
+index fa5e12a..163f3c1 100644
 --- a/data/kernels/argon2_kernel.cl
 +++ b/data/kernels/argon2_kernel.cl
 @@ -35,6 +35,8 @@ typedef ptrdiff_t intptr_t;
@@ -129,7 +129,16 @@ index fa5e12a..cab853a 100644
  #define ARGON2_BLOCK_SIZE 1024
  #define ARGON2_QWORDS_IN_BLOCK (ARGON2_BLOCK_SIZE / 8)
  #define ARGON2_SYNC_POINTS 4
-@@ -79,7 +81,7 @@ ulong u64_shuffle(ulong v, uint thread_src, uint thread,
+@@ -50,6 +52,8 @@ typedef ptrdiff_t intptr_t;
+ #define ARGON2_TYPE ARGON2_I
+ #endif
+ 
++#define BLOCK_MEM(block_id) (__global ulong*)(memory + block_id)
++
+ ulong u64_build(uint hi, uint lo)
+ {
+     return upsample(hi, lo);
+@@ -79,7 +83,7 @@ ulong u64_shuffle(ulong v, uint thread_src, uint thread,
      buf->lo[thread] = lo;
      buf->hi[thread] = hi;
  
@@ -138,7 +147,7 @@ index fa5e12a..cab853a 100644
  
      lo = buf->lo[thread_src];
      hi = buf->hi[thread_src];
-@@ -132,6 +134,15 @@ void xor_block(struct block_th *dst, const struct block_th *src)
+@@ -132,6 +136,15 @@ void xor_block(struct block_th *dst, const struct block_th *src)
      dst->d ^= src->d;
  }
  
@@ -154,7 +163,7 @@ index fa5e12a..cab853a 100644
  void load_block(struct block_th *dst, __global const struct block_g *src,
                  uint thread)
  {
-@@ -150,6 +161,15 @@ void load_block_xor(struct block_th *dst, __global const struct block_g *src,
+@@ -150,6 +163,15 @@ void load_block_xor(struct block_th *dst, __global const struct block_g *src,
      dst->d ^= src->data[3 * THREADS_PER_LANE + thread];
  }
  
@@ -170,7 +179,7 @@ index fa5e12a..cab853a 100644
  void store_block(__global struct block_g *dst, const struct block_th *src,
                   uint thread)
  {
-@@ -407,244 +427,338 @@ void next_addresses(struct block_th *addr, struct block_th *tmp,
+@@ -407,244 +429,279 @@ void next_addresses(struct block_th *addr, struct block_th *tmp,
      xor_block(addr, tmp);
  }
  
@@ -233,28 +242,6 @@ index fa5e12a..cab853a 100644
 +    *pC = c;
 +    *pD = d;
 +}
-+
-+//#define COMPUTE \
-+//    a = f(a, b);               \
-+//    d = rotr64(d ^ a, 32);     \
-+//    c = f(c, d);               \
-+//    b = rotr64(b ^ c, 24);     \
-+//    a = f(a, b);               \
-+//    d = rotr64(d ^ a, 16);     \
-+//    c = f(c, d);               \
-+//    b = rotr64(b ^ c, 63);
-+
-+#define fBlaMka(x, y) ((x) + (y) + 2 * upsample(mul_hi((uint)(x), (uint)(y)), (uint)(x) * (uint)y))
-+
-+#define COMPUTE \
-+    a = fBlaMka(a, b);          \
-+    d = rotate(d ^ a, (ulong)32);      \
-+    c = fBlaMka(c, d);          \
-+    b = rotate(b ^ c, (ulong)40);      \
-+    a = fBlaMka(a, b);          \
-+    d = rotate(d ^ a, (ulong)48);      \
-+    c = fBlaMka(c, d);          \
-+    b = rotate(b ^ c, (ulong)1);
 +
 +__constant int OFFS[4][16] = {
 +    {
@@ -332,84 +319,37 @@ index fa5e12a..cab853a 100644
 +        batch_id, memory, memory_0_count, memory_1, memory_1_count,
 +        memory_2, memory_2_count, memory_3, memory_3_count, blocksPerBatch);
 +
-+#if 1
-+    __local int addr[64];
-+
++#if 1 // CPU, INDEX CACHE
 +    uint thGroup = thread / 4;
 +    uint subId = thread % 4;
++
 +    __local ulong full_state[BLOCK_SIZE_ULONG];
-+
-+    __local ulong* statePtr1 = full_state + 16 * thGroup;
-+    __local ulong* statePtr2 = full_state + 2 * thGroup;
++    __local ulong* p1 = full_state + 16 * thGroup;
++    __local ulong* p2 = full_state + 2 * thGroup;
++    __local struct index indexCache[THREADS_PER_LANE];
 +    __constant int* offs = OFFS[subId];
++    __global const struct index * pIndex = indexs;
++    __global const struct index * pIndexEnd = indexs + (nSteps - 2);
 +
-+    __local ulong* p1_a = statePtr1 + offs[0];
-+    __local ulong* p1_b = statePtr1 + offs[1];
-+    __local ulong* p1_c = statePtr1 + offs[2];
-+    __local ulong* p1_d = statePtr1 + offs[3];
++    ulong4 th_state = vload4(thread, BLOCK_MEM(1));
 +
-+    __local ulong* p2_a = statePtr1 + offs[4];
-+    __local ulong* p2_b = statePtr1 + offs[5];
-+    __local ulong* p2_c = statePtr1 + offs[6];
-+    __local ulong* p2_d = statePtr1 + offs[7];
++    while (pIndex < pIndexEnd) {
++        uint nBlocks = min((uint)(pIndexEnd - pIndex), (uint)THREADS_PER_LANE);
++        indexCache[thread] = pIndex[thread];
 +
-+    __local ulong* p3_a = statePtr2 + offs[8];
-+    __local ulong* p3_b = statePtr2 + offs[9];
-+    __local ulong* p3_c = statePtr2 + offs[10];
-+    __local ulong* p3_d = statePtr2 + offs[11];
-+
-+    __local ulong* p4_a = statePtr2 + offs[12];
-+    __local ulong* p4_b = statePtr2 + offs[13];
-+    __local ulong* p4_c = statePtr2 + offs[14];
-+    __local ulong* p4_d = statePtr2 + offs[15];
-+
-+    __global ulong * pMem = (__global ulong*)(memory);
-+    int offset = thread * 4;
-+
-+    ulong4 th_state = vload4(0, pMem + BLOCK_SIZE_ULONG + offset);
-+
-+    __global const struct index * pIndexes = indexs;
-+    __global const struct index * stop_index = indexs + (nSteps-2);
-+
-+    uint n = 0;
-+    for (; pIndexes < stop_index; pIndexes += 32) {
-+        addr[thread] = pIndexes[thread].refSlot;
-+        addr[thread + 32] = pIndexes[thread].storeSlot;
-+        barrier(CLK_LOCAL_MEM_FENCE);
-+
-+        uint i_limit = (stop_index - pIndexes);
-+        if (i_limit > 32) i_limit = 32;
-+
-+        for (int i = 0; i< i_limit; i++) {
-+            ulong4 th_ref = vload4(0, pMem + addr[i] * BLOCK_SIZE_ULONG + offset); // read index 1
++        for (uint i = 0; i < nBlocks; i++) {
++            ulong4 th_ref = vload4(thread, BLOCK_MEM(indexCache[i].refSlot));
++            
 +            th_state ^= th_ref;
++
 +            ulong4 th_tmp = th_state;
 +
-+            vstore4(th_state, 0, full_state + offset);
++            vstore4(th_state, thread, full_state);
 +            barrier(CLK_LOCAL_MEM_FENCE);
  
 -    struct block_th addr, tmp;
-+            ulong a, b, c, d;
-+
-+            a = *p1_a;
-+            b = *p1_b;
-+            c = *p1_c;
-+            d = *p1_d;
-+            COMPUTE;
-+            //*p1_a = a;
-+            *p1_b = b;
-+            *p1_c = c;
-+            *p1_d = d;
-+
-+            //a = *p2_a;
-+            b = *p2_b;
-+            c = *p2_c;
-+            d = *p2_d;
-+            COMPUTE;
-+            *p2_a = a;
-+            *p2_b = b;
-+            *p2_c = c;
-+            *p2_d = d;
++            g_alt(p1 + offs[0], p1 + offs[1], p1 + offs[2], p1 + offs[3]);
++            g_alt(p1 + offs[4], p1 + offs[5], p1 + offs[6], p1 + offs[7]);
 +            barrier(CLK_LOCAL_MEM_FENCE);
  
 -    uint thread_input;
@@ -439,35 +379,17 @@ index fa5e12a..cab853a 100644
 -        thread_input = 0;
 -        break;
 -    }
-+            a = *p3_a;
-+            b = *p3_b;
-+            c = *p3_c;
-+            d = *p3_d;
-+            COMPUTE;
-+            //*p3_a = a;
-+            *p3_b = b;
-+            *p3_c = c;
-+            *p3_d = d;
-+
-+            //a = *p4_a;
-+            b = *p4_b;
-+            c = *p4_c;
-+            d = *p4_d;
-+            COMPUTE;
-+            *p4_a = a;
-+            *p4_b = b;
-+            *p4_c = c;
-+            *p4_d = d;
++            g_alt(p2 + offs[8], p2 + offs[9], p2 + offs[10], p2 + offs[11]);
++            g_alt(p2 + offs[12], p2 + offs[13], p2 + offs[14], p2 + offs[15]);
 +            barrier(CLK_LOCAL_MEM_FENCE);
  
 -    next_addresses(&addr, &tmp, thread_input, thread, shuffle_buf);
-+            th_state = vload4(0, full_state + offset) ^ th_tmp;
++            th_state = vload4(thread, full_state) ^ th_tmp;
  
 -    refs += segment * segment_blocks;
-+            uint slot = addr[i + 32];
-+            if (slot != UINT_MAX) // read index 2
-+                vstore4(th_state, 0,
-+                    pMem + slot * BLOCK_SIZE_ULONG + offset); // read index 3
++            uint slot = indexCache[i].storeSlot;
++            if (slot != UINT_MAX)
++                vstore4(th_state, thread, BLOCK_MEM(slot));
  
 -    for (uint i = 0; i < QWORDS_PER_THREAD; i++) {
 -        uint pos = i * THREADS_PER_LANE + thread;
@@ -482,7 +404,7 @@ index fa5e12a..cab853a 100644
 -
 -            refs[offset].ref_index = ref_index;
 -            refs[offset].ref_lane  = ref_lane;
-+            n++;
++            pIndex++;
          }
      }
 -}
@@ -501,8 +423,7 @@ index fa5e12a..cab853a 100644
 -    data_independent = true;
 -#elif ARGON2_TYPE == ARGON2_ID
 -    data_independent = pass == 0 && slice < ARGON2_SYNC_POINTS / 2;
-+    vstore4(th_state, 0, pMem + (blocksPerBatch - 1) * BLOCK_SIZE_ULONG + offset);
- #else
+-#else
 -    data_independent = false;
 -#endif
 -    if (data_independent) {
@@ -513,20 +434,26 @@ index fa5e12a..cab853a 100644
 -        ulong v = u64_shuffle(prev->a, 0, thread, shuffle_buf);
 -        ref_index = u64_lo(v);
 -        ref_lane  = u64_hi(v);
--
--        compute_ref_pos(lanes, segment_blocks, pass, lane, slice, offset,
--                        &ref_lane, &ref_index);
--    }
--
--    argon2_core(memory, mem_curr, prev, tmp, shuffle_buf, lanes, thread, pass,
--                ref_index, ref_lane);
--}
++    vstore4(th_state, thread, BLOCK_MEM(blocksPerBatch - 1));
++#else // CPU, LEGACY
 +    uint thGroup = thread / 4;
 +    uint subId = thread % 4;
 +    __local ulong full_state[1024 / 8];
 +    __local ulong* p1 = full_state + 16 * thGroup;
 +    __local ulong* p2 = full_state + 2 * thGroup;
 +    __constant int* offs = OFFS[subId];
+ 
+-        compute_ref_pos(lanes, segment_blocks, pass, lane, slice, offset,
+-                        &ref_lane, &ref_index);
+-    }
++    ulong4 th_state = vload4(thread, (__global ulong*)(memory + 1));
+ 
+-    argon2_core(memory, mem_curr, prev, tmp, shuffle_buf, lanes, thread, pass,
+-                ref_index, ref_lane);
+-}
++    for (uint i = 2; i < nSteps; ++i)
++    {
++        ulong4 th_ref = vload4(thread, (global ulong*)(memory + indexs->refSlot));
  
 -__kernel void argon2_kernel_segment_precompute(
 -        __local struct u64_shuffle_buf *shuffle_bufs,
@@ -538,22 +465,24 @@ index fa5e12a..cab853a 100644
 -    uint lane   = get_global_id(0) / THREADS_PER_LANE;
 -    uint warp   = get_local_id(0) / THREADS_PER_LANE;
 -    uint thread = get_local_id(0) % THREADS_PER_LANE;
-+    ulong4 th_state = vload4(thread, (global ulong*)(memory + 1));
++        th_state ^= th_ref;
  
 -    __local struct u64_shuffle_buf *shuffle_buf = &shuffle_bufs[warp];
-+    for (uint i = 2; i < nSteps; ++i)
-+    {
-+        ulong4 th_ref = vload4(thread, (global ulong*)(memory + indexs->refSlot));
++        ulong4 th_tmp = th_state;
  
 -    uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
-+        th_state ^= th_ref;
++        vstore4(th_state, thread, full_state);
++        barrier(CLK_LOCAL_MEM_FENCE);
  
 -    /* select job's memory region: */
 -    memory += (size_t)job_id * lanes * lane_blocks;
-+        ulong4 th_tmp = th_state;
++        g_alt(p1 + offs[0], p1 + offs[1], p1 + offs[2], p1 + offs[3]);
++        g_alt(p1 + offs[4], p1 + offs[5], p1 + offs[6], p1 + offs[7]);
++        barrier(CLK_LOCAL_MEM_FENCE);
  
 -    struct block_th prev, tmp;
-+        vstore4(th_state, thread, full_state);
++        g_alt(p2 + offs[8], p2 + offs[9], p2 + offs[10], p2 + offs[11]);
++        g_alt(p2 + offs[12], p2 + offs[13], p2 + offs[14], p2 + offs[15]);
 +        barrier(CLK_LOCAL_MEM_FENCE);
  
 -    __global struct block_g *mem_segment =
@@ -573,14 +502,13 @@ index fa5e12a..cab853a 100644
 -        mem_prev = mem_segment + (slice == 0 ? lane_blocks * lanes : 0) - lanes;
 -        mem_curr = mem_segment;
 -    }
-+        g_alt(p1 + offs[0], p1 + offs[1], p1 + offs[2], p1 + offs[3]);
-+        g_alt(p1 + offs[4], p1 + offs[5], p1 + offs[6], p1 + offs[7]);
-+        barrier(CLK_LOCAL_MEM_FENCE);
++        th_state = vload4(thread, full_state) ^ th_tmp;
++        //barrier(CLK_LOCAL_MEM_FENCE);
  
 -    load_block(&prev, mem_prev, thread);
-+        g_alt(p2 + offs[8], p2 + offs[9], p2 + offs[10], p2 + offs[11]);
-+        g_alt(p2 + offs[12], p2 + offs[13], p2 + offs[14], p2 + offs[15]);
-+        barrier(CLK_LOCAL_MEM_FENCE);
++        uint slot = indexs->storeSlot;
++        if (slot != UINT_MAX)
++            vstore4(th_state, thread, (global ulong*)(memory + slot));
  
 -#if ARGON2_TYPE == ARGON2_ID
 -        if (pass == 0 && slice < ARGON2_SYNC_POINTS / 2) {
@@ -591,17 +519,12 @@ index fa5e12a..cab853a 100644
 -        refs += (lane * passes + pass) * lane_blocks + slice * segment_blocks;
 -        refs += start_offset;
 -#endif
-+        th_state = vload4(thread, full_state) ^ th_tmp;
-+        //barrier(CLK_LOCAL_MEM_FENCE);
- 
+-
 -    for (uint offset = start_offset; offset < segment_blocks; ++offset) {
 -        argon2_step_precompute(
 -                    memory, mem_curr, &prev, &tmp, shuffle_buf, &refs, lanes,
 -                    segment_blocks, thread, lane, pass, slice, offset);
-+        uint slot = indexs->storeSlot;
-+        if (slot != UINT_MAX)
-+            vstore4(th_state, thread, (global ulong*)(memory + slot));
- 
+-
 -        mem_curr += lanes;
 +        indexs++;
      }
@@ -636,30 +559,44 @@ index fa5e12a..cab853a 100644
 +    int batch_id = get_global_id(1);
  
 -    __local struct u64_shuffle_buf *shuffle_buf = &shuffle_bufs[warp];
--
--    uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
--
--    /* select job's memory region: */
--    memory += (size_t)job_id * lanes * lane_blocks;
 +    memory = selectMemoryRegion(
 +        batch_id, memory, memory_0_count, memory_1, memory_1_count,
 +        memory_2, memory_2_count, memory_3, memory_3_count, blocksPerBatch);
  
-     struct block_th prev, tmp;
+-    uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
++    struct block_th prev, tmp;
 +    load_block(&prev, memory + 1, thread);
+ 
+-    /* select job's memory region: */
+-    memory += (size_t)job_id * lanes * lane_blocks;
++    __local struct u64_shuffle_buf *shuffle_buf = &shuffle_bufs[0];
+ 
+-    struct block_th prev, tmp;
++#if 1 // GPU, INDEX CACHE
++    __local struct index indexCache[THREADS_PER_LANE];
++    __global const struct index * pIndex = indexs;
++    __global const struct index * pIndexEnd = indexs + (nSteps - 2);
  
 -    __global struct block_g *mem_lane = memory + lane;
 -    __global struct block_g *mem_prev = mem_lane + 1 * lanes;
 -    __global struct block_g *mem_curr = mem_lane + 2 * lanes;
--
++    while (pIndex < pIndexEnd) {
++        uint nBlocks = min((uint)(pIndexEnd - pIndex), (uint)THREADS_PER_LANE);
++        indexCache[thread] = pIndex[thread];
+ 
 -    load_block(&prev, mem_prev, thread);
--
++        for (uint i = 0; i < nBlocks; i++) {
++            uint ref_index = indexCache[i].refSlot;
++            load_block_xor(&prev, BLOCK_MEM(ref_index), thread);
+ 
 -#if ARGON2_TYPE == ARGON2_ID
 -    refs += lane * (lane_blocks / 2) + 2;
 -#else
 -    refs += lane * passes * lane_blocks + 2;
 -#endif
-+    __local struct u64_shuffle_buf *shuffle_buf = &shuffle_bufs[0];
++            move_block(&tmp, &prev);
++            shuffle_block(&prev, thread, shuffle_buf);
++            xor_block(&prev, &tmp);
  
 -    uint skip = 2;
 -    for (uint pass = 0; pass < passes; ++pass) {
@@ -669,23 +606,33 @@ index fa5e12a..cab853a 100644
 -                    --skip;
 -                    continue;
 -                }
-+    for (uint i = 2; i < nSteps; ++i) {
-+        uint ref_index = indexs->refSlot;
-+        __global struct block_g *mem_ref = memory + ref_index;
++            uint slot = indexCache[i].storeSlot;
++            if (slot != UINT_MAX)
++                store_block(BLOCK_MEM(slot), &prev, thread);
  
 -                argon2_step_precompute(
 -                            memory, mem_curr, &prev, &tmp, shuffle_buf, &refs,
 -                            lanes, segment_blocks, thread,
 -                            lane, pass, slice, offset);
-+        load_block_xor(&prev, mem_ref, thread);
++            pIndex++;
++        }
++    }
  
 -                mem_curr += lanes;
 -            }
++    store_block(memory + (blocksPerBatch - 1), &prev, thread);
++#else // GPU, LEGACY
++    for (uint i = 2; i < nSteps; ++i) {
++        uint ref_index = indexs->refSlot;
++        __global struct block_g *mem_ref = memory + ref_index;
+ 
+-            barrier(CLK_LOCAL_MEM_FENCE);
++        load_block_xor(&prev, mem_ref, thread);
++
 +        move_block(&tmp, &prev);
 +        shuffle_block(&prev, thread, shuffle_buf);
 +        xor_block(&prev, &tmp);
- 
--            barrier(CLK_LOCAL_MEM_FENCE);
++
 +        uint slot = indexs->storeSlot;
 +        if (slot != UINT_MAX) {
 +            __global struct block_g *mem_curr = memory + slot;
@@ -697,12 +644,13 @@ index fa5e12a..cab853a 100644
      }
 +
 +    store_block(memory + (blocksPerBatch - 1), &prev, thread);
++#endif
  }
 +
  #endif /* ARGON2_TYPE == ARGON2_I || ARGON2_TYPE == ARGON2_ID */
  
  void argon2_step(
-@@ -692,94 +806,21 @@ void argon2_step(
+@@ -692,94 +749,21 @@ void argon2_step(
                  ref_index, ref_lane);
  }
  
@@ -811,7 +759,7 @@ index fa5e12a..cab853a 100644
      uint lane   = get_global_id(0) / THREADS_PER_LANE;
      uint warp   = get_local_id(0) / THREADS_PER_LANE;
      uint thread = get_local_id(0) % THREADS_PER_LANE;
-@@ -788,9 +829,11 @@ __kernel void argon2_kernel_oneshot(
+@@ -788,9 +772,11 @@ __kernel void argon2_kernel_oneshot(
  
      uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
  
