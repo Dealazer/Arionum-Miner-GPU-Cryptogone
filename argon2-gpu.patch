@@ -117,7 +117,7 @@ index 3dd95ba..d8e67d9 100644
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
 diff --git a/data/kernels/argon2_kernel.cl b/data/kernels/argon2_kernel.cl
-index fa5e12a..163f3c1 100644
+index fa5e12a..6271600 100644
 --- a/data/kernels/argon2_kernel.cl
 +++ b/data/kernels/argon2_kernel.cl
 @@ -35,6 +35,8 @@ typedef ptrdiff_t intptr_t;
@@ -179,7 +179,7 @@ index fa5e12a..163f3c1 100644
  void store_block(__global struct block_g *dst, const struct block_th *src,
                   uint thread)
  {
-@@ -407,244 +429,279 @@ void next_addresses(struct block_th *addr, struct block_th *tmp,
+@@ -407,244 +429,318 @@ void next_addresses(struct block_th *addr, struct block_th *tmp,
      xor_block(addr, tmp);
  }
  
@@ -242,6 +242,44 @@ index fa5e12a..163f3c1 100644
 +    *pC = c;
 +    *pD = d;
 +}
++
++#define G_ALT_1(p, offA, offB, offC, offD) \
++{ \
++a = p[offA]; \
++b = p[offB]; \
++c = p[offC]; \
++d = p[offD]; \
++a = f(a, b); \
++d = rotr64(d ^ a, 32); \
++c = f(c, d); \
++b = rotr64(b ^ c, 24); \
++a = f(a, b); \
++d = rotr64(d ^ a, 16); \
++c = f(c, d); \
++b = rotr64(b ^ c, 63); \
++p[offB] = b; \
++p[offC] = c; \
++p[offD] = d; \
++} 
++
++#define G_ALT_2(p, offA, offB, offC, offD) \
++{ \
++b = p[offB]; \
++c = p[offC]; \
++d = p[offD]; \
++a = f(a, b); \
++d = rotr64(d ^ a, 32); \
++c = f(c, d); \
++b = rotr64(b ^ c, 24); \
++a = f(a, b); \
++d = rotr64(d ^ a, 16); \
++c = f(c, d); \
++b = rotr64(b ^ c, 63); \
++p[offA] = a; \
++p[offB] = b; \
++p[offC] = c; \
++p[offD] = d; \
++} 
 +
 +__constant int OFFS[4][16] = {
 +    {
@@ -348,8 +386,9 @@ index fa5e12a..163f3c1 100644
 +            barrier(CLK_LOCAL_MEM_FENCE);
  
 -    struct block_th addr, tmp;
-+            g_alt(p1 + offs[0], p1 + offs[1], p1 + offs[2], p1 + offs[3]);
-+            g_alt(p1 + offs[4], p1 + offs[5], p1 + offs[6], p1 + offs[7]);
++            ulong a, b, c, d;
++            G_ALT_1(p1, offs[0], offs[1], offs[2], offs[3]);
++            G_ALT_2(p1, offs[4], offs[5], offs[6], offs[7]);
 +            barrier(CLK_LOCAL_MEM_FENCE);
  
 -    uint thread_input;
@@ -379,8 +418,8 @@ index fa5e12a..163f3c1 100644
 -        thread_input = 0;
 -        break;
 -    }
-+            g_alt(p2 + offs[8], p2 + offs[9], p2 + offs[10], p2 + offs[11]);
-+            g_alt(p2 + offs[12], p2 + offs[13], p2 + offs[14], p2 + offs[15]);
++            G_ALT_1(p2, offs[8], offs[9], offs[10], offs[11]);
++            G_ALT_2(p2, offs[12], offs[13], offs[14], offs[15]);
 +            barrier(CLK_LOCAL_MEM_FENCE);
  
 -    next_addresses(&addr, &tmp, thread_input, thread, shuffle_buf);
@@ -650,7 +689,7 @@ index fa5e12a..163f3c1 100644
  #endif /* ARGON2_TYPE == ARGON2_I || ARGON2_TYPE == ARGON2_ID */
  
  void argon2_step(
-@@ -692,94 +749,21 @@ void argon2_step(
+@@ -692,94 +788,21 @@ void argon2_step(
                  ref_index, ref_lane);
  }
  
@@ -759,7 +798,7 @@ index fa5e12a..163f3c1 100644
      uint lane   = get_global_id(0) / THREADS_PER_LANE;
      uint warp   = get_local_id(0) / THREADS_PER_LANE;
      uint thread = get_local_id(0) % THREADS_PER_LANE;
-@@ -788,9 +772,11 @@ __kernel void argon2_kernel_oneshot(
+@@ -788,9 +811,11 @@ __kernel void argon2_kernel_oneshot(
  
      uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
  
