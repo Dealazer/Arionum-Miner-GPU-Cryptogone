@@ -201,8 +201,6 @@ string generateUniqid() {
     return ss.str();
 }
 
-
-
 template <class CONTEXT, class DEVICE, class MINER>
 int run(const char *const *argv) {
 #ifdef _MSC_VER
@@ -310,8 +308,10 @@ int run(const char *const *argv) {
     if (testMode()) {
         miningSystem.reset(new MiningSystem_t(
             devicesConfigs,
-            std::unique_ptr<AroNonceProviderTestMode>(new AroNonceProviderTestMode(stats)),
-            std::unique_ptr<AroResultsProcessorTestMode>(new AroResultsProcessorTestMode()),
+            std::unique_ptr<AroNonceProviderTestMode>(
+                new AroNonceProviderTestMode(stats)),
+            std::unique_ptr<AroResultsProcessorTestMode>(
+                new AroResultsProcessorTestMode()),
             stats));
     }
     else {
@@ -321,8 +321,10 @@ int run(const char *const *argv) {
 
         miningSystem.reset(new MiningSystem_t(
             devicesConfigs,
-            std::unique_ptr<AroNonceProviderPool>(new AroNonceProviderPool(*updater)),
-            std::unique_ptr<AroResultsProcessorPool>(new AroResultsProcessorPool(minerSettings, stats)),
+            std::unique_ptr<AroNonceProviderPool>(
+                new AroNonceProviderPool(*updater)),
+            std::unique_ptr<AroResultsProcessorPool>(
+                new AroResultsProcessorPool(minerSettings, stats)),
             stats));
     }
 

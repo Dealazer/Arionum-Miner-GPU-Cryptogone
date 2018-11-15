@@ -174,26 +174,12 @@ protected:
             if (!canStartMiner(minerDeviceIndex(i), miner->providerBlockType()))
                 continue;
 
-#if DEBUG_DURATIONS
-            std::chrono::duration<float> T = high_resolution_clock::now() - s_start;
-            printf("T=%4.3f miner %d, start %s task\n", T.count(), i, blockTypeName(s_miners[i]->getCurrentBlockType()).c_str());
-            if (s_minerStartT[i] == t_time_point()) {
-                s_minerStartT[i] = high_resolution_clock::now();
-            }
-#endif
-
             if (!miner->generateNonces())
                 continue;
 
             miner->launchGPUTask();
 
             minerIdle[i] = false;
-
-#if 0
-            std::chrono::duration<float> duration = high_resolution_clock::now() - s_minerStartT[i];
-            printf("miner %d, new task set in %.2fms\n",
-                i, duration.count() * 1000.f);
-#endif
         }
         return true;
     }
@@ -206,20 +192,8 @@ protected:
                 continue;
             }
             if (miners[i]->resultsReady()) {
-#if DEBUG_DURATIONS
-                if (s_minerStartT[i] != t_time_point()) {
-                    std::chrono::duration<float> T = high_resolution_clock::now() - start;
-                    std::chrono::duration<float> duration = high_resolution_clock::now() - minerStartT[i];
-                    printf("T=%4.3f miner %d, %d %s hashes in %.2fms => %.1f Hs\n",
-                        T.count(),
-                        i,
-                        miners[i]->getNbHashesPerIteration(),
-                        blockTypeName(miners[i]->getCurrentBlockType()).c_str(),
-                        duration.count() * 1000.f,
-                        (float)miners[i]->getNbHashesPerIteration() / duration.count());
-                }
-                s_minerStartT[i] = high_resolution_clock::now();
-#endif
+                PerfScope p("processResults()");
+
                 auto result = miners[i]->processResults();
                 stats.addHashes(result.nHashes);
                 minerStatsOnTaskEnd(i, result.valid);

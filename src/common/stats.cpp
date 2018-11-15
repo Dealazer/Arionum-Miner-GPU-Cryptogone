@@ -52,13 +52,14 @@ const atomic<uint32_t> &Stats::getBestDl(BLOCK_TYPE t) const {
     return (t == BLOCK_GPU) ? bestDl_gpu : bestDl_cpu;
 }
 
-double Stats::getAvgHashrate(BLOCK_TYPE t) const
-{
+double Stats::getAvgHashrate(BLOCK_TYPE t) const {
     if (t == BLOCK_CPU) {
-        return ((totalHashes_cpu > 0) ? ((double)totalHashes_cpu / totalTime_cpu_sec) : 0.0);
+        return ((totalHashes_cpu > 0) ? 
+            ((double)totalHashes_cpu / totalTime_cpu_sec) : 0.0);
     }
     else if (t == BLOCK_GPU) {
-        return ((totalHashes_gpu > 0) ? ((double)totalHashes_gpu / totalTime_gpu_sec) : 0.0);
+        return ((totalHashes_gpu > 0) ? 
+            ((double)totalHashes_gpu / totalTime_gpu_sec) : 0.0);
     }
     return 0.0;
 }
@@ -165,8 +166,10 @@ void Stats::beginRound(BLOCK_TYPE blockType) {
     roundType = blockType;
     roundHashes = 0;    
     roundStart = std::chrono::system_clock::now();
-    if (DEBUG_ROUNDS)
+    if (DEBUG_ROUNDS) {
+        printTimePrefix();
         cout << "---- START ROUND, type=" << roundType << endl;
+    }
 }
 
 void Stats::endRound() {

@@ -117,7 +117,7 @@ index 3dd95ba..d8e67d9 100644
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
 diff --git a/data/kernels/argon2_kernel.cl b/data/kernels/argon2_kernel.cl
-index fa5e12a..6271600 100644
+index fa5e12a..0ab9831 100644
 --- a/data/kernels/argon2_kernel.cl
 +++ b/data/kernels/argon2_kernel.cl
 @@ -35,6 +35,8 @@ typedef ptrdiff_t intptr_t;
@@ -260,7 +260,7 @@ index fa5e12a..6271600 100644
 +p[offB] = b; \
 +p[offC] = c; \
 +p[offD] = d; \
-+} 
++}
 +
 +#define G_ALT_2(p, offA, offB, offC, offD) \
 +{ \
@@ -279,7 +279,7 @@ index fa5e12a..6271600 100644
 +p[offB] = b; \
 +p[offC] = c; \
 +p[offD] = d; \
-+} 
++}
 +
 +__constant int OFFS[4][16] = {
 +    {
@@ -377,7 +377,7 @@ index fa5e12a..6271600 100644
 +
 +        for (uint i = 0; i < nBlocks; i++) {
 +            ulong4 th_ref = vload4(thread, BLOCK_MEM(indexCache[i].refSlot));
-+            
++
 +            th_state ^= th_ref;
 +
 +            ulong4 th_tmp = th_state;
@@ -3219,41 +3219,50 @@ index 9fe39b4..30da5a4 100644
  
  } // namespace opencl
 diff --git a/lib/argon2-opencl/processingunit.cpp b/lib/argon2-opencl/processingunit.cpp
-index 598ced7..589f273 100644
+index 598ced7..bcccf9d 100644
 --- a/lib/argon2-opencl/processingunit.cpp
 +++ b/lib/argon2-opencl/processingunit.cpp
-@@ -8,130 +8,62 @@
+@@ -1,6 +1,7 @@
+ #include "processingunit.h"
+ 
+ #include <limits>
++#include <tuple>
+ #ifndef NDEBUG
+ #include <iostream>
+ #endif
+@@ -8,130 +9,73 @@
  namespace argon2 {
  namespace opencl {
  
 -static bool isPowerOfTwo(std::uint32_t x)
-+ProcessingUnit::ProcessingUnit(const Argon2iMiningConfig & miningConfig,
-+        KernelRunner::MiningContext & miningCtx) :
-+    runner(miningConfig, miningCtx)
- {
+-{
 -    return (x & (x - 1)) == 0;
-+    // preallocate pinned mem for kernel inputs
-+    auto context = miningCtx.programContext.getContext();
-+    std::size_t inSize = miningConfig.mem->in;
-+    inBuffer = cl::Buffer(
-+            context,
-+            CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
-+            inSize);
-+    inPtr = (uint8_t*)miningCtx.queue.enqueueMapBuffer(
-+        inBuffer,
-+        true,
-+        CL_MAP_WRITE, 0, inSize);
++enum class PinnedMemType {
++    INPUT,
++    OUTPUT
++};
 +
-+    // preallocate pinned mem for kernel outputs
-+    std::size_t outSize = miningConfig.mem->out;
-+    outBuffer = cl::Buffer(
++std::pair<cl::Buffer, uint8_t*> newPinnedMemBuffer(
++    KernelRunner::MiningContext & miningCtx, 
++    size_t size, PinnedMemType type) {
++    auto context = miningCtx.programContext.getContext();
++    bool isInput = (type == PinnedMemType::INPUT);
++    cl::Buffer buffer = cl::Buffer(
 +        context,
-+        CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR,
-+        outSize);
-+    outPtr = (uint8_t*)miningCtx.queue.enqueueMapBuffer(
-+        outBuffer,
++        (isInput ? CL_MEM_READ_ONLY : CL_MEM_WRITE_ONLY) | 
++        CL_MEM_ALLOC_HOST_PTR,
++        size);
++    auto mapPtr = (uint8_t*)miningCtx.queue.enqueueMapBuffer(
++        buffer,
 +        true,
-+        CL_MAP_READ, 0, outSize);
++        isInput ? CL_MAP_WRITE : CL_MAP_READ,
++        0, size);
++
++    uint8_t dummy = 0xFF;
++    miningCtx.queue.enqueueWriteBuffer(
++        buffer, true, size - 1, 1, &dummy);
++
++    return{ buffer, mapPtr };
  }
  
 -ProcessingUnit::ProcessingUnit(
@@ -3265,7 +3274,10 @@ index 598ced7..589f273 100644
 -             precomputeRefs),
 -      bestLanesPerBlock(runner.getMinLanesPerBlock()),
 -      bestJobsPerBlock(runner.getMinJobsPerBlock())
--{
++ProcessingUnit::ProcessingUnit(const Argon2iMiningConfig & miningConfig,
++        KernelRunner::MiningContext & miningCtx) :
++    runner(miningConfig, miningCtx)
+ {
 -    /* pre-fill first blocks with pseudo-random data: */
 -    for (std::size_t i = 0; i < batchSize; i++) {
 -        setPassword(i, NULL, 0);
@@ -3292,7 +3304,9 @@ index 598ced7..589f273 100644
 -#endif
 -                break;
 -            }
--
++    std::tie(inBuffer, inPtr) = newPinnedMemBuffer(
++        miningCtx, miningConfig.mem->in, PinnedMemType::INPUT);
+ 
 -#ifndef NDEBUG
 -            std::cerr << "[INFO]   " << lpb << " lanes per block: "
 -                      << time << " ms" << std::endl;
@@ -3316,7 +3330,10 @@ index 598ced7..589f273 100644
 -#ifndef NDEBUG
 -        std::cerr << "[INFO] Tuning jobs per block..." << std::endl;
 -#endif
--
++    std::tie(outBuffer, outPtr) = newPinnedMemBuffer(
++        miningCtx, miningConfig.mem->out, PinnedMemType::OUTPUT);
++}
+ 
 -        float bestTime = std::numeric_limits<float>::infinity();
 -        for (std::uint32_t jpb = 1; jpb <= runner.getMaxJobsPerBlock();
 -             jpb *= 2)
