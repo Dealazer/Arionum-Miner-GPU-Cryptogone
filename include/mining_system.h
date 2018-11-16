@@ -63,6 +63,7 @@ public:
                 }
             }
 
+            cout << endl;
             cout << "--- Device " << deviceIndex
                 << ", " << devices[deviceIndex].getName() << " ---" << endl;
             uint32_t nMiners = devicesConfigs[i].nMiners;
