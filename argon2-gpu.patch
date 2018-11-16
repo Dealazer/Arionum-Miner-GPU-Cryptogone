@@ -1344,7 +1344,7 @@ index bf2ca75..17cfc27 100644
  
  #endif // ARGON2_ARGON2PARAMS_H
 diff --git a/include/argon2-opencl/cl.hpp b/include/argon2-opencl/cl.hpp
-index ced34f5..372bec3 100644
+index ced34f5..bee344b 100644
 --- a/include/argon2-opencl/cl.hpp
 +++ b/include/argon2-opencl/cl.hpp
 @@ -142,6 +142,14 @@
@@ -1362,17 +1362,14 @@ index ced34f5..372bec3 100644
  #ifndef CL_HPP_
  #define CL_HPP_
  
-@@ -327,7 +335,9 @@ static inline cl_int errHandler (
+@@ -327,6 +335,7 @@ static inline cl_int errHandler (
      const char * errStr = NULL)
  {
      if (err != CL_SUCCESS) {
--        throw Error(err, errStr);
-+        //if (s_logCLErrors)
-+        //    printf("OpenCL error: errCode=%d str=%s\n", err, errStr ? errStr: "none");
-+	    throw Error(err, errStr);
++        printf("OpenCL error: errCode=%d str=%s\n", err, errStr ? errStr: "none");
+         throw Error(err, errStr);
      }
      return err;
- }
 diff --git a/include/argon2-opencl/device.h b/include/argon2-opencl/device.h
 index 40e1f5e..bfc2750 100644
 --- a/include/argon2-opencl/device.h
