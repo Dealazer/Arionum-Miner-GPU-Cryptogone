@@ -117,7 +117,7 @@ index 3dd95ba..d8e67d9 100644
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
 diff --git a/data/kernels/argon2_kernel.cl b/data/kernels/argon2_kernel.cl
-index fa5e12a..f3310a7 100644
+index fa5e12a..a4caa3d 100644
 --- a/data/kernels/argon2_kernel.cl
 +++ b/data/kernels/argon2_kernel.cl
 @@ -35,6 +35,8 @@ typedef ptrdiff_t intptr_t;
@@ -179,7 +179,7 @@ index fa5e12a..f3310a7 100644
  void store_block(__global struct block_g *dst, const struct block_th *src,
                   uint thread)
  {
-@@ -407,244 +429,318 @@ void next_addresses(struct block_th *addr, struct block_th *tmp,
+@@ -407,244 +429,320 @@ void next_addresses(struct block_th *addr, struct block_th *tmp,
      xor_block(addr, tmp);
  }
  
@@ -374,6 +374,7 @@ index fa5e12a..f3310a7 100644
 +    while (pIndex < pIndexEnd) {
 +        uint nBlocks = min((uint)(pIndexEnd - pIndex), (uint)THREADS_PER_LANE);
 +        indexCache[thread] = pIndex[thread];
++        barrier(CLK_LOCAL_MEM_FENCE);
 +
 +        for (uint i = 0; i < nBlocks; i++) {
 +            ulong4 th_ref = vload4(thread, BLOCK_MEM(indexCache[i].refSlot));
@@ -622,6 +623,7 @@ index fa5e12a..f3310a7 100644
 +    while (pIndex < pIndexEnd) {
 +        uint nBlocks = min((uint)(pIndexEnd - pIndex), (uint)THREADS_PER_LANE);
 +        indexCache[thread] = pIndex[thread];
++        barrier(CLK_LOCAL_MEM_FENCE);
  
 -    load_block(&prev, mem_prev, thread);
 +        for (uint i = 0; i < nBlocks; i++) {
@@ -689,7 +691,7 @@ index fa5e12a..f3310a7 100644
  #endif /* ARGON2_TYPE == ARGON2_I || ARGON2_TYPE == ARGON2_ID */
  
  void argon2_step(
-@@ -692,94 +788,21 @@ void argon2_step(
+@@ -692,94 +790,21 @@ void argon2_step(
                  ref_index, ref_lane);
  }
  
@@ -798,7 +800,7 @@ index fa5e12a..f3310a7 100644
      uint lane   = get_global_id(0) / THREADS_PER_LANE;
      uint warp   = get_local_id(0) / THREADS_PER_LANE;
      uint thread = get_local_id(0) % THREADS_PER_LANE;
-@@ -788,9 +811,11 @@ __kernel void argon2_kernel_oneshot(
+@@ -788,9 +813,11 @@ __kernel void argon2_kernel_oneshot(
  
      uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
  
@@ -1636,7 +1638,7 @@ index eb52e02..56040c9 100644
      devices.reserve(count);
      for (int i = 0; i < count; i++) {
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
-index 79fb767..01cbf6d 100644
+index 79fb767..e290b98 100644
 --- a/lib/argon2-cuda/kernels.cu
 +++ b/lib/argon2-cuda/kernels.cu
 @@ -3,8 +3,11 @@
@@ -1794,7 +1796,7 @@ index 79fb767..01cbf6d 100644
  
  template<uint32_t version>
  __device__ void argon2_core(
-@@ -415,137 +369,284 @@ __device__ void argon2_core(
+@@ -415,137 +369,285 @@ __device__ void argon2_core(
      store_block(mem_curr, prev, thread);
  }
  
@@ -1860,6 +1862,7 @@ index 79fb767..01cbf6d 100644
 +while (pIndex < pIndexEnd) { \
 +    uint32_t nBlocks = min((uint32_t)(pIndexEnd - pIndex), THREADS_PER_LANE); \
 +    index_cache[thread] = pIndex[thread]; \
++    __syncthreads(); \
 +    for (uint32_t i = 0; i < nBlocks; i++) {
  
 -    struct block_th prev, tmp;
@@ -2180,7 +2183,7 @@ index 79fb767..01cbf6d 100644
  }
  
  template<uint32_t type, uint32_t version>
-@@ -588,98 +689,32 @@ __device__ void argon2_step(
+@@ -588,98 +690,32 @@ __device__ void argon2_step(
                           ref_index, ref_lane);
  }
  
@@ -2295,7 +2298,7 @@ index 79fb767..01cbf6d 100644
  
      struct block_th prev, addr, tmp;
      uint32_t thread_input;
-@@ -757,301 +792,139 @@ __global__ void argon2_kernel_oneshot(
+@@ -757,301 +793,139 @@ __global__ void argon2_kernel_oneshot(
      }
  }
  
