@@ -8,7 +8,7 @@ git submodule update --init --recursive
 
 echo "# Patch argon2-gpu"
 cd argon2-gpu
-git apply --whitespace=fix ../argon2-gpu.patch
+git apply --reject --whitespace=fix ../argon2-gpu.patch
 cp ../kernels/*.cl ./data/kernels/
 
 echo "# Patch argon2"

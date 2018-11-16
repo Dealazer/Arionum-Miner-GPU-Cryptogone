@@ -1636,7 +1636,7 @@ index eb52e02..56040c9 100644
      devices.reserve(count);
      for (int i = 0; i < count; i++) {
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
-index 79fb767..8fbb97e 100644
+index 79fb767..9329819 100644
 --- a/lib/argon2-cuda/kernels.cu
 +++ b/lib/argon2-cuda/kernels.cu
 @@ -3,8 +3,11 @@
@@ -1971,12 +1971,12 @@ index 79fb767..8fbb97e 100644
 +    INDEX_CACHE_DECLS();
 +    INDEX_CACHE_LOOP_BEGIN()
 +        uint32_t storeSlot = index_cache[i].storeSlot;
-+        struct block_g *mem_curr = 
++        struct block_g *mem_curr =
 +            (storeSlot != UINT32_MAX) ? (memory + storeSlot) : 0;
 +
 +        argon2_core_precomputedIndex(
 +            memory, mem_curr, &prev, &tmp, thread, index_cache[i].refSlot);
-+        
++
 +        pIndex++;
 +    INDEX_CACHE_LOOP_END()
 +#else // CPU BLOCK, SHUFFLE, LEGACY
@@ -3286,7 +3286,7 @@ index 9fe39b4..30da5a4 100644
  
  } // namespace opencl
 diff --git a/lib/argon2-opencl/processingunit.cpp b/lib/argon2-opencl/processingunit.cpp
-index 598ced7..bcccf9d 100644
+index 598ced7..02a891b 100644
 --- a/lib/argon2-opencl/processingunit.cpp
 +++ b/lib/argon2-opencl/processingunit.cpp
 @@ -1,6 +1,7 @@
@@ -3310,13 +3310,13 @@ index 598ced7..bcccf9d 100644
 +};
 +
 +std::pair<cl::Buffer, uint8_t*> newPinnedMemBuffer(
-+    KernelRunner::MiningContext & miningCtx, 
++    KernelRunner::MiningContext & miningCtx,
 +    size_t size, PinnedMemType type) {
 +    auto context = miningCtx.programContext.getContext();
 +    bool isInput = (type == PinnedMemType::INPUT);
 +    cl::Buffer buffer = cl::Buffer(
 +        context,
-+        (isInput ? CL_MEM_READ_ONLY : CL_MEM_WRITE_ONLY) | 
++        (isInput ? CL_MEM_READ_ONLY : CL_MEM_WRITE_ONLY) |
 +        CL_MEM_ALLOC_HOST_PTR,
 +        size);
 +    auto mapPtr = (uint8_t*)miningCtx.queue.enqueueMapBuffer(
