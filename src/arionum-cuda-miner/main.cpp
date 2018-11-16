@@ -5,6 +5,7 @@
 #include <sstream>
 
 #define API_NAME "CUDA"
+const std::string DEFAULT_CPU_KERNEL = "shuffle";
 
 std::string getExtraInfoStr() {
     std::ostringstream oss;

@@ -2,6 +2,7 @@
 #include "../../include/openclminer.h"
 
 #define API_NAME "OPENCL"
+const std::string DEFAULT_CPU_KERNEL = "local_state";
 
 std::string getExtraInfoStr() {
     std::ostringstream oss;
