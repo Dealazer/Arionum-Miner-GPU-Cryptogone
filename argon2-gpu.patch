@@ -1636,7 +1636,7 @@ index eb52e02..56040c9 100644
      devices.reserve(count);
      for (int i = 0; i < count; i++) {
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
-index 79fb767..9329819 100644
+index 79fb767..01cbf6d 100644
 --- a/lib/argon2-cuda/kernels.cu
 +++ b/lib/argon2-cuda/kernels.cu
 @@ -3,8 +3,11 @@
@@ -1794,7 +1794,7 @@ index 79fb767..9329819 100644
  
  template<uint32_t version>
  __device__ void argon2_core(
-@@ -415,137 +369,249 @@ __device__ void argon2_core(
+@@ -415,137 +369,284 @@ __device__ void argon2_core(
      store_block(mem_curr, prev, thread);
  }
  
@@ -1860,7 +1860,6 @@ index 79fb767..9329819 100644
 +while (pIndex < pIndexEnd) { \
 +    uint32_t nBlocks = min((uint32_t)(pIndexEnd - pIndex), THREADS_PER_LANE); \
 +    index_cache[thread] = pIndex[thread]; \
-+    __syncthreads(); \
 +    for (uint32_t i = 0; i < nBlocks; i++) {
  
 -    struct block_th prev, tmp;
@@ -1916,6 +1915,40 @@ index 79fb767..9329819 100644
 +    sharedMem[offD] = d;
 +}
 +
++#define G_ALT_1(p, offA, offB, offC, offD) \
++a = sharedMem[p + offA]; \
++b = sharedMem[p + offB]; \
++c = sharedMem[p + offC]; \
++d = sharedMem[p + offD]; \
++a = f(a, b); \
++d = rotr64(d ^ a, 32); \
++c = f(c, d); \
++b = rotr64(b ^ c, 24); \
++a = f(a, b); \
++d = rotr64(d ^ a, 16); \
++c = f(c, d); \
++b = rotr64(b ^ c, 63); \
++sharedMem[p + offB] = b; \
++sharedMem[p + offC] = c; \
++sharedMem[p + offD] = d;
++
++#define G_ALT_2(p, offA, offB, offC, offD) \
++b = sharedMem[p + offB]; \
++c = sharedMem[p + offC]; \
++d = sharedMem[p + offD]; \
++a = f(a, b); \
++d = rotr64(d ^ a, 32); \
++c = f(c, d); \
++b = rotr64(b ^ c, 24); \
++a = f(a, b); \
++d = rotr64(d ^ a, 16); \
++c = f(c, d); \
++b = rotr64(b ^ c, 63); \
++sharedMem[p + offA] = a; \
++sharedMem[p + offB] = b; \
++sharedMem[p + offC] = c; \
++sharedMem[p + offD] = d;
++
 +__constant__ uint8_t OFFS[4][16] = {
 +    {
 +        0, 4, 8, 12,
@@ -1942,7 +1975,11 @@ index 79fb767..9329819 100644
 +        17, 32, 65, 112,
      }
 +};
-+
+ 
+-    for (uint32_t offset = start_offset; offset < segment_blocks; ++offset) {
+-        argon2_step_precompute<type, version>(
+-                    memory, mem_curr, &prev, &tmp, &refs, lanes, segment_blocks,
+-                    thread, lane, pass, slice, offset);
 +__global__ void argon2_kernel_oneshot_precomputedIndex(
 +    struct block_g *memory,
 +    uint32_t memory_0_count,
@@ -1985,15 +2022,11 @@ index 79fb767..9329819 100644
 +        uint32_t storeSlot = indexs->storeSlot;
 +        uint32_t ref_index = indexs->refSlot;
  
--    for (uint32_t offset = start_offset; offset < segment_blocks; ++offset) {
--        argon2_step_precompute<type, version>(
--                    memory, mem_curr, &prev, &tmp, &refs, lanes, segment_blocks,
--                    thread, lane, pass, slice, offset);
+-        mem_curr += lanes;
 +        struct block_g *mem_curr = (storeSlot != UINT32_MAX) ? (memory + storeSlot) : 0;
 +        argon2_core_precomputedIndex(
 +            memory, mem_curr, &prev, &tmp, thread, ref_index);
- 
--        mem_curr += lanes;
++
 +        indexs++;
      }
 +#endif
@@ -2079,17 +2112,19 @@ index 79fb767..9329819 100644
  
 -                mem_curr += lanes;
 -            }
-+        g_alt(offP1 + offs[0], offP1 + offs[1], offP1 + offs[2], offP1 + offs[3]);
-+        g_alt(offP1 + offs[4], offP1 + offs[5], offP1 + offs[6], offP1 + offs[7]);
-+        __syncthreads();
++        uint64_t a, b, c, d;
  
 -            __syncthreads();
 -        }
-+        g_alt(offP2 + offs[8], offP2 + offs[9], offP2 + offs[10], offP2 + offs[11]);
-+        g_alt(offP2 + offs[12], offP2 + offs[13], offP2 + offs[14], offP2 + offs[15]);
++        G_ALT_1(offP1, offs[0], offs[1], offs[2], offs[3]);
++        G_ALT_2(offP1, offs[4], offs[5], offs[6], offs[7]);
 +        __syncthreads();
  
 -        mem_curr = mem_lane;
++        G_ALT_1(offP2, offs[8], offs[9], offs[10], offs[11]);
++        G_ALT_2(offP2, offs[12], offs[13], offs[14], offs[15]);
++        __syncthreads();
++
 +        th_state = (reinterpret_cast<ulonglong4*>(sharedMem))[thread];
 +
 +        th_state.x ^= th_tmp.x; th_state.y ^= th_tmp.y;
@@ -2145,7 +2180,7 @@ index 79fb767..9329819 100644
  }
  
  template<uint32_t type, uint32_t version>
-@@ -588,98 +654,32 @@ __device__ void argon2_step(
+@@ -588,98 +689,32 @@ __device__ void argon2_step(
                           ref_index, ref_lane);
  }
  
@@ -2260,7 +2295,7 @@ index 79fb767..9329819 100644
  
      struct block_th prev, addr, tmp;
      uint32_t thread_input;
-@@ -757,301 +757,139 @@ __global__ void argon2_kernel_oneshot(
+@@ -757,301 +792,139 @@ __global__ void argon2_kernel_oneshot(
      }
  }
  
