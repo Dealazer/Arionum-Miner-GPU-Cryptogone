@@ -195,8 +195,8 @@ You can also skip the last step and instead open `build/arionum-gpu-miner.sln` w
 * improved CPU blocks hashrate for CUDA & OpenCL
 * new --cpu-blocks-kernel / -k option, 
   it allows to choose between 'shuffle' and 'local_state' kernels
-* shuffle kernel is usually faster on AMD devices (used by default in OpenCL miner)
-* local_state kernel is usually faster on NVIDIA devices (used by default in CUDA miner)
+* local_state kernel is usually faster on AMD devices (used by default in OpenCL miner)
+* shuffle kernel is usually faster on NVIDIA devices (used by default in CUDA miner)
 * On AMD devices, you might need to reduce -b value a bit to get the best hashrate,
   for example: -b 216 for v1.6.0 instead of -b 224 for v1.5.1
 
