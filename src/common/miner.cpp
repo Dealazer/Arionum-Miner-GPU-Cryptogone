@@ -205,21 +205,24 @@ std::string AroMiner::describeKernel(BLOCK_TYPE bt) const {
 
 std::string AroMiner::describe() const {
     std::ostringstream oss;
+    if (memConfig.batchSizes[BLOCK_GPU][0] <= 0) {
+        oss << "GPU batch size <= 0, miner inactive, did you forgot to set a -b value > 0 ?";
+        return oss.str();
+    }
     auto describeMiner = [&](BLOCK_TYPE bt) {
         auto &pSizes = memConfig.batchSizes[bt];
-        if (pSizes[0] == 0) {
-            return "error, batch size <= 0, did you set -b value correctly ?";
-        }
+        if (pSizes[0] == 0)
+            return;
         oss << describeKernel(bt) << "(";
-        for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
-            if (i != 0 && pSizes[i])
-                oss << " ";
-            if (pSizes[i])
-                oss << pSizes[i];
-            else
-                break;
-        }
-        oss << ")";
+            for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
+                if (i != 0 && pSizes[i])
+                    oss << " ";
+                if (pSizes[i])
+                    oss << pSizes[i];
+                else
+                    break;
+            }
+       oss << ")";
     };
     describeMiner(BLOCK_GPU);
     oss << " ";
