@@ -166,10 +166,10 @@ AroMiner::ProcessedResults AroMiner::processResults() {
                 nHashes * (argon_params->getLanes() * ARGON2_BLOCK_SIZE);
             uint8_t buffer[32];
             this->argon_params->finalize(buffer, resultPtr);
-            
+
             std::string encodedArgon;
             encode(buffer, 32, encodedArgon);
-            
+
             mpz_class mpz_result;
             std::string resultStr = nonces.bases[nHashes] + encodedArgon;
             mpz_result.set_str(extractDuration(resultStr), 10);
@@ -207,8 +207,9 @@ std::string AroMiner::describe() const {
     std::ostringstream oss;
     auto describeMiner = [&](BLOCK_TYPE bt) {
         auto &pSizes = memConfig.batchSizes[bt];
-        if (pSizes[0] == 0)
-            return;
+        if (pSizes[0] == 0) {
+            return "error, batch size <= 0, did you set -b value correctly ?";
+        }
         oss << describeKernel(bt) << "(";
         for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
             if (i != 0 && pSizes[i])
