@@ -1,14 +1,12 @@
 //
 // Created by guli on 31/01/18. Modified by Cryptogone (windows port, fork at block 80k, optimizations)
 //
+#include "../../include/updater.h"
+
+#include <string>
 #include <iostream>
 #include <iomanip>
 #include <thread>
-#include "../../include/updater.h"
-
-using namespace std;
-
-#include <string>
 
 #pragma warning(disable:4715)
 

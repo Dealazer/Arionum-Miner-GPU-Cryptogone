@@ -25,5 +25,5 @@ std::string getExtraInfoStr() {
 
 int main(int, const char *const *argv) {
     return commonMain<
-        opencl::GlobalContext, OpenClMiningDevice, OpenClMiner>(argv);
+        argon2::opencl::GlobalContext, OpenClMiningDevice, OpenClMiner>(argv);
 }

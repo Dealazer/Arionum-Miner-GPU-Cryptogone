@@ -49,9 +49,7 @@ public:
         for (int i = 0; i < devicesConfigs.size(); i++) {
             auto deviceIndex = devicesConfigs[i].deviceIndex;
             if (deviceIndex >= devices.size()) {
-                cout << endl;
-                cout << "--- Device " << deviceIndex << " does not exist, skipping it" << endl;
-                cout << endl;
+                cout << "Warning: device " << deviceIndex << " does not exist, skipping it" << endl;
                 continue;
             }
 
@@ -63,9 +61,13 @@ public:
                 }
             }
 
-            cout << endl;
-            cout << "--- Device " << deviceIndex
-                << ", " << devices[deviceIndex].getName() << " ---" << endl;
+            auto sep = []() -> void {
+                cout << "----------------------------------------------" << endl;
+            };
+
+            sep();
+            cout << "Device " << deviceIndex
+                << ", " << devices[deviceIndex].getName() << endl;
             uint32_t nMiners = devicesConfigs[i].nMiners;
             uint32_t gpuBatchSize = devicesConfigs[i].gpuBatchSize;
             miningDevices.emplace_back(
@@ -85,7 +87,7 @@ public:
                 devicesMiners.back().push_back(miners.size() - 1);
                 cout << "miner " << j << " : " << miners.back()->describe() << endl;
             }
-            cout << endl;
+            sep();
         }
 
         minerIdle = std::vector<bool>(miners.size(), true);
@@ -99,7 +101,7 @@ public:
 
             int nIdle = processMinersResults();
             if (nIdle == 0) {
-                //std::this_thread::yield();
+                const long long SLEEP_INTERVAL_MS = 3;
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }

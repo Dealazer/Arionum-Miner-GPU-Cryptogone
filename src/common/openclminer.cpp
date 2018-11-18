@@ -9,10 +9,6 @@
 #include <iomanip>
 #include <map>
 
-using namespace argon2;
-using namespace std;
-using argon2::OptParams;
-
 void OpenClMiningDevice::initialize(uint32_t deviceIndex) {
     device = globalCtx.getAllDevices()[deviceIndex];
 

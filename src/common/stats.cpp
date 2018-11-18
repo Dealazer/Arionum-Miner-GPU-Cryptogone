@@ -12,9 +12,6 @@
 #include <sstream>
 #include <random>
 
-using namespace std;
-using std::cout;
-
 const bool DEBUG_ROUNDS = false;
 const int COL_TIME = 20;
 const int COL_TYPE = 8;

@@ -22,5 +22,5 @@ std::string getExtraInfoStr() {
 
 int main(int, const char *const *argv) {
     return commonMain<
-        cuda::GlobalContext, CudaMiningDevice, CudaMiner>(argv);
+        argon2::cuda::GlobalContext, CudaMiningDevice, CudaMiner>(argv);
 }

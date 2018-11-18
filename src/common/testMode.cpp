@@ -10,10 +10,9 @@
 #include "../../include/testMode.h"
 #include "../../include/stats.h"
 
-using namespace std;
 using std::chrono::high_resolution_clock;
 
-typedef std::chrono::time_point<high_resolution_clock> t_time_point;
+using t_time_point = std::chrono::time_point<high_resolution_clock>;
 
 const int TEST_MODE_STATS_INTERVAL = 5;
 const int TEST_MODE_BLOCK_CHANGE_RATE = 6;
