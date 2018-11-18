@@ -10,6 +10,7 @@
 #include <chrono>
 #include <vector>
 #include <thread>
+#include <iomanip>
 
 const size_t MAX_MINERS_PER_DEVICE = 256;
 
