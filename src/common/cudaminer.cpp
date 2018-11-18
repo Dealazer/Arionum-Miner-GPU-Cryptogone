@@ -17,25 +17,21 @@
 #include <memory>
 
 void CudaMiningDevice::initialize(uint32_t deviceIndex) {
-    globalCtx.reset(
-        new argon2::cuda::GlobalContext());
-    auto &devices = globalCtx->getAllDevices();
-    auto device = &devices[deviceIndex];
-
-    argon2::cuda::setCudaDevice(deviceIndex);
-    progCtx.reset(
-        new argon2::cuda::ProgramContext(
-            globalCtx.get(), { *device }, ARGON_TYPE, ARGON_VERSION));
-    argon2::cuda::CudaException::check(cudaGetLastError());
+    globalCtx.reset(new argon2::cuda::GlobalContext());
+    auto & deviceRef = globalCtx->getAllDevices()[deviceIndex];
+    progCtx.reset(new argon2::cuda::ProgramContext(
+        deviceRef, ARGON_TYPE, ARGON_VERSION));
 }
 
 QueueWrapper * CudaMiningDevice::newQueue() {
+    progCtx->getDevice().setAsCurrent();
     queues.emplace_back(new QueueWrapper());
     argon2::cuda::CudaException::check(cudaGetLastError());
     return queues.back().get();
 }
 
 BufferWrapper * CudaMiningDevice::newBuffer(size_t size) {
+    progCtx->getDevice().setAsCurrent();
     buffers.emplace_back(new BufferWrapper(size));
     argon2::cuda::CudaException::check(cudaGetLastError());
     return buffers.back().get();
@@ -52,14 +48,10 @@ CudaMiner::CudaMiner(
     argon2::OPT_MODE cpuBlocksOptimizationMode) :
     AroMiner(memConfig, services, cpuBlocksOptimizationMode),
     unit{} {
-    auto & device =
-        progCtx.getGlobalContext()->getAllDevices()[0];
-    cudaSetDevice(device.getDeviceIndex());
-
     using ProcessingUnit = argon2::cuda::ProcessingUnit;
     using MiningContext = argon2::cuda::KernelRunner::MiningContext;
     unit.reset(new ProcessingUnit(
-        &device, miningConfig, MiningContext { queue.stream, progCtx }));
+        miningConfig, MiningContext { queue.stream, progCtx }));
     argon2::cuda::CudaException::check(cudaGetLastError());
 }
 
