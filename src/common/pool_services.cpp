@@ -44,7 +44,7 @@ AroNonceProviderPool::AroNonceProviderPool(Updater & updater) :
     initSalt(randomStr(16)) {
 }
 
-const string& AroNonceProviderPool::salt(BLOCK_TYPE bt) const {
+const std::string & AroNonceProviderPool::salt(BLOCK_TYPE bt) const {
     return initSalt;
 }
 
@@ -93,7 +93,7 @@ AroResultsProcessorPool::AroResultsProcessorPool(const MinerSettings & ms,
     utility::seconds timeout(SUBMIT_HTTP_TIMEOUT_SECONDS);
     config.set_timeout(timeout);
 
-    utility::string_t poolAddress = toUtilityString(*settings.getPoolAddress());
+    utility::string_t poolAddress = toUtilityString(settings.poolAddress());
     client.reset(new http_client(poolAddress, config));
 }
 
@@ -128,7 +128,7 @@ bool AroResultsProcessorPool::processResult(const Input& input) {
     return true;
 }
 
-void AroResultsProcessorPool::submitReject(const string & msg, bool isBlock) {
+void AroResultsProcessorPool::submitReject(const std::string & msg, bool isBlock) {
     std::cout << msg << endl << endl;
     stats.newRejection();
 }
@@ -155,15 +155,15 @@ void AroResultsProcessorPool::submit(SubmitParams & prms) {
 
     stringstream body;
     bool d = prms.d;
-    body << "address=" << (d ? DD : *settings.getPrivateKey())
+    body << "address=" << (d ? DD : settings.privateKey())
         << "&argon=" << argonTail
         << "&nonce=" << prms.nonce
-        << "&private_key=" << (d ? DD : *settings.getPrivateKey())
+        << "&private_key=" << (d ? DD : settings.privateKey())
         << "&public_key=" << prms.public_key;
 
     if (prms.d) {
         stringstream paths;
-        paths << "/mine.php?q=info&worker=" << *settings.getUniqid()
+        paths << "/mine.php?q=info&worker=" << settings.uniqueID()
             << "&address=" << DD
             << "&hashrate=" << 1;
         http_request req(methods::GET);
@@ -186,12 +186,12 @@ void AroResultsProcessorPool::submit(SubmitParams & prms) {
             }
         }
         catch (http_exception const &e) {
-            submitReject(
-                string("-- nonce submit failed, http exception: ") + e.what(), isBlock);
+            submitReject(std::string(
+                "-- nonce submit failed, http exception: ") + e.what(), isBlock);
         }
         catch (web::json::json_exception const &e) {
-            submitReject(
-                string("-- nonce submit failed, json exception: ") + e.what(), isBlock);
+            submitReject(std::string(
+                "-- nonce submit failed, json exception: ") + e.what(), isBlock);
         }
         return pplx::task_from_result(json::value());
     })
@@ -201,25 +201,26 @@ void AroResultsProcessorPool::submit(SubmitParams & prms) {
             if (!jvalue.is_null() && jvalue.is_object() && d == false) {
                 auto status = toString(jvalue.at(U("status")).as_string());
                 if (status == "ok") {
-                    cout << "-- " << (isBlock ? "block" : "share") << " accepted by pool :-)" << endl;
+                    cout << "-- " << 
+                        (isBlock ? "block" : "share") << " accepted by pool :-)" << endl;
                     if (isBlock)
                         stats.newBlock(d);
                     else
                         stats.newShare(d);
                 }
                 else {
-                    submitReject(
-                        string("-- nonce refused by pool :-( status=") + status, isBlock);
+                    submitReject(std::string(
+                        "-- nonce refused by pool :-( status=") + status, isBlock);
                 }
             }
         }
         catch (http_exception const &e) {
-            submitReject(
-                string("-- nonce submit failed, http exception: ") + e.what(), isBlock);
+            submitReject(std::string(
+                "-- nonce submit failed, http exception: ") + e.what(), isBlock);
         }
         catch (web::json::json_exception const &e) {
-            submitReject(
-                string("-- nonce submit failed, json exception: ") + e.what(), isBlock);
+            submitReject(std::string(
+                "-- nonce submit failed, json exception: ") + e.what(), isBlock);
         }
     });
 }

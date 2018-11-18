@@ -3,22 +3,22 @@
 //
 #include "../../include/minersettings.h"
 
-string *MinerSettings::getPoolAddress() const {
-    return poolAddress;
+const std::string & MinerSettings::poolAddress() const {
+    return poolAddress_;
 }
 
-string *MinerSettings::getPrivateKey() const {
-    return privateKey;
+const std::string & MinerSettings::privateKey() const {
+    return privateKey_;
 }
 
-string *MinerSettings::getUniqid() const {
-    return uniqid;
+const std::string & MinerSettings::uniqueID() const {
+    return uniqid_;
 }
 
-ostream &operator<<(ostream &os, const MinerSettings &settings) {
-	os << "worker id     : " << settings.getUniqid()->c_str() << std::endl
-       << "pool address  : " << settings.getPoolAddress()->c_str() << std::endl
-       << "wallet address: " << settings.getPrivateKey()->c_str();
+std::ostream &operator<<(std::ostream &os, const MinerSettings &settings) {
+	os << "worker id     : " << settings.uniqueID() << std::endl
+       << "pool address  : " << settings.poolAddress() << std::endl
+       << "wallet address: " << settings.privateKey();
     return os;
 }
 

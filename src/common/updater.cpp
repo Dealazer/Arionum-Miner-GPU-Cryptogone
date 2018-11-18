@@ -15,8 +15,8 @@
 void Updater::update() {
     // start building path
     stringstream paths;
-    paths << "/mine.php?q=info&worker=" << settings.getUniqid()
-          << "&address=" << settings.getPrivateKey();
+    paths << "/mine.php?q=info&worker=" << settings.uniqueID()
+          << "&address=" << settings.privateKey();
 
     // see if we need to send hashrates (pools recommend every 10 minutes)
     static auto start = std::chrono::system_clock::now();    
@@ -200,13 +200,14 @@ MinerData Updater::getData() {
     return *data;
 }
 
-Updater::Updater(Stats &s, MinerSettings ms) : stats(s), settings(ms) {
+Updater::Updater(Stats &s, MinerSettings ms) : 
+    stats(s), data{}, settings(ms), client{} {
     http_client_config config;
     utility::seconds timeout(2);
     config.set_timeout(timeout);
 
-    auto _poolAddress = toUtilityString(*ms.getPoolAddress());
-    client = new http_client(_poolAddress, config);
+    auto poolAddress = toUtilityString(settings.poolAddress());
+    client = new http_client(poolAddress, config);
 }
 
 #ifdef _WIN32

@@ -11,43 +11,36 @@
 
 #include "minerdata.h"
 
-using namespace std;
-
 class MinerSettings {
-private:
-    string *poolAddress;
-    string *privateKey;
-    string *uniqid;
-    bool mineGpuBlocks;
-    bool mineCpuBlocks;
-    bool showLastHashrate;
 public:
     MinerSettings(
-        string *pa, string *pk, string *ui, size_t *bs,
+        const std::string & poolAddress, 
+        const std::string & privateKey, 
+        const std::string & uniqid, 
         bool mineGPU, bool mineCPU, bool showLastHashrate) :
-        poolAddress(pa),
-        privateKey(pk),
-        uniqid(ui),
+        poolAddress_(poolAddress),
+        privateKey_(privateKey),
+        uniqid_(uniqid),
         mineGpuBlocks(mineGPU),
         mineCpuBlocks(mineCPU),
         showLastHashrate(showLastHashrate) {
     };
 
-    MinerSettings() : 
-        poolAddress{}, privateKey{}, uniqid{}, 
-        mineGpuBlocks{}, mineCpuBlocks{}, showLastHashrate{} {
-    };
+    friend std::ostream &operator<<(std::ostream &os, const MinerSettings &settings);
 
-    friend ostream &operator<<(ostream &os, const MinerSettings &settings);
-
-    string *getPoolAddress() const;
-
-    string *getPrivateKey() const;
-
-    string *getUniqid() const;
-
+    const std::string & poolAddress() const;
+    const std::string & privateKey() const;
+    const std::string & uniqueID() const;
     bool canMineBlock(BLOCK_TYPE type) const;
     bool useLastHashrateInsteadOfRoundAvg() const { return showLastHashrate; };
+
+private:
+    const std::string &poolAddress_;
+    const std::string &privateKey_;
+    const std::string &uniqid_;
+    bool mineGpuBlocks;
+    bool mineCpuBlocks;
+    bool showLastHashrate;
 };
 
 #endif //ARIONUM_GPU_MINER_MINERSETTINGS_H

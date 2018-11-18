@@ -26,9 +26,9 @@ class Updater {
 
 protected:
     Stats &stats;
-    MinerData *data{};
-    MinerSettings settings{};
-    http_client *client{};
+    MinerData *data;
+    MinerSettings settings;
+    http_client *client;
     std::mutex mutex;
 
 public:

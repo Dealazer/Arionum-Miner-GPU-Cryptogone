@@ -25,7 +25,7 @@ class AroNonceProviderPool : public AroNonceProvider,
 public:
     AroNonceProviderPool(Updater & updater);
     bool update() override;
-    const string& salt(BLOCK_TYPE bt) const override;
+    const std::string & salt(BLOCK_TYPE bt) const override;
     BLOCK_TYPE currentBlockType() const override { return bd.type; };
     BlockDesc currentBlockDesc() const override { return bd; };
 
@@ -55,7 +55,7 @@ private:
         bool isBlock;
     };
     void submit(SubmitParams & prms);
-    void submitReject(const string &msg, bool isBlock);
+    void submitReject(const std::string &msg, bool isBlock);
 
     MinerSettings settings;
     Stats & stats;

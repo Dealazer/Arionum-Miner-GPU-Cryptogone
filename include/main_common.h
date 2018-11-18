@@ -302,9 +302,8 @@ int run(const char *const *argv) {
     }();
 
     // MinerSettings
-    size_t dummy = 0;
     MinerSettings minerSettings(
-        &args.poolUrl, &args.address, &uniqid, &dummy,
+        args.poolUrl, args.address, uniqid,
         !args.skipGpuBlocks, !args.skipCpuBlocks, !args.legacyHashrate);
     std::cout << minerSettings << std::endl;
 
