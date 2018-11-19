@@ -89,6 +89,10 @@ AroResultsProcessorPool::AroResultsProcessorPool(const MinerSettings & ms,
     stats(stats),
     client{},
     mpz_ZERO(0), BLOCK_LIMIT(240), mpz_rest(0) {
+    newClient();
+}
+
+void AroResultsProcessorPool::newClient() {
     http_client_config config;
     utility::seconds timeout(SUBMIT_HTTP_TIMEOUT_SECONDS);
     config.set_timeout(timeout);
@@ -113,11 +117,13 @@ bool AroResultsProcessorPool::processResult(const Input& input) {
         bool isBlock = mpz_cmp_(mpz_rest, BLOCK_LIMIT) < 0;
         bool dd = stats.dd();
         if (!dd) {
-            gmp_printf("-- Submitting - %Zd - %s - %.50s...\n",
+            char buf[512];
+            gmp_snprintf(buf, sizeof(buf), "-- Submitting - %Zd - %s - %.50s...",
                 mpz_rest.get_mpz_t(), r.nonce.data(), r.encodedArgon.data());
+            std::cout << buf << std::endl;
         }
-	SubmitParams p{ r.nonce, r.encodedArgon, bd.public_key, dd, isBlock };
-	submit(p);
+        SubmitParams p{ r.nonce, r.encodedArgon, bd.public_key, dd, isBlock };
+        submit(p, 0);
     }
 
     mpz_class maxDL = UINT32_MAX;
@@ -129,12 +135,12 @@ bool AroResultsProcessorPool::processResult(const Input& input) {
 }
 
 void AroResultsProcessorPool::submitReject(const std::string & msg, bool isBlock) {
-    std::cout << msg << endl << endl;
+    std::cout << msg << endl;
     stats.newRejection();
 }
 
-void AroResultsProcessorPool::submit(SubmitParams & prms) {
-    string argonTail = [&]() -> string {
+void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
+    string argonTail = [prms]() -> string {
         std::vector<std::string> parts;
         boost::split(parts, prms.argon, boost::is_any_of("$"));
         if (parts.size() < 6)
@@ -142,26 +148,31 @@ void AroResultsProcessorPool::submit(SubmitParams & prms) {
         return "$" + parts[4] + "$" + parts[5]; // node only needs $salt$hash
     }();
     if (argonTail.size() == 0) {
-        std::cout << "Problem computing argonTail, cannot submit share" << std::endl;
+        std::cout << "-- problem computing argonTail, cannot submit share" << std::endl;
         return;
     }
 
-    for (auto str : { &prms.nonce , &argonTail }) {
+    auto sanitize = [&](std::string &s) -> void {
         const std::vector<std::string>
             from = { "+", "$", "/" }, to = { "%2B" , "%24", "%2F" };
         for (int i = 0; i < from.size(); i++)
-            boost::replace_all(*str, from[i], to[i]);
-    }
+            boost::replace_all(s, from[i], to[i]);
+    };
+    
+    sanitize(argonTail);
+
+    std::string sanitized_nonce = prms.nonce;
+    sanitize(sanitized_nonce);
 
     stringstream body;
     bool d = prms.d;
     body << "address=" << (d ? DD : settings.privateKey())
         << "&argon=" << argonTail
-        << "&nonce=" << prms.nonce
+        << "&nonce=" << sanitized_nonce
         << "&private_key=" << (d ? DD : settings.privateKey())
         << "&public_key=" << prms.public_key;
 
-    if (prms.d) {
+    if (prms.d && retryCount == 0) {
         stringstream paths;
         paths << "/mine.php?q=info&worker=" << settings.uniqueID()
             << "&address=" << DD
@@ -173,12 +184,11 @@ void AroResultsProcessorPool::submit(SubmitParams & prms) {
         client->request(req).then([](http_response response) {});
     }
 
-    bool isBlock = prms.isBlock;
     http_request req(methods::POST);
     req.set_request_uri(_XPLATSTR("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
     client->request(req)
-        .then([this, d, isBlock](http_response response) {
+        .then([this, d, prms, retryCount](http_response response) {
         try {
             if (response.status_code() == status_codes::OK) {
                 response.headers().set_content_type(U("application/json"));
@@ -186,41 +196,59 @@ void AroResultsProcessorPool::submit(SubmitParams & prms) {
             }
         }
         catch (http_exception const &e) {
-            submitReject(std::string(
-                "-- nonce submit failed, http exception: ") + e.what(), isBlock);
+            if (retryCount == 1) {
+                submitReject(std::string(
+                    "-- nonce submit failed, http exception: ") + e.what(), prms.isBlock);
+            }
+            else {
+                // recreate the client (https://github.com/Microsoft/cpprestsdk/issues/177)
+                // deleting client should not cause ongoing reqs to fail (see http_client::~http_client)
+                newClient();
+
+                // try to submit again
+                const int RETRY_WAIT_SECS = 3;
+                std::ostringstream oss;
+                oss << "-- problem submitting " << prms.nonce 
+                    << ", trying again in " << RETRY_WAIT_SECS << " seconds";
+                std::cout << oss.str() << std::endl;
+                
+                std::this_thread::sleep_for(std::chrono::seconds(RETRY_WAIT_SECS));
+
+                this->submit(prms, retryCount + 1);
+            }
         }
         catch (web::json::json_exception const &e) {
             submitReject(std::string(
-                "-- nonce submit failed, json exception: ") + e.what(), isBlock);
+                "-- nonce submit failed, json exception: ") + e.what(), prms.isBlock);
         }
         return pplx::task_from_result(json::value());
     })
-        .then([this, d, isBlock](pplx::task<json::value> previousTask) {
+        .then([this, d, prms](pplx::task<json::value> previousTask) {
         try {
             json::value jvalue = previousTask.get();
             if (!jvalue.is_null() && jvalue.is_object() && d == false) {
                 auto status = toString(jvalue.at(U("status")).as_string());
                 if (status == "ok") {
                     cout << "-- " << 
-                        (isBlock ? "block" : "share") << " accepted by pool :-)" << endl;
-                    if (isBlock)
+                        (prms.isBlock ? "block" : "share") << " accepted by pool :-)" << endl;
+                    if (prms.isBlock)
                         stats.newBlock(d);
                     else
                         stats.newShare(d);
                 }
                 else {
-                    submitReject(std::string(
-                        "-- nonce refused by pool :-( status=") + status, isBlock);
+                    submitReject(
+                        std::string("-- nonce refused by pool :-( status=") + status, prms.isBlock);
                 }
             }
         }
-        catch (http_exception const &e) {
-            submitReject(std::string(
-                "-- nonce submit failed, http exception: ") + e.what(), isBlock);
-        }
         catch (web::json::json_exception const &e) {
-            submitReject(std::string(
-                "-- nonce submit failed, json exception: ") + e.what(), isBlock);
+            submitReject(
+                std::string("-- nonce submit failed, json exception: ") + e.what(), prms.isBlock);
+        }
+        catch (exception const &e) {
+            submitReject(
+                std::string("-- nonce submit failed, exception: ") + e.what(), prms.isBlock);
         }
     });
 }

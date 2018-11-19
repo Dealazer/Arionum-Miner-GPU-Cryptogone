@@ -49,13 +49,14 @@ public:
 private:
     struct SubmitParams {
         std::string nonce;
-        const std::string &argon;
-        const std::string &public_key;
+        std::string argon;
+        std::string public_key;
         bool d;
         bool isBlock;
     };
-    void submit(SubmitParams & prms);
+    void submit(SubmitParams prms, size_t retryCount);
     void submitReject(const std::string &msg, bool isBlock);
+    void newClient();
 
     MinerSettings settings;
     Stats & stats;
