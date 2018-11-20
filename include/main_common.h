@@ -246,8 +246,8 @@ int run(const char *const *argv) {
 
         std::unique_ptr<CONTEXT> ctx(new CONTEXT());
         auto &devices = ctx->getAllDevices();
-        for (int i = 0; i < devices.size(); ++i)
-            args.deviceIndexList.push_back(i);
+        for (size_t i = 0; i < devices.size(); ++i)
+            args.deviceIndexList.push_back(uint32_t(i));
     }
 
     // check how many devices we have
@@ -270,7 +270,7 @@ int run(const char *const *argv) {
 
     // devices configurations
     auto devicesConfigs = [&] () -> std::vector<DeviceConfig> {
-        auto itemOrLast = [](int index, std::vector<uint32_t> v) -> uint32_t {
+        auto itemOrLast = [](size_t index, std::vector<uint32_t> v) -> uint32_t {
             if (index < v.size())
                 return v[index];
             return v[v.size() - 1];

@@ -46,7 +46,7 @@ public:
         miningDevices.clear();
 
         auto &devices = globalContext->getAllDevices();
-        for (int i = 0; i < devicesConfigs.size(); i++) {
+        for (size_t i = 0; i < devicesConfigs.size(); i++) {
             auto deviceIndex = devicesConfigs[i].deviceIndex;
             if (deviceIndex >= devices.size()) {
                 cout << "Warning: device " << deviceIndex << " does not exist, skipping it" << endl;
