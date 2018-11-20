@@ -9,6 +9,8 @@
 #include <thread>
 #include <boost/algorithm/string.hpp>
 
+const int UPDATER_REQ_TIMEOUT_SECONDS = 2;
+
 const double FIRST_HASHRATE_SEND_N_MINUTES = 0.5;
 const double NEXT_HASHRATE_SENDS_N_MINUTES = 5.0;
 
@@ -16,6 +18,8 @@ const double NEXT_HASHRATE_SENDS_N_MINUTES = 5.0;
 // ex: if miner starts on a GPU block, gpu hashrate will be ignored until switching to a CPU block
 // so in this case, we send a dummy CPU hashrate (1.0) to make sure miner is visible on pool stats
 const double DEFAULT_CPU_HASHRATE = 1.0;
+
+bool s_miningReady = false;
 
 void Updater::update() {
     static bool hrCPUSentAtLeastOneTime = false;
@@ -70,6 +74,7 @@ void Updater::update() {
         }
         catch (const web::http::http_exception & e) {
             std::cout << "-- Updater http_exception => " << e.what() << endl;
+            newClient();
         }
         catch (const web::json::json_exception & e) {
             std::cout << "-- Updater json_exception => " << e.what() << endl;
@@ -79,8 +84,6 @@ void Updater::update() {
         }
     }).wait();
 }
-
-bool s_miningReady = false;
 
 void Updater::start() {
     try {
@@ -105,25 +108,44 @@ void Updater::start() {
         }
 
         // loop
+        MinerData roundData = getData();
+        stats.beginRound(roundData.getBlockType());
         while (true) {
-            MinerData newData = getData();
-            stats.beginRound(newData.getBlockType());
-            {
-                update();
-                std::this_thread::sleep_for(std::chrono::seconds(POOL_UPDATE_RATE_SECONDS));
+            auto start = chrono::system_clock::now();
+            update();
+            while (1) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                chrono::duration<float> duration = chrono::system_clock::now() - start;
+                MinerData curData = getData();
+                bool blockTypeChanged = curData.getBlockType() != roundData.getBlockType();
+                bool roundFinished = (duration.count() >= POOL_UPDATE_RATE_SECONDS || blockTypeChanged);
+                if (roundFinished) {
+                    stats.endRound();
+                    if (!blockTypeChanged) {
+                        stats.printMiningStats(
+                            roundData,
+                            settings.useLastHashrateInsteadOfRoundAvg(),
+                            settings.canMineBlock(roundData.getBlockType()));
+                    }
+                    roundData = getData();
+                    stats.beginRound(roundData.getBlockType());
+                    break;
+                }
+                if (refreshCount > 0) { 
+                    update();
+                    refreshCount = 0;
+                }
             }
-            stats.endRound();
-           
-            stats.printMiningStats(
-                newData,
-                settings.useLastHashrateInsteadOfRoundAvg(),
-                settings.canMineBlock(newData.getBlockType()));
         }
     }
     catch (exception e) {
         std::cout << "Exception in update thread: " << e.what() << std::endl;
         exit(1);
     }
+}
+
+void Updater::requestRefresh() {
+    refreshCount++;
 }
 
 void Updater::processResponse(const json::value *value) {
@@ -190,11 +212,13 @@ MinerData Updater::getData() {
 }
 
 Updater::Updater(Stats &s, MinerSettings ms) : 
-    stats(s), data{}, settings(ms), client{} {
-    http_client_config config;
-    utility::seconds timeout(2);
-    config.set_timeout(timeout);
+    stats(s), data{}, settings(ms), client{}, refreshCount{} {
+    newClient();
+}
 
+void Updater::newClient() {
+    http_client_config config;
+    config.set_timeout(utility::seconds(UPDATER_REQ_TIMEOUT_SECONDS));
     auto poolAddress = toUtilityString(settings.poolAddress());
     client = new http_client(poolAddress, config);
 }

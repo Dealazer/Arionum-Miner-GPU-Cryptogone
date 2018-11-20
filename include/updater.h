@@ -12,6 +12,7 @@
 #include <mutex>
 #include <locale>
 #include <codecvt>
+#include <atomic>
 
 using namespace web;
 using namespace web::http;
@@ -23,24 +24,22 @@ utility::string_t toUtilityString(const std::string &s);
 const int POOL_UPDATE_RATE_SECONDS = 5;
 
 class Updater {
+public:
+    explicit Updater(Stats &s, MinerSettings ms);
+    void processResponse(const json::value *value);
+    MinerData getData();
+    void start();
+    void requestRefresh();
 
 protected:
+    void update();
+    void newClient();
     Stats &stats;
     MinerData *data;
     MinerSettings settings;
     http_client *client;
     std::mutex mutex;
-
-public:
-    void update();
-
-    void start();
-
-    explicit Updater(Stats &s, MinerSettings ms);
-
-    void processResponse(const json::value *value);
-
-    MinerData getData();
+    std::atomic<uint32_t> refreshCount;
 };
 
 #endif //ARIONUM_GPU_MINER_UPDATER_H
