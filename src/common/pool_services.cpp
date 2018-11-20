@@ -11,6 +11,8 @@ using namespace web;
 using namespace web::http;
 using namespace web::http::client;
 
+void testCppRest();
+
 RandomBytesGenerator::RandomBytesGenerator() {
     generator = std::mt19937(rdevice());
     distribution = std::uniform_int_distribution<int>(0, 255);
@@ -90,6 +92,10 @@ AroResultsProcessorPool::AroResultsProcessorPool(const MinerSettings & ms,
     client{},
     mpz_ZERO(0), BLOCK_LIMIT(240), mpz_rest(0) {
     newClient();
+
+    testCppRest();
+
+    std::this_thread::sleep_for(std::chrono::seconds(60));
 }
 
 void AroResultsProcessorPool::newClient() {
@@ -187,6 +193,47 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
     http_request req(methods::POST);
     req.set_request_uri(_XPLATSTR("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
+
+#if 1 // DEBUGGING EXCEPTIONS
+    client->request(req).then([this, d, prms, retryCount](http_response response) {
+        try {
+            if (response.status_code() == status_codes::OK) {
+                response.headers().set_content_type(U("application/json"));
+                try {
+                    json::value jvalue = response.extract_json().get();
+                    if (!jvalue.is_null() && jvalue.is_object() && d == false) {
+                        // check if pool accepted the nonce
+                        auto status = toString(jvalue.at(U("status")).as_string());
+                        if (status == "ok") {
+                            cout << "-- " <<
+                                (prms.isBlock ? "block" : "share") << " accepted by pool :-)" << endl;
+                            if (prms.isBlock)
+                                stats.newBlock(d);
+                            else
+                                stats.newShare(d);
+                        }
+                        else {
+                            submitReject(
+                                std::string("-- nonce refused by pool :-( status=") + status, prms.isBlock);
+                        }
+                    }
+                }
+                catch (exception e) {
+                    submitReject(
+                        std::string("-- nonce submit failed, exception during response parsing: ") + e.what(), prms.isBlock);
+                }
+            }
+            else {
+                submitReject(
+                    std::string("-- nonce submit failed, response.status_code() != status_codes::OK "), prms.isBlock);
+            }
+        }
+        catch (exception e) {
+            submitReject(
+                std::string("-- nonce submit failed, exception during submit request: ") + e.what(), prms.isBlock);
+        }
+    });
+#else
     client->request(req)
         .then([this, d, prms, retryCount](http_response response) {
         try {
@@ -251,4 +298,61 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
                 std::string("-- nonce submit failed, exception: ") + e.what(), prms.isBlock);
         }
     });
+#endif
+}
+
+void testCppRest()
+{
+    int a = 0; int b = 2;
+
+    auto t1 = pplx::create_task([a] { return a + 1; })
+        .then([](int a) { throw std::runtime_error("a"); return a + 1; })
+        .then([](pplx::task<int> prev)
+    {
+        int retVal = -1;
+        try
+        {
+            retVal = prev.get();
+        }
+        catch (std::runtime_error e)
+        {
+            std::cout << "caught " << e.what() << std::endl;
+            throw e;
+        }
+
+        return retVal;
+    });
+
+    auto t2 = pplx::create_task([b] { return b + 1; })
+        .then([](int b) { throw std::runtime_error("b"); return b + 1; })
+        .then([](pplx::task<int> prev)
+    {
+        int retVal = -1;
+        try
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            retVal = prev.get();
+        }
+        catch (std::runtime_error e)
+        {
+            std::cout << "caught " << e.what() << std::endl;
+            throw e;
+        }
+
+        return retVal;
+    });
+
+    (t1 && t2)
+        .then([](std::vector<int> v) { for (int i : v) { std::cout << i << std::endl; } })
+        .then([](pplx::task<void> prev)
+    {
+        try
+        {
+            prev.get();
+        }
+        catch (std::runtime_error e)
+        {
+            std::cout << "caught final " << e.what() << std::endl;
+        }
+    }).get();
 }
