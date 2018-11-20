@@ -11,8 +11,6 @@ using namespace web;
 using namespace web::http;
 using namespace web::http::client;
 
-void testCppRest();
-
 RandomBytesGenerator::RandomBytesGenerator() {
     generator = std::mt19937(rdevice());
     distribution = std::uniform_int_distribution<int>(0, 255);
@@ -92,10 +90,6 @@ AroResultsProcessorPool::AroResultsProcessorPool(const MinerSettings & ms,
     client{},
     mpz_ZERO(0), BLOCK_LIMIT(240), mpz_rest(0) {
     newClient();
-
-    testCppRest();
-
-    std::this_thread::sleep_for(std::chrono::seconds(60));
 }
 
 void AroResultsProcessorPool::newClient() {
@@ -299,60 +293,4 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
         }
     });
 #endif
-}
-
-void testCppRest()
-{
-    int a = 0; int b = 2;
-
-    auto t1 = pplx::create_task([a] { return a + 1; })
-        .then([](int a) { throw std::runtime_error("a"); return a + 1; })
-        .then([](pplx::task<int> prev)
-    {
-        int retVal = -1;
-        try
-        {
-            retVal = prev.get();
-        }
-        catch (std::runtime_error e)
-        {
-            std::cout << "caught " << e.what() << std::endl;
-            throw e;
-        }
-
-        return retVal;
-    });
-
-    auto t2 = pplx::create_task([b] { return b + 1; })
-        .then([](int b) { throw std::runtime_error("b"); return b + 1; })
-        .then([](pplx::task<int> prev)
-    {
-        int retVal = -1;
-        try
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            retVal = prev.get();
-        }
-        catch (std::runtime_error e)
-        {
-            std::cout << "caught " << e.what() << std::endl;
-            throw e;
-        }
-
-        return retVal;
-    });
-
-    (t1 && t2)
-        .then([](std::vector<int> v) { for (int i : v) { std::cout << i << std::endl; } })
-        .then([](pplx::task<void> prev)
-    {
-        try
-        {
-            prev.get();
-        }
-        catch (std::runtime_error e)
-        {
-            std::cout << "caught final " << e.what() << std::endl;
-        }
-    }).get();
 }
