@@ -18,7 +18,7 @@ RandomBytesGenerator::RandomBytesGenerator() {
 }
 
 void RandomBytesGenerator::generateBytes(char *dst, size_t dst_len, uint8_t *buffer, size_t buffer_size) {
-    for (int i = 0; i < buffer_size; ++i) {
+    for (size_t i = 0; i < buffer_size; ++i) {
         buffer[i] = distribution(generator);
     }
     to_base64_(dst, dst_len, buffer, buffer_size);
@@ -144,7 +144,7 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
     auto sanitize = [&](std::string &s) -> void {
         const std::vector<std::string>
             from = { "+", "$", "/" }, to = { "%2B" , "%24", "%2F" };
-        for (int i = 0; i < from.size(); i++)
+        for (size_t i = 0; i < from.size(); i++)
             boost::replace_all(s, from[i], to[i]);
     };
 

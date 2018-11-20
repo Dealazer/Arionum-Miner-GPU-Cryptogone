@@ -45,7 +45,6 @@ public:
         miners.clear();
         miningDevices.clear();
 
-        int nDevices = 0;
         auto &devices = globalContext->getAllDevices();
         for (int i = 0; i < devicesConfigs.size(); i++) {
             auto deviceIndex = devicesConfigs[i].deviceIndex;
@@ -111,7 +110,7 @@ public:
             int nIdle = processMinersResults();
             if (nIdle == 0) {
                 const long long SLEEP_INTERVAL_MS = 3;
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_INTERVAL_MS));
             }
         }
     }
@@ -170,7 +169,7 @@ protected:
     }
 
     bool feedMiners() {
-        for (int i = 0; i < miners.size(); i++) {
+        for (size_t i = 0; i < miners.size(); i++) {
             t_time_point now = std::chrono::high_resolution_clock::now();
             if (minerIdle[i] == false)
                 continue;
@@ -181,7 +180,7 @@ protected:
             if (!miner->updateNonceProvider())
                 continue;
 
-            minerStatsOnNewTask(*miner, i, (int)miners.size(), now);
+            minerStatsOnNewTask(*miner, (int)i, (int)miners.size(), now);
 
             if (!canStartMiner(minerDeviceIndex(i), miner->providerBlockType()))
                 continue;
@@ -198,7 +197,7 @@ protected:
 
     int processMinersResults() {
         int nIdle = 0;
-        for (int i = 0; i < miners.size(); i++) {
+        for (size_t i = 0; i < miners.size(); i++) {
             if (minerIdle[i]) {
                 nIdle++;
                 continue;
@@ -208,7 +207,7 @@ protected:
 
                 auto result = miners[i]->processResults();
                 stats.addHashes(result.nHashes);
-                minerStatsOnTaskEnd(i, result.valid);
+                minerStatsOnTaskEnd((int)i, result.valid);
                 minerIdle[i] = true;
 
                 if (testMode() && (result.nGood != result.nHashes)) {
