@@ -204,10 +204,14 @@ void Stats::endRound() {
 
 
 void Stats::printTimePrefix() const {
-#pragma warning(disable : 4996)
+#ifdef WIN32
+    #pragma warning(disable : 4996)
+#endif
     auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     cout << setw(COL_TIME) << left << std::put_time(std::localtime(&t), "%D %T   ");
-#pragma warning(default : 4996)
+#ifdef WIN32
+    #pragma warning(default : 4996)
+#endif
 }
 
 void Stats::printRoundStatsHeader() const {

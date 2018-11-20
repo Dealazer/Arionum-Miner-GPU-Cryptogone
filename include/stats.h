@@ -48,20 +48,21 @@ public:
     Stats() :
         roundType(-1),
         roundHashes(0),
+        roundHashRate(0.0),
         roundStart(std::chrono::system_clock::now()),
+        rounds_cpu(0),
         totalHashes_cpu(0),
-        totalHashes_gpu(0),
         totalTime_cpu_sec(0.0),
+        rounds_gpu(0),
+        totalHashes_gpu(0),
         totalTime_gpu_sec(0.0),
         shares(0),
         blocks(0),
         rejections(0),
-        rounds_cpu(0),
-        rounds_gpu(0),
-        roundHashRate(0.0),
         bestDl_cpu(UINT32_MAX),
         bestDl_gpu(UINT32_MAX),
-        blockBestDl(UINT32_MAX) {
+        blockBestDl(UINT32_MAX),
+        mutex{} {
     };
 
     bool dd();

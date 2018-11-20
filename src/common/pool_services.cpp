@@ -4,6 +4,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <thread>
+#include <sstream>
 
 #define DD "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK"
 
@@ -88,7 +89,7 @@ AroResultsProcessorPool::AroResultsProcessorPool(const MinerSettings & ms,
     settings(ms),
     stats(stats),
     client{},
-    mpz_ZERO(0), BLOCK_LIMIT(240), mpz_rest(0) {
+    BLOCK_LIMIT(240), mpz_ZERO(0), mpz_rest(0) {
     newClient();
 }
 
@@ -140,6 +141,13 @@ void AroResultsProcessorPool::submitReject(const std::string & msg, bool isBlock
 }
 
 void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
+    auto sanitize = [&](std::string &s) -> void {
+        const std::vector<std::string>
+            from = { "+", "$", "/" }, to = { "%2B" , "%24", "%2F" };
+        for (int i = 0; i < from.size(); i++)
+            boost::replace_all(s, from[i], to[i]);
+    };
+
     string argonTail = [prms]() -> string {
         std::vector<std::string> parts;
         boost::split(parts, prms.argon, boost::is_any_of("$"));
@@ -147,20 +155,12 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
             return "";
         return "$" + parts[4] + "$" + parts[5]; // node only needs $salt$hash
     }();
+    sanitize(argonTail);
     if (argonTail.size() == 0) {
         std::cout << "-- problem computing argonTail, cannot submit share" << std::endl;
         return;
     }
-
-    auto sanitize = [&](std::string &s) -> void {
-        const std::vector<std::string>
-            from = { "+", "$", "/" }, to = { "%2B" , "%24", "%2F" };
-        for (int i = 0; i < from.size(); i++)
-            boost::replace_all(s, from[i], to[i]);
-    };
     
-    sanitize(argonTail);
-
     std::string sanitized_nonce = prms.nonce;
     sanitize(sanitized_nonce);
 
@@ -181,116 +181,90 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
         req.headers().set_content_type(U("application/json"));
         auto _paths = toUtilityString(paths.str());
         req.set_request_uri(_paths.data());
-        client->request(req).then([](http_response response) {});
+        client->request(req).then([](pplx::task<http_response> response) {
+            try { response.get(); }
+            catch (const std::exception &) {};
+        });
     }
 
     http_request req(methods::POST);
     req.set_request_uri(_XPLATSTR("/mine.php?q=submitNonce"));
     req.set_body(body.str(), "application/x-www-form-urlencoded");
 
-#if 1 // DEBUGGING EXCEPTIONS
-    client->request(req).then([this, d, prms, retryCount](http_response response) {
-        try {
-            if (response.status_code() == status_codes::OK) {
-                response.headers().set_content_type(U("application/json"));
-                try {
-                    json::value jvalue = response.extract_json().get();
-                    if (!jvalue.is_null() && jvalue.is_object() && d == false) {
-                        // check if pool accepted the nonce
-                        auto status = toString(jvalue.at(U("status")).as_string());
-                        if (status == "ok") {
-                            cout << "-- " <<
-                                (prms.isBlock ? "block" : "share") << " accepted by pool :-)" << endl;
-                            if (prms.isBlock)
-                                stats.newBlock(d);
-                            else
-                                stats.newShare(d);
-                        }
-                        else {
-                            submitReject(
-                                std::string("-- nonce refused by pool :-( status=") + status, prms.isBlock);
-                        }
-                    }
-                }
-                catch (exception e) {
-                    submitReject(
-                        std::string("-- nonce submit failed, exception during response parsing: ") + e.what(), prms.isBlock);
-                }
-            }
-            else {
-                submitReject(
-                    std::string("-- nonce submit failed, response.status_code() != status_codes::OK "), prms.isBlock);
-            }
-        }
-        catch (exception e) {
-            submitReject(
-                std::string("-- nonce submit failed, exception during submit request: ") + e.what(), prms.isBlock);
-        }
-    });
-#else
     client->request(req)
-        .then([this, d, prms, retryCount](http_response response) {
-        try {
-            if (response.status_code() == status_codes::OK) {
-                response.headers().set_content_type(U("application/json"));
-                return response.extract_json();
-            }
-        }
-        catch (http_exception const &e) {
-            if (retryCount == 1) {
-                submitReject(std::string(
-                    "-- nonce submit failed, http exception: ") + e.what(), prms.isBlock);
-            }
-            else {
-                // recreate the client (https://github.com/Microsoft/cpprestsdk/issues/177)
-                // deleting client should not cause ongoing reqs to fail (see http_client::~http_client)
-                newClient();
-
-                // try to submit again
-                const int RETRY_WAIT_SECS = 3;
-                std::ostringstream oss;
-                oss << "-- problem submitting " << prms.nonce 
-                    << ", trying again in " << RETRY_WAIT_SECS << " seconds";
-                std::cout << oss.str() << std::endl;
-                
-                std::this_thread::sleep_for(std::chrono::seconds(RETRY_WAIT_SECS));
-
-                this->submit(prms, retryCount + 1);
-            }
-        }
-        catch (web::json::json_exception const &e) {
-            submitReject(std::string(
-                "-- nonce submit failed, json exception: ") + e.what(), prms.isBlock);
+    .then([](http_response response) 
+    {
+        if (response.status_code() == status_codes::OK) {
+            response.headers().set_content_type(U("application/json"));
+            return response.extract_json();
         }
         return pplx::task_from_result(json::value());
     })
-        .then([this, d, prms](pplx::task<json::value> previousTask) {
+    .then([this, prms, d, retryCount](pplx::task<json::value> previousTask) -> void
+    {
+        auto retry = [this, d, prms, retryCount]() -> void {
+            // recreate the client (https://github.com/Microsoft/cpprestsdk/issues/177)
+            // deleting client should not cause ongoing reqs to fail (see http_client::~http_client)
+            newClient();
+
+            // wait
+            const int RETRY_WAIT_SECS = 3;
+            if (!d) {
+                std::ostringstream oss;
+                oss << "-- problem submitting " << prms.nonce
+                    << ", trying again in " << RETRY_WAIT_SECS << " seconds";
+                std::cout << oss.str() << std::endl;
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(RETRY_WAIT_SECS));
+
+            // submit again
+            this->submit(prms, retryCount + 1);
+        };
+
+        auto handleException = [this, d, prms](const std::string & msg, const std::exception & e) -> void {
+            std::ostringstream oss;
+            if (!d) {
+                oss << "-- nonce submit failed, " << msg << " " << e.what() << std::endl;
+                submitReject(oss.str(), prms.isBlock);
+            }
+        };
+
         try {
-            json::value jvalue = previousTask.get();
-            if (!jvalue.is_null() && jvalue.is_object() && d == false) {
-                auto status = toString(jvalue.at(U("status")).as_string());
-                if (status == "ok") {
-                    cout << "-- " << 
-                        (prms.isBlock ? "block" : "share") << " accepted by pool :-)" << endl;
-                    if (prms.isBlock)
-                        stats.newBlock(d);
-                    else
-                        stats.newShare(d);
-                }
-                else {
-                    submitReject(
-                        std::string("-- nonce refused by pool :-( status=") + status, prms.isBlock);
-                }
+            const json::value &jvalue = previousTask.get();
+            bool jsonOk = !jvalue.is_null() && jvalue.is_object();
+            if (!jsonOk) {
+                if (retryCount == 0)
+                    retry();
+                else
+                    throw std::logic_error("pool returned empty JSON");
+                return;
+            }
+            
+            if (d)
+                return;
+
+            auto status = toString(jvalue.at(U("status")).as_string());
+            if (status == "ok") {
+                cout << "-- " <<
+                    (prms.isBlock ? "block" : "share") << " accepted by pool :-)" << endl;
+                prms.isBlock ? stats.newBlock(d) : stats.newShare(d);
+            }
+            else {
+                submitReject(
+                    std::string("-- nonce refused by pool :-( status=") + status, prms.isBlock);
             }
         }
-        catch (web::json::json_exception const &e) {
-            submitReject(
-                std::string("-- nonce submit failed, json exception: ") + e.what(), prms.isBlock);
+        catch (const web::http::http_exception & e) {
+            if (retryCount == 0)
+                retry();
+            else
+                handleException("http_exception", e);
         }
-        catch (exception const &e) {
-            submitReject(
-                std::string("-- nonce submit failed, exception: ") + e.what(), prms.isBlock);
+        catch (const web::json::json_exception & e) {
+            handleException("json_exception", e);
+        }
+        catch (const std::exception & e) {
+            handleException("exception", e);
         }
     });
-#endif
 }

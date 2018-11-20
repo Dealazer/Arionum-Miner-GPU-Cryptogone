@@ -7,87 +7,77 @@
 #include <iostream>
 #include <iomanip>
 #include <thread>
+#include <boost/algorithm/string.hpp>
 
-#pragma warning(disable:4715)
+const double FIRST_HASHRATE_SEND_N_MINUTES = 0.5;
+const double NEXT_HASHRATE_SENDS_N_MINUTES = 5.0;
 
-//#define DEBUG_HASHRATE_SENDS
+// some pools ignore hashrates reporting when the cpu block hashrate is zero
+// ex: if miner starts on a GPU block, gpu hashrate will be ignored until switching to a CPU block
+// so in this case, we send a dummy CPU hashrate (1.0) to make sure miner is visible on pool stats
+const double DEFAULT_CPU_HASHRATE = 1.0;
 
 void Updater::update() {
-    // start building path
-    stringstream paths;
-    paths << "/mine.php?q=info&worker=" << settings.uniqueID()
-          << "&address=" << settings.privateKey();
+    static bool hrCPUSentAtLeastOneTime = false;
+    static long long nHashRateSends = 0;
+    static auto start = std::chrono::system_clock::now();
 
-    // see if we need to send hashrates (pools recommend every 10 minutes)
-    static auto start = std::chrono::system_clock::now();    
     auto now = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
     auto timeSinceLastHrUpdateMs = duration.count();
-
-    // send first hashrates after 30s
-    static long long nHashRateSends = 0;
-    double hrSendRate_mins = (nHashRateSends == 0) ? 0.5 : 5.0;
-
-    // as soon as we get the first cpu hashrate value, set rate to zero to force send it
+    double hrSendRate_mins = (nHashRateSends == 0) ? 
+        FIRST_HASHRATE_SEND_N_MINUTES : NEXT_HASHRATE_SENDS_N_MINUTES;
     auto hrCPU = std::round(stats.getAvgHashrate(BLOCK_CPU));
-    static bool s_hrCpuOkOneTime = false;
-    if (hrCPU > 0 &&
-        !s_hrCpuOkOneTime) {
-        hrSendRate_mins = 0;
-        s_hrCpuOkOneTime = true;
-#ifdef DEBUG_HASHRATE_SENDS
-        cout << "##### FIRST CPU HASHRATE" << endl;
-#endif
-    }
-    else {
-        if (hrCPU <= 0)
-            hrCPU = 1;
-    }
+    bool sendHashrate =
+        ((double)timeSinceLastHrUpdateMs >= hrSendRate_mins * 60.0 * 1000.0) ||
+        (hrCPU > 0 && !hrCPUSentAtLeastOneTime);
 
-    // send hashrates when update period reached
-    if ((double)timeSinceLastHrUpdateMs >= hrSendRate_mins * 60.0 * 1000.0) {
+    stringstream paths;
+    paths << "/mine.php?q=info&worker=" << settings.uniqueID()
+        << "&address=" << settings.privateKey();
+
+    if (sendHashrate) {
+        if (hrCPU > 0)
+            hrCPUSentAtLeastOneTime = true;
+        else
+            hrCPU = DEFAULT_CPU_HASHRATE;
         paths << "&hashrate=" << hrCPU
               << "&hrgpu=" << std::round(stats.getAvgHashrate(BLOCK_GPU));
-        if (nHashRateSends != 0) {
+        if (nHashRateSends != 0)
             start = now;
-        }
         nHashRateSends++;
-#ifdef DEBUG_HASHRATE_SENDS
-        cout << "##### SENDING HASHRATES nHashRateSends=" << nHashRateSends << endl;
-        cout << paths.str() << endl;
-#endif
     }
 
-    // perform request with cpp rest
+    auto _paths = toUtilityString(paths.str());
     http_request req(methods::GET);
     req.headers().set_content_type(U("application/json"));
-    auto _paths = toUtilityString(paths.str());
     req.set_request_uri(_paths.data());
+
     client->request(req)
-            .then([](http_response response) {
-                try {
-                    if (response.status_code() == status_codes::OK) {
-                        response.headers().set_content_type(U("application/json"));
-                        return response.extract_json();
-                    }
-                    return pplx::task_from_result(json::value());
-                } catch (http_exception const &e) {
-                    cerr << e.what() << endl;
-                } catch (web::json::json_exception const &e) {
-                    cerr << e.what() << endl;
-                }
-            })
-            .then([this](pplx::task<json::value> previousTask) {
-                try {
-                    const json::value &value = previousTask.get();
-                    processResponse(&value);
-                } catch (http_exception const &e) {
-                    cerr << e.what() << endl;
-                } catch (web::json::json_exception const &e) {
-                    cerr << e.what() << endl;
-                }
-            })
-            .wait();
+    .then([](web::http::http_response response)
+    {
+        if (response.status_code() == status_codes::OK) {
+            response.headers().set_content_type(U("application/json"));
+            return response.extract_json();
+        }
+        return pplx::task_from_result(json::value());
+    })
+    .then([this](pplx::task<json::value> previousTask) -> void 
+    {
+        try {
+            const json::value &value = previousTask.get();
+            processResponse(&value);
+        }
+        catch (const web::http::http_exception & e) {
+            std::cout << "-- Updater http_exception => " << e.what() << endl;
+        }
+        catch (const web::json::json_exception & e) {
+            std::cout << "-- Updater json_exception => " << e.what() << endl;
+        }
+        catch (const std::exception & e) {
+            std::cout << "-- Updater exception => " << e.what() << endl;
+        }
+    }).wait();
 }
 
 bool s_miningReady = false;
@@ -137,57 +127,56 @@ void Updater::start() {
 }
 
 void Updater::processResponse(const json::value *value) {
-    if (!value->is_null() && value->is_object()) {
-        string status = toString(value->at(U("status")).as_string());
-        if (status == "ok") {
-            json::value jsonData = value->at(U("data"));
+    if (value->is_null() || !value->is_object()) {
+        throw std::logic_error("Failed to get work from pool (empty json)");
+    }
 
-            if (jsonData.is_object()) {
-                string difficulty = toString(jsonData.at(U("difficulty")).as_string());
-                string block = toString(jsonData.at(U("block")).as_string());
-                string public_key = toString(jsonData.at(U("public_key")).as_string());
+    string status = toString(value->at(U("status")).as_string());
+    if (status == "ok") {
+        json::value jsonData = value->at(U("data"));
 
-                int limit = jsonData.at(U("limit")).as_integer();
-                string limitAsString = std::to_string(limit);
+        if (jsonData.is_object()) {
+            string difficulty = toString(jsonData.at(U("difficulty")).as_string());
+            string block = toString(jsonData.at(U("block")).as_string());
+            string public_key = toString(jsonData.at(U("public_key")).as_string());
 
-                uint32_t argon_memory = (uint32_t)jsonData.at(U("argon_mem")).as_integer();
-                uint32_t argon_threads = (uint32_t)jsonData.at(U("argon_threads")).as_integer();
-                uint32_t argon_time = (uint32_t)jsonData.at(U("argon_time")).as_integer();
-                uint32_t height = jsonData.at(U("height")).as_integer();
+            int limit = jsonData.at(U("limit")).as_integer();
+            string limitAsString = std::to_string(limit);
 
-                string recommendation = toString(jsonData.at(U("recommendation")).as_string());
-                BLOCK_TYPE blockType;
-                if (recommendation != "mine") {
-                    blockType = BLOCK_MASTERNODE;
-                }
-                else {
-                    blockType = (argon_threads != 1) ? BLOCK_GPU : BLOCK_CPU;
-                }
+            uint32_t argon_memory = (uint32_t)jsonData.at(U("argon_mem")).as_integer();
+            uint32_t argon_threads = (uint32_t)jsonData.at(U("argon_threads")).as_integer();
+            uint32_t argon_time = (uint32_t)jsonData.at(U("argon_time")).as_integer();
+            uint32_t height = jsonData.at(U("height")).as_integer();
 
-                {
-                    std::lock_guard<std::mutex> lg(mutex);
+            string recommendation = toString(jsonData.at(U("recommendation")).as_string());
+            BLOCK_TYPE blockType;
+            if (recommendation != "mine") {
+                blockType = BLOCK_MASTERNODE;
+            }
+            else {
+                blockType = (argon_threads != 1) ? BLOCK_GPU : BLOCK_CPU;
+            }
 
-                    if (data == NULL || data->isNewBlock(&block)) {
-                        if (data)
-                            delete data;
-                        data = new MinerData(
-                            status, difficulty, limitAsString, block, public_key,
-                            height,
-                            argon_memory,
-                            argon_threads,
-                            argon_time,
-                            blockType
-                        );
+            {
+                std::lock_guard<std::mutex> lg(mutex);
+                if (data == NULL || data->isNewBlock(&block)) {
+                    if (data)
+                        delete data;
+                    data = new MinerData(
+                        status, difficulty, limitAsString, block, public_key,
+                        height,
+                        argon_memory,
+                        argon_threads,
+                        argon_time,
+                        blockType
+                    );
 
-                        if (s_miningReady) {
-                            cout << endl << "-- NEW BLOCK --" << endl << *data;
-                        }
-                        stats.blockChange(data->getBlockType());
+                    if (s_miningReady) {
+                        cout << endl << "-- NEW BLOCK --" << endl << *data;
                     }
+                    stats.blockChange(data->getBlockType());
                 }
             }
-        } else {
-            cerr << "Unable to get result" << endl;
         }
     }
 }

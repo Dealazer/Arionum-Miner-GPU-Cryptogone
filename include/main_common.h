@@ -17,19 +17,6 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-void handler(int sig) {
-    void *array[10];
-    size_t size;
-
-    // get void*'s for all entries on the stack
-    size = backtrace(array, 10);
-
-    // print out all the frames to stderr
-    fprintf(stderr, "Error: signal %d:\n", sig);
-    backtrace_symbols_fd(array, size, STDERR_FILENO);
-    exit(1);
-}
 #endif
 
 #include <iostream>
@@ -39,12 +26,14 @@ void handler(int sig) {
 #include <iomanip>
 #include <boost/algorithm/string.hpp>
 
-// cpprest lib
-#pragma comment(lib, "cpprest_2_10")
+#ifdef WIN32
+    // link with cpprest lib
+    #pragma comment(lib, "cpprest_2_10")
 
-// openSSL libs
-#pragma comment(lib, "ssleay32")
-#pragma comment(lib, "libeay32")
+    // link with openSSL libs
+    #pragma comment(lib, "ssleay32")
+    #pragma comment(lib, "libeay32")
+#endif
 
 using namespace libcommandline;
 
@@ -218,9 +207,6 @@ int run(const char *const *argv) {
 #ifdef _MSC_VER
     // set a fixed console size (default is not wide enough)
     setConsoleSize(150, 40, 2000);
-#else
-    // install error handler to show stack trace
-    signal(SIGSEGV, handler);
 #endif
 
     // show version & extra info
