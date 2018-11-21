@@ -336,7 +336,7 @@ std::stringstream Stats::nodeBaseFields(const std::string &query, long roundType
 
     std::string encodedWorkerId = minerSettings.uniqueID();
     encodedWorkerId.erase(std::remove_if(encodedWorkerId.begin(), encodedWorkerId.end(), 
-        [](auto const& c) -> bool {
+        [](char const& c) -> bool {
         bool keep = std::isalnum(c) ||
             c == '-' || c == '.' || c == '_' || c == '~';
         return !keep;
