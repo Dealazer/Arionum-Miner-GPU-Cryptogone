@@ -30,15 +30,40 @@ void OpenClMiningDevice::initialize(uint32_t deviceIndex) {
     progCtx = s_programCache[deviceID].get();
 }
 
+size_t OpenClMiningDevice::maxAllocSize() const {
+    return 
+        device.getCLDevice().getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>();
+}
+
+void OpenClMiningDevice::warmupBuffer(cl::Buffer &buf, size_t size) {
+    uint8_t dummy = 0xFF;
+    queue(0).enqueueWriteBuffer(buf, true, size - 1, 1, &dummy);
+}
+
+bool s_openCL_logErrors = true;
+
+bool OpenClMiningDevice::testAlloc(size_t size) {
+    bool ok;
+    s_openCL_logErrors = false;
+    try {
+        const cl::Context& context = progCtx->getContext();
+        std::unique_ptr<cl::Buffer> buf = 
+            std::make_unique<cl::Buffer>(context, CL_MEM_READ_WRITE, size);
+        warmupBuffer(*buf, size);
+        ok = true;
+    }
+    catch (const std::exception &) {
+        ok = false;
+    }
+    s_openCL_logErrors = true;
+    return ok;
+}
+
 cl::Buffer* OpenClMiningDevice::newBuffer(size_t size) {
     // add a new buffer
     const cl::Context& context = progCtx->getContext();
     buffers.emplace_back(new cl::Buffer(context, CL_MEM_READ_WRITE, size));
-    
-    // warm it up
-    uint8_t dummy = 0xFF;
-    queue(0).enqueueWriteBuffer(*buffers.back(), true, size - 1, 1, &dummy);
-    
+    warmupBuffer(*buffers.back(), size);
     return buffers.back().get();
 }
 

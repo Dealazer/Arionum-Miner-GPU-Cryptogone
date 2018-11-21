@@ -65,12 +65,13 @@ public:
                 cout << "----------------------------------------------" << endl;
             };
 
-            sep();
-
             std::ostringstream oss_device;
             oss_device << "Device " << std::setfill('0') << std::setw(2) 
                 << deviceIndex << " => " << devices[deviceIndex].getName();
+            
+            sep();
             std::cout << oss_device.str() << std::endl;
+            sep();
 
             uint32_t nMiners = devicesConfigs[i].nMiners;
             uint32_t gpuBatchSize = devicesConfigs[i].gpuBatchSize;
@@ -79,8 +80,6 @@ public:
                     deviceIndex, nMiners, gpuBatchSize));
             devicesMiners.push_back({});
             auto & miningDevice = *miningDevices.back();
-
-            std::cout << miningDevice.buffersDesc() << std::endl;
 
             for (uint32_t j = 0; j < nMiners; ++j) {
                 auto pMiner = new MINER(
@@ -97,6 +96,7 @@ public:
                     << "miner " << j << ": " << miners.back()->describe();
                 std::cout << oss_miner.str() << std::endl;
             }
+            std::cout << miningDevice.buffersDesc() << std::endl;
             sep();
         }
 

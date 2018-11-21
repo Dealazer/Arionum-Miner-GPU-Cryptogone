@@ -28,8 +28,12 @@ public:
     cl::Buffer* newBuffer(size_t size) override;
     void writeBuffer(cl::Buffer * buf, const void * str, size_t size) override;
     argon2::opencl::ProgramContext* programContext() { return progCtx; }
+    size_t maxAllocSize() const override;
+    bool testAlloc(size_t) override;
 
 private:
+    void warmupBuffer(cl::Buffer & buf, size_t size);
+
     argon2::opencl::GlobalContext globalCtx;
     argon2::opencl::ProgramContext* progCtx;
     argon2::opencl::Device device;

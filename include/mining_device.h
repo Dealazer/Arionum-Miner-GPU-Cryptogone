@@ -12,6 +12,8 @@ public:
     virtual QUEUE* newQueue() = 0;
     virtual BUFFER* newBuffer(size_t size) = 0;
     virtual void writeBuffer(BUFFER* buf, const void* src, size_t size) = 0;
+    virtual size_t maxAllocSize() const = 0;
+    virtual bool testAlloc(size_t) = 0;
     virtual ~IMiningDevice() {};
 };
 
@@ -89,11 +91,33 @@ private:
         for (uint32_t i = 0; i < nTasks; i++)
             this->newQueue();
         
-        // compute blocks buffers sizes
         AroMemoryInfo aro(batchSizeGPU);
+
+        // can we can allocate a single buffer for each task ?
+        bool singleBufferPerGPUTask = testAlloc(aro.memPerTaskGPU);
+
+        // compute blocks buffers sizes
+        size_t totalMemPerTaskGPU = aro.memPerTaskGPU;
+        size_t maxGPUBufferSize = 
+            singleBufferPerGPUTask ? totalMemPerTaskGPU : this->maxAllocSize();
+        std::vector<size_t> taskBuffersSizes;
+        
+        size_t avail = totalMemPerTaskGPU;
+        while (avail > 0) {
+            auto size = std::min(avail, maxGPUBufferSize);
+            taskBuffersSizes.push_back(size);
+            avail -= size;
+        }
+        while (taskBuffersSizes.size() > MAX_BLOCKS_BUFFERS)
+            taskBuffersSizes.pop_back();
+
+        size_t totalBlocksBufferMem = 0;
         std::vector<size_t> buffersSizes;
         for (uint32_t i = 0; i < nTasks; i++) {
-            buffersSizes.push_back(aro.memPerTaskGPU);
+            for (auto bufSize : taskBuffersSizes) {
+                buffersSizes.push_back(bufSize);
+                totalBlocksBufferMem += bufSize;
+            }
         }
 
         // allocate block buffers
@@ -103,11 +127,8 @@ private:
 
         // save a description for showing to user
         std::ostringstream ossBuffersDesc;
-        ossBuffersDesc << buffers.size() << " block buffers, ";
-        size_t memUsed = 0;
-        for (auto it : buffersSizes)
-            memUsed += it;
-        ossBuffersDesc << toGb(memUsed) << " used";
+        ossBuffersDesc << buffers.size() << " block buffer(s), ";
+        ossBuffersDesc << toGb(totalBlocksBufferMem) << " used";
         buffersDesc_ = ossBuffersDesc.str();
 
         // allocate index buffer
@@ -122,27 +143,54 @@ private:
 
         // assign the buffers & set batch sizes
         minersConfigs.clear();
+        size_t taskOffset = 0;
         for (uint32_t i = 0; i < nTasks; i++) {
             argon2::MemConfig mc;
 
+            //std::cout << "--- Task " << i << std::endl;
+
             // set GPU blocks buffers for task
-            mc.batchSizes[BLOCK_GPU][0] = batchSizeGPU;
-            mc.blocksBuffers[BLOCK_GPU][0] = buffers[i];
+            for (size_t slot = 0; slot < taskBuffersSizes.size(); slot++) {
+                auto & buf = buffers[taskOffset + slot];
+                auto size = buffersSizes[taskOffset + slot];
+                
+                mc.blocksBuffers[BLOCK_GPU][slot] = buf;
+                mc.batchSizes[BLOCK_GPU][slot] = size / aro.memPerHashGPU;
+
+                //std::cout
+                //    << "GPU Slot " << slot << " => " << toGb(size) 
+                //    << " (" << mc.blocksBuffers[BLOCK_GPU][slot] << ")"
+                //    << std::endl;
+            }
 
             // set CPU blocks buffers for task
             if (USE_SINGLE_TASK_FOR_CPU_BLOCKS) {
                 if (i == 0) {
-                    for (uint32_t j = 0; j < nTasks; j++) {
-                        mc.batchSizes[BLOCK_CPU][j] = aro.memPerTaskGPU / aro.memPerHashCPU;
-                        mc.blocksBuffers[BLOCK_CPU][j] = buffers[j];
+                    size_t curSlot = 0;
+                    size_t curBuffer = 0;
+                    while (curBuffer < buffers.size() && curSlot < (size_t)MAX_BLOCKS_BUFFERS) {
+                        auto batchSize = buffersSizes[curBuffer] / aro.memPerHashCPU;
+                        if (batchSize == 0) {
+                            curBuffer++;
+                            continue;
+                        }
+                        mc.blocksBuffers[BLOCK_CPU][curSlot] = buffers[curBuffer];
+                        mc.batchSizes[BLOCK_CPU][curSlot] = batchSize;
+
+                        //std::cout
+                        //    << "CPU Slot " << curSlot << " => " << toGb(buffersSizes[curBuffer])
+                        //    << " (" << mc.blocksBuffers[BLOCK_CPU][curSlot] << ")"
+                        //    << std::endl;
+
+                        curSlot++;
+                        curBuffer++;
                     }
+
                     mc.indexBuffer = indexBuffer;
                 }
             }
             else {
-                mc.batchSizes[BLOCK_CPU][0] = aro.memPerTaskGPU / aro.memPerHashCPU;
-                mc.blocksBuffers[BLOCK_CPU][0] = buffers[i];
-                mc.indexBuffer = indexBuffer;
+                throw std::logic_error("USE_SINGLE_TASK_FOR_CPU_BLOCKS==false not implemented");
             }
 
             // set in & out buffers sizes
@@ -157,6 +205,8 @@ private:
 
             // save miner mem config
             minersConfigs.push_back(mc);
+
+            taskOffset += taskBuffersSizes.size();
         }
     }
 
@@ -172,7 +222,18 @@ public:
         std::uint32_t batchSizeGPU) {
         auto pDevice = new T();
         pDevice->initialize(deviceIndex);
-        pDevice->configureForAroMining(nTasks, batchSizeGPU);
+        try {
+            pDevice->configureForAroMining(nTasks, batchSizeGPU);
+        }
+        catch (const std::exception & e) {
+            std::cout << "-- Device " 
+                << std::setfill('0') << std::setw(2)  << deviceIndex
+                << ": buffers creation failed, "
+                << "miner probably uses too much GPU memory, "
+                << "try to reduce -b / -t parameters"
+                << std::endl;
+            throw std::logic_error(e.what());
+        }
         return pDevice;
     }
 };
