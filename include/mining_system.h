@@ -80,6 +80,8 @@ public:
             devicesMiners.push_back({});
             auto & miningDevice = *miningDevices.back();
 
+            std::cout << miningDevice.buffersDesc() << std::endl;
+
             for (uint32_t j = 0; j < nMiners; ++j) {
                 auto pMiner = new MINER(
                     miningDevice.programContext(),

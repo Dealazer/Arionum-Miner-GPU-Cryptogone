@@ -34,6 +34,10 @@ public:
         return minersConfigs[threadIndex];
     }
 
+    const std::string & buffersDesc() {
+        return buffersDesc_;
+    }
+
     friend class AroMiningDeviceFactory;
 
 private:
@@ -73,15 +77,40 @@ private:
         argon2::OptParams optPrmsCPU;
     };
 
-    void configureForAroMining(uint32_t nTasks, uint32_t batchSizeGPU) {
-        AroMemoryInfo aro(batchSizeGPU);
+    std::string toGb(size_t nBytes) {
+        double gb = nBytes / 1073741824.0;
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(3) << gb << " GB";
+        return oss.str();
+    }
 
-        std::vector<void*> buffers;
-        for (uint32_t i = 0; i < nTasks; i++) {
+    void configureForAroMining(uint32_t nTasks, uint32_t batchSizeGPU) {
+        // one queue per task
+        for (uint32_t i = 0; i < nTasks; i++)
             this->newQueue();
-            buffers.push_back(this->newBuffer(aro.memPerTaskGPU));
+        
+        // compute blocks buffers sizes
+        AroMemoryInfo aro(batchSizeGPU);
+        std::vector<size_t> buffersSizes;
+        for (uint32_t i = 0; i < nTasks; i++) {
+            buffersSizes.push_back(aro.memPerTaskGPU);
         }
 
+        // allocate block buffers
+        std::vector<void*> buffers;
+        for (auto it : buffersSizes)
+            buffers.push_back(this->newBuffer(it));
+
+        // save a description for showing to user
+        std::ostringstream ossBuffersDesc;
+        ossBuffersDesc << buffers.size() << " block buffers, ";
+        size_t memUsed = 0;
+        for (auto it : buffersSizes)
+            memUsed += it;
+        ossBuffersDesc << toGb(memUsed) << " used";
+        buffersDesc_ = ossBuffersDesc.str();
+
+        // allocate index buffer
         BUFFER * indexBuffer = nullptr;
         if (aro.optPrmsCPU.mode == argon2::PRECOMPUTE_LOCAL_STATE ||
             aro.optPrmsCPU.mode == argon2::PRECOMPUTE_SHUFFLE) {
@@ -91,15 +120,16 @@ private:
             this->writeBuffer(indexBuffer, aro.optPrmsCPU.customIndex, indexSize);
         }
 
+        // assign the buffers & set batch sizes
         minersConfigs.clear();
         for (uint32_t i = 0; i < nTasks; i++) {
             argon2::MemConfig mc;
 
-            // set GPU blocks
+            // set GPU blocks buffers for task
             mc.batchSizes[BLOCK_GPU][0] = batchSizeGPU;
             mc.blocksBuffers[BLOCK_GPU][0] = buffers[i];
 
-            // set CPU blocks
+            // set CPU blocks buffers for task
             if (USE_SINGLE_TASK_FOR_CPU_BLOCKS) {
                 if (i == 0) {
                     for (uint32_t j = 0; j < nTasks; j++) {
@@ -115,7 +145,7 @@ private:
                 mc.indexBuffer = indexBuffer;
             }
 
-            // set in & out buffers
+            // set in & out buffers sizes
             uint32_t totalNonces = (uint32_t)std::max(
                 mc.getTotalHashes(BLOCK_GPU),
                 mc.getTotalHashes(BLOCK_CPU));
@@ -128,7 +158,9 @@ private:
             // save miner mem config
             minersConfigs.push_back(mc);
         }
-    };
+    }
+
+    std::string buffersDesc_;
 };
 
 class AroMiningDeviceFactory {

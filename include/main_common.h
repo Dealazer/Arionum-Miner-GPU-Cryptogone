@@ -276,14 +276,17 @@ int run(const char *const *argv) {
             return v[v.size() - 1];
         };
 
+        int curDevice = 0;
         std::vector<DeviceConfig> configs;
-        for (auto deviceIndex : args.deviceIndexList)
+        for (auto deviceIndex : args.deviceIndexList) {
             configs.push_back({
             deviceIndex,
-            itemOrLast(deviceIndex, args.nTasksPerDeviceList),
-            itemOrLast(deviceIndex, args.gpuBatchSizePerDeviceList),
+            itemOrLast(curDevice, args.nTasksPerDeviceList),
+            itemOrLast(curDevice, args.gpuBatchSizePerDeviceList),
             args.cpuBlocksOptimizationMode
-        });
+            });
+            curDevice++;
+        }
         return configs;
     }();
 
