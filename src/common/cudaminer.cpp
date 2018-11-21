@@ -37,6 +37,19 @@ BufferWrapper * CudaMiningDevice::newBuffer(size_t size) {
     return buffers.back().get();
 }
 
+size_t CudaMiningDevice::maxAllocSize() const {
+    progCtx->getDevice().setAsCurrent();
+    size_t free, total;
+    cudaMemGetInfo(&free, &total);
+
+    std::cout << "CUDA mem => total=" << toGb(total) << " , free=" << toGb(free) << ")" << std::endl;
+    return free;
+}
+
+bool CudaMiningDevice::testAlloc(size_t size) {
+    return size < maxAllocSize();
+}
+
 void CudaMiningDevice::writeBuffer(BufferWrapper * bufferWrapper, const void * str, size_t size) {
     argon2::cuda::CudaException::check(
         cudaMemcpy(bufferWrapper->buf, str, size, cudaMemcpyHostToDevice));

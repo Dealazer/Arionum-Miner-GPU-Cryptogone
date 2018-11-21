@@ -26,6 +26,8 @@ public:
     BufferWrapper * newBuffer(size_t size) override;
     void writeBuffer(BufferWrapper * buf, const void * str, size_t size) override;
     argon2::cuda::ProgramContext& programContext() { return *progCtx; };
+    size_t maxAllocSize() const override;
+    bool testAlloc(size_t) override;
 
 private:
     std::unique_ptr<argon2::cuda::GlobalContext> globalCtx;

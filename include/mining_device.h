@@ -42,6 +42,14 @@ public:
 
     friend class AroMiningDeviceFactory;
 
+protected:
+    std::string toGb(size_t nBytes) const {
+        double gb = nBytes / 1073741824.0;
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(3) << gb << " GB";
+        return oss.str();
+    }
+
 private:
     const bool USE_SINGLE_TASK_FOR_CPU_BLOCKS = true;
     std::vector<argon2::MemConfig> minersConfigs;
@@ -78,13 +86,6 @@ private:
         size_t memPerTaskGPU;
         argon2::OptParams optPrmsCPU;
     };
-
-    std::string toGb(size_t nBytes) {
-        double gb = nBytes / 1073741824.0;
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(3) << gb << " GB";
-        return oss.str();
-    }
 
     void configureForAroMining(uint32_t nTasks, uint32_t batchSizeGPU) {
         // one queue per task
