@@ -48,8 +48,7 @@ bool OpenClMiningDevice::testAlloc(size_t size) {
     s_openCL_logErrors = false;
     try {
         const cl::Context& context = progCtx->getContext();
-        std::unique_ptr<cl::Buffer> buf = 
-            std::make_unique<cl::Buffer>(context, CL_MEM_READ_WRITE, size);
+        std::unique_ptr<cl::Buffer> buf{ new cl::Buffer(context, CL_MEM_READ_WRITE, size) };
         warmupBuffer(*buf, size);
         ok = true;
     }
