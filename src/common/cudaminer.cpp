@@ -41,8 +41,6 @@ size_t CudaMiningDevice::maxAllocSize() const {
     progCtx->getDevice().setAsCurrent();
     size_t free, total;
     cudaMemGetInfo(&free, &total);
-
-    std::cout << "CUDA mem => total=" << toGb(total) << " , free=" << toGb(free) << ")" << std::endl;
     return free;
 }
 
