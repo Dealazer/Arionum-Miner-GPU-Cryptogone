@@ -157,7 +157,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
 
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const std::string token) { state.stats_token = token; },
-            "stats-token", 't', "Programmer Dan stats node secret token", "", "MyFancyToken"),
+            "stats-token", 's', "Programmer Dan stats node secret token", "", "MyFancyToken"),
 
         new FlagOption<OpenCLArguments>(
                 [](OpenCLArguments &state) { state.skipCpuBlocks = true; },
