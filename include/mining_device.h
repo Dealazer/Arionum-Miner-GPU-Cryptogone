@@ -1,9 +1,12 @@
 #pragma once
 
-#include <vector>
-#include <memory>
 #include "aro_tools.h"
 #include "../../argon2/src/core.h"
+
+#include <vector>
+#include <memory>
+#include <sstream>
+#include <iomanip>
 
 template<typename QUEUE, typename BUFFER>
 class IMiningDevice {
