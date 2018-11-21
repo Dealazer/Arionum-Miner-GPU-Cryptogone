@@ -124,7 +124,9 @@ bool AroResultsProcessorPool::processResult(const Input& input) {
                 mpz_rest.get_mpz_t(), r.nonce.data(), r.encodedArgon.data());
             std::cout << buf << std::endl;
         }
-        SubmitParams p{ r.nonce, r.encodedArgon, bd.public_key, dd, isBlock };
+        uint32_t dl = (uint32_t)mpz_rest.get_si();
+        SubmitParams p{ r.nonce, r.encodedArgon, bd.public_key, 
+            dd, isBlock, bd.type, dl};
         submit(p, 0);
     }
 
@@ -136,9 +138,10 @@ bool AroResultsProcessorPool::processResult(const Input& input) {
     return true;
 }
 
-void AroResultsProcessorPool::submitReject(const std::string & msg, bool isBlock) {
+void AroResultsProcessorPool::submitReject(
+    const std::string & msg, const SubmitParams & p) {
     std::cout << msg << std::endl;
-    stats.newRejection();
+    stats.newRejection(p);
 }
 
 void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
@@ -226,7 +229,7 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
             std::ostringstream oss;
             if (!d) {
                 oss << "-- nonce submit failed, " << msg << " " << e.what() << std::endl;
-                submitReject(oss.str(), prms.isBlock);
+                submitReject(oss.str(), prms);
             }
         };
 
@@ -248,11 +251,11 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
             if (status == "ok") {
                 std::cout << "-- " <<
                     (prms.isBlock ? "block" : "share") << " accepted by pool :-)" << std::endl;
-                prms.isBlock ? stats.newBlock(d) : stats.newShare(d);
+                prms.isBlock ? stats.newBlock(prms) : stats.newShare(prms);
             }
             else {
                 submitReject(
-                    std::string("-- nonce refused by pool :-( status=") + status, prms.isBlock);
+                    std::string("-- nonce refused by pool :-( status=") + status, prms);
                 updater.requestRefresh();
             }
         }

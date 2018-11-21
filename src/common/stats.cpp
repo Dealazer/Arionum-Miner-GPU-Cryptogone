@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <sstream>
 #include <random>
+#include <cctype>
 
 const bool DEBUG_ROUNDS = false;
 const int COL_TIME = 20;
@@ -102,10 +103,11 @@ void Stats::addHashes(long newHashes) {
     roundHashes += newHashes;
 }
 
-void Stats::newShare(bool dd) {
-    if (!dd) {
+void Stats::newShare(const SubmitParams & p) {
+    if (!p.d) {
         std::lock_guard<std::mutex> lg(mutex);
         shares++;
+        nodeSubmitReq("share submit (stats node)", p, true);
     }
 }
 
@@ -124,15 +126,17 @@ void Stats::blockChange(BLOCK_TYPE blockType) {
     }
 }
 
-void Stats::newBlock(bool dd) {
-    if (!dd) {
+void Stats::newBlock(const SubmitParams & p) {
+    if (!p.d) {
         std::lock_guard<std::mutex> lg(mutex);
         blocks++;
+        nodeSubmitReq("block submit (stats node)", p, true);
     }
 }
 
-void Stats::newRejection() {
+void Stats::newRejection(const SubmitParams & p) {
     rejections++;
+    nodeSubmitReq("reject submit (stats node)", p, false);
 }
 
 void Stats::newDl(uint32_t dl, BLOCK_TYPE t) {
@@ -201,10 +205,13 @@ void Stats::endRound() {
         std::cout << "---- END ROUND, duration=" << std::fixed << std::setprecision(1)
             << roundDurationMs << "ms" << std::endl;
 
-    //if (minerSettings
-    //stats_nodeUrl_
+    // send stats to node
+    if (!testMode() && minerSettings.hasStatsNode()) {
+        std::stringstream paths = nodeBaseFields("report", roundType);
+        paths << "&hashes=" << roundHashes << "&elapsed=" << roundDurationMs;
+        nodeReq("stats report", paths.str());
+    }
 }
-
 
 void Stats::printTimePrefix() const {
 #ifdef WIN32
@@ -321,4 +328,66 @@ void Stats::printMiningStats(const MinerData & data,
     std::cout << (isMining ? *data.getLimit() : "N/A");
 
     std::cout << std::endl;
+}
+
+std::stringstream Stats::nodeBaseFields(const std::string &query, long roundType) {
+    std::stringstream paths;
+    std::string blockTypeStr = (roundType == BLOCK_CPU) ? "CPU" : "GPU";
+
+    std::string encodedWorkerId = minerSettings.uniqueID();
+    encodedWorkerId.erase(std::remove_if(encodedWorkerId.begin(), encodedWorkerId.end(), 
+        [](auto const& c) -> bool {
+        bool keep = std::isalnum(c) ||
+            c == '-' || c == '.' || c == '_' || c == '~';
+        return !keep;
+    }), encodedWorkerId.end());
+    
+    paths << "/report.php?q=" << query
+        << "&token=" << minerSettings.statsToken()
+        << "&id=" << encodedWorkerId << blockTypeStr
+        << "&type=" << "arionumGPUminer" << blockTypeStr;
+    return paths;
+}
+
+std::unique_ptr<http_client> Stats::nodeClient() {
+    http_client_config config;
+    config.set_timeout(utility::seconds(2));
+    auto statsAdress = toUtilityString(minerSettings.statsAPIUrl());
+    std::unique_ptr<http_client> p(new http_client(statsAdress, config));
+    return p;
+}
+
+void Stats::nodeReq(std::string desc, const std::string & paths) {
+    //std::cout << paths << std::endl;
+
+    auto client = nodeClient();
+    http_request req(methods::GET);
+    auto _paths = toUtilityString(paths);
+    req.set_request_uri(_paths.data());
+    client->request(req)
+        .then([desc](pplx::task<web::http::http_response> response)
+    {
+        try
+        {
+            if (response.get().status_code() != status_codes::OK)
+                std::cout << "-- " << desc << " error" << std::endl;
+        }
+        catch (const std::exception e) {
+            std::cout << "-- " << desc << " exception: " << e.what() << std::endl;
+        }
+    });
+}
+
+void Stats::nodeSubmitReq(std::string desc, const SubmitParams & p, bool accepted) {
+    if (!minerSettings.hasStatsNode())
+        return;
+
+    // currently missing:
+    // p.nonce,  p.argon: need UTF8 encode, difficulty
+    std::stringstream paths = nodeBaseFields("discovery", p.roundType);
+    paths << "&retries=" << 0 << "&dl=" << p.dl;
+    if (accepted)
+        paths << "&confirmed";
+
+    nodeReq(desc, paths.str());
 }

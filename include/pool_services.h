@@ -5,7 +5,8 @@
 
 #include <cpprest/http_client.h>
 
-class Stats;
+#include "stats.h"
+
 class Updater;
 
 class RandomBytesGenerator {
@@ -48,15 +49,8 @@ public:
     virtual bool processResult(const Input& i) override;
 
 private:
-    struct SubmitParams {
-        std::string nonce;
-        std::string argon;
-        std::string public_key;
-        bool d;
-        bool isBlock;
-    };
     void submit(SubmitParams prms, size_t retryCount);
-    void submitReject(const std::string &msg, bool isBlock);
+    void submitReject(const std::string &msg, const SubmitParams & p);
     void newClient();
 
     MinerSettings settings;

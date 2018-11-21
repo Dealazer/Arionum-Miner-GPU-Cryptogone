@@ -37,11 +37,14 @@ public:
     const std::string & uniqueID() const;
     bool canMineBlock(BLOCK_TYPE type) const;
     bool useLastHashrateInsteadOfRoundAvg() const { return showLastHashrate; };
-    bool hasStatsNode() { return stats_nodeUrl_.size() > 0; };
-    std::string statsAPIUrl() {
+    bool hasStatsNode() const { return stats_nodeUrl_.size() > 0; };
+    std::string statsAPIUrl() const {
         if (!hasStatsNode())
             return{};
-        return stats_nodeUrl_ + "/report.php?";
+        return stats_nodeUrl_;
+    }
+    const std::string statsToken() const {
+        return stats_nodeKey_;
     }
 private:
     const std::string &poolAddress_;

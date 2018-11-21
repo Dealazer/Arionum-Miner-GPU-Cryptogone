@@ -5,17 +5,19 @@
 #ifndef ARIONUM_GPU_MINER_STATS_H
 #define ARIONUM_GPU_MINER_STATS_H
 
-#include <iostream>
-#include <atomic>
-#include <chrono>
-#include <mutex>
-#include <climits>
-#include <cmath>
-
 #include "minerdata.h"
 #include "minersettings.h"
+#include <cpprest/http_client.h>
 
-//#define DEBUG_ROUNDS
+struct SubmitParams {
+    std::string nonce;
+    std::string argon;
+    std::string public_key;
+    bool d;
+    bool isBlock;
+    BLOCK_TYPE roundType;
+    uint32_t dl;
+};
 
 class Stats {
 private:
@@ -69,9 +71,9 @@ public:
 
     bool dd();
     void addHashes(long hashes);
-    void newShare(bool dd);
-    void newBlock(bool dd);
-    void newRejection();
+    void newShare(const SubmitParams & p);
+    void newBlock(const SubmitParams & p);
+    void newRejection(const SubmitParams & p);
     void newDl(uint32_t dl, BLOCK_TYPE t);
 
     void beginRound(BLOCK_TYPE blockType);
@@ -104,6 +106,11 @@ public:
     void blockChange(BLOCK_TYPE blockType);
 
 private:
+    void nodeSubmitReq(std::string desc, const SubmitParams & p, bool accepted);
+    std::stringstream nodeBaseFields(const std::string &query, long roundType);
+    std::unique_ptr<web::http::client::http_client> nodeClient();
+    void nodeReq(std::string desc, const std::string & paths);
+
     uint32_t rndRange(uint32_t n);
 };
 
