@@ -7,6 +7,7 @@
 #include <memory>
 #include <sstream>
 #include <iomanip>
+#include <iostream>
 
 template<typename QUEUE, typename BUFFER>
 class IMiningDevice {
