@@ -61,7 +61,7 @@ void updateTestMode(Stats &stats) {
         stats.beginRound(tm.blockType);
         stats.printRoundStatsHeader();
     }
-    chrono::duration<float> duration =
+    std::chrono::duration<float> duration =
         high_resolution_clock::now() - tm.lastT;
     if (duration.count() >= TEST_MODE_STATS_INTERVAL) {
         stats.endRound();
@@ -74,7 +74,7 @@ void updateTestMode(Stats &stats) {
             auto &bt = tm.blockType;
             bt = (bt == BLOCK_GPU) ? BLOCK_CPU : BLOCK_GPU;
             tm.nRounds = 0;
-            cout << endl;
+            std::cout << std::endl;
             stats.printRoundStatsHeader();
         }
 

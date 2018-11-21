@@ -13,13 +13,14 @@
 #include <cmath>
 
 #include "minerdata.h"
-
-using namespace std;
+#include "minersettings.h"
 
 //#define DEBUG_ROUNDS
 
 class Stats {
 private:
+    const MinerSettings & minerSettings;
+
     std::atomic<long> roundType;
     std::atomic<long> roundHashes;
     std::atomic<double> roundHashRate;
@@ -45,7 +46,8 @@ private:
 
 public:
 
-    Stats() :
+    Stats(const MinerSettings & minerSettings) :
+        minerSettings(minerSettings),
         roundType(-1),
         roundHashes(0),
         roundHashRate(0.0),
@@ -84,20 +86,20 @@ public:
 
     void printRoundStatsHeader() const;
 
-    const atomic<long> &getRounds(BLOCK_TYPE t) const;
-    const atomic<long> &getTotalHashes(BLOCK_TYPE t) const;
+    const std::atomic<long> &getRounds(BLOCK_TYPE t) const;
+    const std::atomic<long> &getTotalHashes(BLOCK_TYPE t) const;
 
-    const atomic<long> &getRoundHashes() const;
-    const atomic<double> &getRoundHashRate() const;
-    const chrono::time_point<chrono::system_clock> &getRoundStart() const;
+    const std::atomic<long> &getRoundHashes() const;
+    const std::atomic<double> &getRoundHashRate() const;
+    const std::chrono::time_point<std::chrono::system_clock> &getRoundStart() const;
 
     double getAvgHashrate(BLOCK_TYPE t) const;
-    const atomic<uint32_t> &getBestDl(BLOCK_TYPE t) const;
-    const atomic<uint32_t> &getBlockBestDl() const;
+    const std::atomic<uint32_t> &getBestDl(BLOCK_TYPE t) const;
+    const std::atomic<uint32_t> &getBlockBestDl() const;
 
-    const atomic<long> &getShares() const;
-    const atomic<long> &getBlocks() const;
-    const atomic<long> &getRejections() const;
+    const std::atomic<long> &getShares() const;
+    const std::atomic<long> &getBlocks() const;
+    const std::atomic<long> &getRejections() const;
 
     void blockChange(BLOCK_TYPE blockType);
 

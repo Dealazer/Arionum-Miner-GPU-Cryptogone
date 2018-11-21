@@ -49,7 +49,7 @@ public:
         for (size_t i = 0; i < devicesConfigs.size(); i++) {
             auto deviceIndex = devicesConfigs[i].deviceIndex;
             if (deviceIndex >= devices.size()) {
-                cout << "Warning: device " << deviceIndex << " does not exist, skipping it" << endl;
+                std::cout << "Warning: device " << deviceIndex << " does not exist, skipping it" << std::endl;
                 continue;
             }
 
@@ -62,7 +62,7 @@ public:
             }
 
             auto sep = []() -> void {
-                cout << "----------------------------------------------" << endl;
+                std::cout << "----------------------------------------------" << std::endl;
             };
 
             std::ostringstream oss_device;
@@ -128,7 +128,7 @@ protected:
     std::unique_ptr<IAroResultsProcessor> resultsProcessor;
     std::vector<std::unique_ptr<MINING_DEVICE>> miningDevices;
     std::vector<std::unique_ptr<AroMiner>> miners;
-    std::vector<vector<size_t>> devicesMiners;
+    std::vector<std::vector<size_t>> devicesMiners;
     std::vector<bool> minerIdle;
     std::vector<t_time_point> minerStartT;
     Stats &stats;
@@ -162,10 +162,10 @@ protected:
         static bool s_miningStartedMsgShown = false;
         if (!s_miningStartedMsgShown) {
             stats.printTimePrefix();
-            cout <<
+            std::cout <<
                 (testMode() ?
                     "--- Start Testing ---" : "--- Start Mining ---")
-                << endl;
+                << std::endl;
             s_miningStartedMsgShown = true;
         }
     }

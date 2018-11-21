@@ -67,6 +67,8 @@ struct OpenCLArguments {
     std::string address = "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK";
     std::string poolUrl = "http://aropool.com";
     argon2::OPT_MODE cpuBlocksOptimizationMode = getCPUBlockKernelType(DEFAULT_CPU_KERNEL);
+    std::string stats_nodeUrl = "";
+    std::string stats_token = "";
 };
 
 extern bool s_miningReady;
@@ -101,7 +103,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const std::string deviceList) {
                 if (!parseUInt32List(deviceList, state.deviceIndexList)) {
-                    cout << "Error parsing -d parameter, will use -d 0" << endl;
+                    std::cout << "Error parsing -d parameter, will use -d 0" << std::endl;
                     state.deviceIndexList = { 0 };
                 }
         }, "devices", 'd', "GPU devices to use, examples: -d 0 / -d 1 / -d 0,1,3,5", "0", "devices"),
@@ -113,7 +115,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const std::string address) { state.address = address; }, "address", 'a',
             "public arionum address",
-            "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK",
+            "dev wallet",
             "address"),
 
         new ArgumentOption<OpenCLArguments>(
@@ -127,7 +129,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const std::string nTasksList) {
                 if (!parseUInt32List(nTasksList, state.nTasksPerDeviceList)) {
-                    cout << "Error parsing -t parameter, will use default" << endl;
+                    std::cout << "Error parsing -t parameter, will use default" << std::endl;
                     state.nTasksPerDeviceList = { DEFAULT_TASKS_PER_DEVICE };
                 }
         }, "tasks-per-device", 't', "number of parallel tasks per device, examples: -t 1 / -t 6,3", 
@@ -136,7 +138,7 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
         new ArgumentOption<OpenCLArguments>(
             [](OpenCLArguments &state, const std::string batchSizeList) {
                 if (!parseUInt32List(batchSizeList, state.gpuBatchSizePerDeviceList)) {
-                    cout << "Error parsing -b parameter, will use default" << endl;
+                    std::cout << "Error parsing -b parameter, will use default" << std::endl;
                     state.gpuBatchSizePerDeviceList = { DEFAULT_GPU_BATCH_SIZE };
                 }
         }, "gpu-batch-size", 'b', "GPU batch size, examples: -b 224 / -b 224,196", 
@@ -148,6 +150,14 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
             },
             "cpu-blocks-kernel", 'k', "kernel for cpu blocks, (shuffle or local_state)",
             "local_state if OpenCL, shuffle if CUDA", "kernel_name"),
+
+        new ArgumentOption<OpenCLArguments>(
+            [](OpenCLArguments &state, const std::string url) { state.stats_nodeUrl = url; },
+            "stats-node", 'n', "Programmer Dan stats node url", "", "stats_node_url"),
+
+        new ArgumentOption<OpenCLArguments>(
+            [](OpenCLArguments &state, const std::string token) { state.stats_token = token; },
+            "stats-token", 't', "Programmer Dan stats node secret token", "", "MyFancyToken"),
 
         new FlagOption<OpenCLArguments>(
                 [](OpenCLArguments &state) { state.skipCpuBlocks = true; },
@@ -180,14 +190,14 @@ void printDeviceList() {
     CONTEXT global;
     auto &devices = global.getAllDevices();
     if (!devices.size()) {
-        cout << "No device found !" << endl;
+        std::cout << "No device found !" << std::endl;
         return;
     }
 
     for (size_t i = 0; i < devices.size(); i++) {
         auto &device = devices[i];
-        cout << "Device #" << i << ": " << device.getName()
-            << endl;
+        std::cout << "Device #" << i << ": " << device.getName()
+            << std::endl;
     }
 }
 
@@ -210,11 +220,11 @@ int run(const char *const *argv) {
 #endif
 
     // show version & extra info
-    cout << getVersionStr();
+    std::cout << getVersionStr();
     auto extra = getExtraInfoStr();
     if (extra.size() > 0)
-        cout << ", " << extra;
-    cout << endl << endl;
+        std::cout << ", " << extra;
+    std::cout << std::endl << std::endl;
 
     // process arguments
     CommandLineParser<OpenCLArguments> parser = buildCmdLineParser();
@@ -293,16 +303,17 @@ int run(const char *const *argv) {
     // MinerSettings
     MinerSettings minerSettings(
         args.poolUrl, args.address, uniqid,
+        args.stats_nodeUrl, args.stats_token,
         !args.skipGpuBlocks, !args.skipCpuBlocks, !args.legacyHashrate);
     std::cout << minerSettings << std::endl;
 
     // create stats module
-    Stats stats;
+    Stats stats(minerSettings);
 
     // create mining system
     using MiningSystem_t = MiningSystem<CONTEXT, DEVICE, MINER>;
     std::unique_ptr<Updater> updater;
-    std::unique_ptr<thread> updateThread;
+    std::unique_ptr<std::thread> updateThread;
     std::unique_ptr<MiningSystem_t> miningSystem{};
 
     if (testMode()) {
@@ -343,11 +354,11 @@ int commonMain(const char *const *argv) {
     try {
         return run<CONTEXT, DEVICE, MINER>(argv);
     }
-    catch (std::logic_error e) {
+    catch (const std::logic_error & e) {
         std::cout << "Exception in main thread: " << e.what() << std::endl;
         return 1;
     }
-    catch (exception e) {
+    catch (const std::exception & e) {
         std::cout << "Exception in main thread: " << e.what() << std::endl;
         return 1;
     }

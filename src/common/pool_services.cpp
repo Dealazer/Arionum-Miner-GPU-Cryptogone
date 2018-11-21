@@ -137,7 +137,7 @@ bool AroResultsProcessorPool::processResult(const Input& input) {
 }
 
 void AroResultsProcessorPool::submitReject(const std::string & msg, bool isBlock) {
-    std::cout << msg << endl;
+    std::cout << msg << std::endl;
     stats.newRejection();
 }
 
@@ -149,7 +149,7 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
             boost::replace_all(s, from[i], to[i]);
     };
 
-    string argonTail = [prms]() -> string {
+    std::string argonTail = [prms]() ->  std::string {
         std::vector<std::string> parts;
         boost::split(parts, prms.argon, boost::is_any_of("$"));
         if (parts.size() < 6)
@@ -165,7 +165,7 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
     std::string sanitized_nonce = prms.nonce;
     sanitize(sanitized_nonce);
 
-    stringstream body;
+    std::stringstream body;
     bool d = prms.d;
     body << "address=" << (d ? DD : settings.privateKey())
         << "&argon=" << argonTail
@@ -174,7 +174,7 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
         << "&public_key=" << prms.public_key;
 
     if (prms.d && retryCount == 0) {
-        stringstream paths;
+        std::stringstream paths;
         paths << "/mine.php?q=info&worker=" << settings.uniqueID()
             << "&address=" << DD
             << "&hashrate=" << 1;
@@ -246,8 +246,8 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
 
             auto status = toString(jvalue.at(U("status")).as_string());
             if (status == "ok") {
-                cout << "-- " <<
-                    (prms.isBlock ? "block" : "share") << " accepted by pool :-)" << endl;
+                std::cout << "-- " <<
+                    (prms.isBlock ? "block" : "share") << " accepted by pool :-)" << std::endl;
                 prms.isBlock ? stats.newBlock(d) : stats.newShare(d);
             }
             else {

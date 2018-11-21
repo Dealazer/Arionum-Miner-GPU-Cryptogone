@@ -36,7 +36,7 @@ void Updater::update() {
         ((double)timeSinceLastHrUpdateMs >= hrSendRate_mins * 60.0 * 1000.0) ||
         (hrCPU > 0 && !hrCPUSentAtLeastOneTime);
 
-    stringstream paths;
+    std::stringstream paths;
     paths << "/mine.php?q=info&worker=" << settings.uniqueID()
         << "&address=" << settings.privateKey();
 
@@ -73,14 +73,14 @@ void Updater::update() {
             processResponse(&value);
         }
         catch (const web::http::http_exception & e) {
-            std::cout << "-- Updater http_exception => " << e.what() << endl;
+            std::cout << "-- Updater http_exception => " << e.what() << std::endl;
             newClient();
         }
         catch (const web::json::json_exception & e) {
-            std::cout << "-- Updater json_exception => " << e.what() << endl;
+            std::cout << "-- Updater json_exception => " << e.what() << std::endl;
         }
         catch (const std::exception & e) {
-            std::cout << "-- Updater exception => " << e.what() << endl;
+            std::cout << "-- Updater exception => " << e.what() << std::endl;
         }
     }).wait();
 }
@@ -111,11 +111,11 @@ void Updater::start() {
         MinerData roundData = getData();
         stats.beginRound(roundData.getBlockType());
         while (true) {
-            auto start = chrono::system_clock::now();
+            auto start = std::chrono::system_clock::now();
             update();
             while (1) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(250));
-                chrono::duration<float> duration = chrono::system_clock::now() - start;
+                std::chrono::duration<float> duration = std::chrono::system_clock::now() - start;
                 MinerData curData = getData();
                 bool blockTypeChanged = curData.getBlockType() != roundData.getBlockType();
                 bool roundFinished = (duration.count() >= POOL_UPDATE_RATE_SECONDS || blockTypeChanged);
@@ -139,7 +139,7 @@ void Updater::start() {
             }
         }
     }
-    catch (exception e) {
+    catch (const std::exception & e) {
         std::cout << "Exception in update thread: " << e.what() << std::endl;
         exit(1);
     }
@@ -154,24 +154,24 @@ void Updater::processResponse(const json::value *value) {
         throw std::logic_error("Failed to get work from pool (empty json)");
     }
 
-    string status = toString(value->at(U("status")).as_string());
+    std::string status = toString(value->at(U("status")).as_string());
     if (status == "ok") {
         json::value jsonData = value->at(U("data"));
 
         if (jsonData.is_object()) {
-            string difficulty = toString(jsonData.at(U("difficulty")).as_string());
-            string block = toString(jsonData.at(U("block")).as_string());
-            string public_key = toString(jsonData.at(U("public_key")).as_string());
+            std::string difficulty = toString(jsonData.at(U("difficulty")).as_string());
+            std::string block = toString(jsonData.at(U("block")).as_string());
+            std::string public_key = toString(jsonData.at(U("public_key")).as_string());
 
             int limit = jsonData.at(U("limit")).as_integer();
-            string limitAsString = std::to_string(limit);
+            std::string limitAsString = std::to_string(limit);
 
             uint32_t argon_memory = (uint32_t)jsonData.at(U("argon_mem")).as_integer();
             uint32_t argon_threads = (uint32_t)jsonData.at(U("argon_threads")).as_integer();
             uint32_t argon_time = (uint32_t)jsonData.at(U("argon_time")).as_integer();
             uint32_t height = jsonData.at(U("height")).as_integer();
 
-            string recommendation = toString(jsonData.at(U("recommendation")).as_string());
+            std::string recommendation = toString(jsonData.at(U("recommendation")).as_string());
             BLOCK_TYPE blockType;
             if (recommendation != "mine") {
                 blockType = BLOCK_MASTERNODE;
@@ -195,7 +195,7 @@ void Updater::processResponse(const json::value *value) {
                     );
 
                     if (s_miningReady) {
-                        cout << endl << "-- NEW BLOCK --" << endl << *data;
+                        std::cout << std::endl << "-- NEW BLOCK --" << std::endl << *data;
                     }
                     stats.blockChange(data->getBlockType());
                 }
