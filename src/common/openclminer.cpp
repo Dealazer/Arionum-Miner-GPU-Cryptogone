@@ -8,6 +8,7 @@
 #include <iostream>
 #include <iomanip>
 #include <map>
+#include <memory>
 
 void OpenClMiningDevice::initialize(uint32_t deviceIndex) {
     device = globalCtx.getAllDevices()[deviceIndex];
