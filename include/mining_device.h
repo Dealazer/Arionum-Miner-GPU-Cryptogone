@@ -99,7 +99,7 @@ private:
         AroMemoryInfo aro(batchSizeGPU);
 
         // can we can allocate a single buffer for each task ?
-        bool singleBufferPerGPUTask = testAlloc(aro.memPerTaskGPU);
+        bool singleBufferPerGPUTask = this->testAlloc(aro.memPerTaskGPU);
 
         // compute blocks buffers sizes
         size_t totalMemPerTaskGPU = aro.memPerTaskGPU;
