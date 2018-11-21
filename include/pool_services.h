@@ -43,7 +43,8 @@ private:
 
 class AroResultsProcessorPool : public IAroResultsProcessor {
 public:
-    AroResultsProcessorPool(const MinerSettings & ms, Stats & stats);
+    AroResultsProcessorPool(
+        const MinerSettings & ms, Stats & stats, Updater & updater);
     virtual bool processResult(const Input& i) override;
 
 private:
@@ -60,6 +61,7 @@ private:
 
     MinerSettings settings;
     Stats & stats;
+    Updater & updater;
 
     const std::size_t SUBMIT_HTTP_TIMEOUT_SECONDS = 2;
     std::unique_ptr<web::http::client::http_client> client;

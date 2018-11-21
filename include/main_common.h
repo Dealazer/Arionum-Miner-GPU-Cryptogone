@@ -321,7 +321,7 @@ int run(const char *const *argv) {
             std::unique_ptr<AroNonceProviderPool>(
                 new AroNonceProviderPool(*updater)),
             std::unique_ptr<AroResultsProcessorPool>(
-                new AroResultsProcessorPool(minerSettings, stats)),
+                new AroResultsProcessorPool(minerSettings, stats, *updater)),
             stats));
     }
 

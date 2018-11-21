@@ -84,10 +84,11 @@ void AroNonceProviderPool::generateNoncesImpl(std::size_t count, Nonces &nonces)
     }
 }
 
-AroResultsProcessorPool::AroResultsProcessorPool(const MinerSettings & ms,
-    Stats & stats) :
+AroResultsProcessorPool::AroResultsProcessorPool(
+    const MinerSettings & ms, Stats & stats, Updater & updater) :
     settings(ms),
     stats(stats),
+    updater(updater),
     client{},
     BLOCK_LIMIT(240), mpz_ZERO(0), mpz_rest(0) {
     newClient();
@@ -252,6 +253,7 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
             else {
                 submitReject(
                     std::string("-- nonce refused by pool :-( status=") + status, prms.isBlock);
+                updater.requestRefresh();
             }
         }
         catch (const web::http::http_exception & e) {

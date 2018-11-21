@@ -131,7 +131,8 @@ void Updater::start() {
                     stats.beginRound(roundData.getBlockType());
                     break;
                 }
-                if (refreshCount > 0) { 
+                if (refreshCount > 0) {
+                    std::cout << "-- refreshing pool info" << std::endl;
                     update();
                     refreshCount = 0;
                 }
