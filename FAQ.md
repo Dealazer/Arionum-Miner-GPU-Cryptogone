@@ -17,7 +17,7 @@
     |--------------------------------------------------------------------------------|
     | Nvidia GTX960, 4GB    | -t 1 -b 224  |  Ubuntu 18  |    44 H/s   |  409 H/s    |
     |--------------------------------------------------------------------------------|
-    | AMD Vega64 (OC), 8GB  | -t 2 -b 224  |  Windows 10 |  52.5 H/s   |  1970 H/s   |
+    | AMD Vega64 (OC), 8GB  | -t 2 -b 224  |  Windows 10 |    52 H/s   |  1935 H/s   |
      --------------------------------------------------------------------------------
 
 Numbers above are from `arionum-cuda-miner` for the NVidia GPUs and `arionum-opencl-miner` for the AMD ones.
