@@ -231,6 +231,8 @@ int run(const char *const *argv) {
     OpenCLArguments args;
     int ret = parser.parseArguments(args, argv);
     if (ret != 0) {
+        std::cout << std::endl;
+        parser.printHelp(argv);
         return 1;
     }
 
