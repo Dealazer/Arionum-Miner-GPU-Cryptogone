@@ -14,7 +14,7 @@ stats_node_secret=""
 test_mode="false" # set this to true to bench the miner performance
 
 extraPrm=""
-if [ "test_mode" = "true" ]; then
+if [ "$test_mode" = "true" ]; then
     extraPrm="--test-mode"
 fi
 
