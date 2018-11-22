@@ -367,13 +367,27 @@ void Stats::nodeReq(std::string desc, const std::string & paths) {
     client->request(req)
         .then([desc](pplx::task<web::http::http_response> response)
     {
+        auto showStatsError = [](const std::string & prefix, const std::string & err) -> void {
+            static std::chrono::time_point<std::chrono::system_clock> s_lastT;
+            auto durationSinceLastPrint = std::chrono::system_clock::now() - s_lastT;
+
+            const auto STATS_ERROR_PRINT_INTERVAL_SECONDS = std::chrono::seconds(60);
+            if (durationSinceLastPrint >= STATS_ERROR_PRINT_INTERVAL_SECONDS) {
+                std::cout << "-- " << prefix << " => " << err << std::endl;
+                s_lastT = std::chrono::system_clock::now();
+            }
+        };
+
         try
         {
             if (response.get().status_code() != status_codes::OK)
                 std::cout << "-- " << desc << " error" << std::endl;
         }
+        catch (const web::http::http_exception & e) {
+            showStatsError("stats report http exception", e.what());
+        }
         catch (const std::exception e) {
-            std::cout << "-- " << desc << " exception: " << e.what() << std::endl;
+            showStatsError("stats report exception", e.what());
         }
     });
 }
