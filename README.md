@@ -72,7 +72,7 @@ Also see the [FAQ](https://bitbucket.org/cryptogone/arionum-gpu-miner/src/master
     -b, --gpu-batch-size=batchSize         GPU batch size, examples: -b 224 / -b 224,196 [default: 0]
     -k, --cpu-blocks-kernel=kernel_name    kernel for cpu blocks, (shuffle or local_state) [default: local_state if OpenCL, shuffle if CUDA]
     -n, --stats-node=stats_node_url        Programmer Dan stats node url
-    -t, --stats-token=MyFancyToken         Programmer Dan stats node secret token
+    -s, --stats-token=MyFancyToken         Programmer Dan stats node secret token
         --skip-cpu-blocks                  do not mine cpu blocks
         --skip-gpu-blocks                  do not mine gpu blocks
         --test-mode                        test CPU/GPU blocks hashrate
@@ -122,10 +122,10 @@ Choosing `-t` / `nThreads` and `-b` / `nBatches` values:
 Test Mode:
 
 * Make sure to use the `--test-mode` parameter to run the miner in test mode when you are tuning `-b / -t`
-* Miner will alternate every 20s between CPU and GPU blocks allowing you to quickly see hashrates
+* Miner will alternate every 30s between CPU and GPU blocks allowing you to quickly see hashrates
 * Miner will not submit any share in test mode (so you do not need to specify a pool or wallet address)
 * In this mode, the value you want to optimize is the average hashrate (more important than the instant one)
-* In test mode you will see that the hashrate drops a bit every time a block change, this is normal;
+* In test mode you will see that the hashrate may drop a bit every time a block change, this is normal;
 * this happens because GPU need to finish current block tasks before launching tasks for the new block
 * (with CUDA / OpenCL you cannot easily interrupt a task, you need to wait for it to finish)
 * Hashrate loss on block change also explains why in normal mining mode, average hashrate is often lower than instant hashrate
@@ -138,13 +138,13 @@ For rigs with many GPUs:
 
 ## Example -b / -t values
 
-Here are some battle tested values for various GB GPUs, should be similar for other GPUs with same memory:
+Here are some battle tested values for various GPUs:
 
     AMD Vega64,           8GB, Win10, OpenCL => -t 2 -b 216
     NVIDIA 1080ti,       11GB, Linux, CUDA   => -t 3 -b 228
     NVIDIA GTX960,        4GB, Linux, CUDA   => -t 1 -b 224
     NVIDIA Quadro M500M,  2GB, Win10, CUDA   => -t 1 -b 104
-    
+
 ## Building (Linux)
 
 First, install CUDA SDK (https://developer.nvidia.com/cuda-downloads).
@@ -193,14 +193,16 @@ You can also skip the last step and instead open `build/arionum-gpu-miner.sln` w
 
 ## Versions release notes
 
-#### Version 1.6.0
-* improved CPU blocks hashrate for CUDA & OpenCL
-* new --cpu-blocks-kernel / -k option, 
-  it allows to choose between 'shuffle' and 'local_state' kernels
-* local_state kernel is usually faster on AMD devices (used by default in OpenCL miner)
-* shuffle kernel is usually faster on NVIDIA devices (used by default in CUDA miner)
-* On AMD devices, you might need to reduce -b value a bit to get the best hashrate,
-  for example: -b 216 for v1.6.0 instead of -b 224 for v1.5.1
+#### Version 1.6.0 (11/22/2018)
+* improved `CPU blocks` hashrate for `CUDA` & `OpenCL`
+* reduced invalid shares rate (refresh pool info on nonce refusal and try to resubmit nonce on http error)
+* support for ProgrammerDan's stats reporting node (new `-n`, `-s` parameters, see FAQ)
+* improved `run_CUDA`, `run_OpenCL` scripts
+* new `-k` option: allows to choose between `shuffle` kernel and new `local_state` kernel
+* `local_state` kernel seems faster on `AMD` devices (default in `arionum-opencl-miner`)
+* `shuffle` kernel seems faster on `Nvidia` devices (default in `arionum-cuda-miner`)
+* On `AMD` devices, you might need to reduce `-b` value a bit to get the best CPU blocks hashrate
+* for example: `-b 216` for v1.6.0 instead of `-b 224` for v1.5.1
 
 #### Version 1.5.1
 * show cuda / opencl version used for building in welcome msg

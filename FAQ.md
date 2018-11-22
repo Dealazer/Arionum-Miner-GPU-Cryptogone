@@ -1,4 +1,4 @@
-### What are the strengths of arionum-gpu-miner v1.5.0 ?
+### What are the strengths of arionum-gpu-miner ?
 
 * High performance GPU mining for CPU & GPU blocks
 * Low CPU usage (only 1 thread to manage all GPU jobs)
@@ -6,32 +6,23 @@
 * Linux and Windows 10 support
 * Uses cpprestsdk (supports https pools)
 * Optimized to lose as less hashrate as possible on block switch
+* Supports [ProgrammerDan's stats reporting node 0.2](https://github.com/ProgrammerDan/arionum-node/releases/tag/0.2.0)
 
 ### Example settings & Hashrate ?
 
-     -----------------------------------------------------------------------
-    |    Device         |   Params     |      OS     |  CPU      |   GPU    |
-    |-----------------------------------------------------------------------|
-    | M500M, 2GB        | -t 1 -b 104  |  Windows 10 | 9.6 H/s   | 70.4 H/s |
-    |-----------------------------------------------------------------------|
-    | GTX960, 4GB       | -t 1 -b 224  |  Ubuntu 17  | 37.3 H/s  | 401 H/s  |
-    |-----------------------------------------------------------------------|
-    | VEGA64 (OC), 8GB  | -t 2 -b 224  |  Windows 10 | 29.7 H/s  | 1836 H/s |
-     -----------------------------------------------------------------------
+     --------------------------------------------------------------------------------
+    |         Device        |   Params     |     OS      |  CPU block  |  GPU block  |
+    |--------------------------------------------------------------------------------|
+    | Nvidia M500M, 2GB     | -t 1 -b 104  |  Windows 10 |   11.8 H/s  |   70 H/s    |
+    |--------------------------------------------------------------------------------|
+    | Nvidia GTX960, 4GB    | -t 1 -b 224  |  Ubuntu 18  |    44 H/s   |  409 H/s    |
+    |--------------------------------------------------------------------------------|
+    | AMD Vega64 (OC), 8GB  | -t 2 -b 224  |  Windows 10 |  52.5 H/s   |  1970 H/s   |
+     --------------------------------------------------------------------------------
 
-### Performance vs ariominer ?
+Numbers above are from `arionum-cuda-miner` for the NVidia GPUs and `arionum-opencl-miner` for the AMD ones.
 
-Comparing v1.5.0 to ariominer 0.1.2 (cpu intensity set to zero, ``--autotune`` used to find the best CPU/GPU blocks intensities) :
-
-* **M500M, CUDA**: 4% slower on GPU blocks, 23% faster on CPU blocks
-* **GTX960, CUDA**: 1% slower on GPU blocks, 37% faster on CPU blocks
-* **Vega64, OpenCL**: 14% faster on GPU blocks, 25% slower on CPU blocks
-
-Please take those numbers with a grain of salt, those were done quickly, using my own hardware.
-
-It is very important to use the CUDA version on NVidia GPUs it is always faster or equal to OpenCL.
-
-I am still working on reducing the gap for the slower cases.
+It is very important to use the CUDA version on NVidia GPUs: it is always faster or equal to OpenCL.
 
 ### Can I use a CPU miner at the same time as the GPU miner ?
 
@@ -39,7 +30,15 @@ Yes you can run any other CPU miner at the same time, just make sure it doesn no
 
 If you use a combined cpu / gpu miner like ariominer it is recommended to configure it to not mine with GPU (``--gpu-intensity 0``).
 
-It is **not advised** to use another GPU miner at the same time because both miner will compete for GPU ram.
+It is **not advised** to use another GPU miner at the same time because both miners will compete for GPU ram.
+
+### How to monitor miners with ProgrammerDan's stats reporting node ?
+
+* First, setup an arionum node, for example using [KyleFromOhio's scripts](https://github.com/KyleFromOhio/arionum-scripts)
+* Then install [ProgrammerDan's statsAugment](https://github.com/ProgrammerDan/arionum-node/releases) on the node, do not forget to set your **secret token**
+* Finally, pass those parameters to the miner: `-n node_url -s secret_token`. 
+* For example if node is on same computer as miner: `-n http://127.0.0.1 -s MyFancyToken`
+
 
 ### Why showing multiple hashrates ?
 
@@ -59,7 +58,7 @@ so when you are on a CPU block you see CPU block hashrates and vice versa
 
 ### Can I solo mine with arionum-gpu-miner ?
 
-The only way to solo mine for now is by using this pool: https://aro.hashpi.com/.
+The only way to solo mine for now is by using this pool: https://aro.hashpi.com
 
 But be aware that because of the 1% fee, each time you find a block there is 1 chance on 100 that the full reward will be taken as fees
 
