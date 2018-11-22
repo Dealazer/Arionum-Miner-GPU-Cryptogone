@@ -22,6 +22,7 @@ rm -f "$ARCH_PATH"
 
 # Build
 pushd build
+make clean
 make -j
 
 if ! [ -f "arionum-cuda-miner" ]; then
