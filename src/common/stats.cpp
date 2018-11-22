@@ -365,29 +365,29 @@ void Stats::nodeReq(std::string desc, const std::string & paths) {
     auto _paths = toUtilityString(paths);
     req.set_request_uri(_paths.data());
     client->request(req)
-        .then([desc](pplx::task<web::http::http_response> response)
+    .then([desc](pplx::task<web::http::http_response> response)
     {
-        auto showStatsError = [](const std::string & prefix, const std::string & err) -> void {
+        auto showStatsError = [](const std::string & desc, const std::string & type, const std::string & err) -> void {
             static std::chrono::time_point<std::chrono::system_clock> s_lastT;
             auto durationSinceLastPrint = std::chrono::system_clock::now() - s_lastT;
-
-            const auto STATS_ERROR_PRINT_INTERVAL_SECONDS = std::chrono::seconds(60);
+            const auto STATS_ERROR_PRINT_INTERVAL_SECONDS = std::chrono::seconds(30);
             if (durationSinceLastPrint >= STATS_ERROR_PRINT_INTERVAL_SECONDS) {
-                std::cout << "-- " << prefix << " => " << err << std::endl;
+                std::cout << "-- " << desc << " " <<  type << " => " << err << std::endl;
                 s_lastT = std::chrono::system_clock::now();
             }
         };
 
         try
         {
-            if (response.get().status_code() != status_codes::OK)
-                std::cout << "-- " << desc << " error" << std::endl;
+            auto status = response.get().status_code();
+            if (status != status_codes::OK)
+                showStatsError(desc, "status code != OK", std::to_string(status));
         }
         catch (const web::http::http_exception & e) {
-            showStatsError("stats report http exception", e.what());
+            showStatsError(desc, "http exception", e.what());
         }
         catch (const std::exception e) {
-            showStatsError("stats report exception", e.what());
+            showStatsError(desc, "exception", e.what());
         }
     });
 }
