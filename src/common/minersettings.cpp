@@ -16,9 +16,11 @@ const std::string & MinerSettings::uniqueID() const {
 }
 
 std::ostream &operator<<(std::ostream &os, const MinerSettings &settings) {
-	os << "worker id     : " << settings.uniqueID() << std::endl
-       << "pool address  : " << settings.poolAddress() << std::endl
-       << "wallet address: " << settings.privateKey();
+    os << "worker id      : " << settings.uniqueID() << std::endl
+        << "pool address   : " << settings.poolAddress() << std::endl
+        << "wallet address : " << settings.privateKey();
+    if (settings.statsAPIUrl().size() > 0)
+        os << std::endl << "stats node     : " << settings.statsAPIUrl();
     return os;
 }
 

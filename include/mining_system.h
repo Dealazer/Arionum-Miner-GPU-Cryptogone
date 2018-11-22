@@ -69,6 +69,7 @@ public:
             oss_device << "Device " << std::setfill('0') << std::setw(2) 
                 << deviceIndex << " => " << devices[deviceIndex].getName();
             
+            std::cout << std::endl;
             sep();
             std::cout << oss_device.str() << std::endl;
             sep();
@@ -99,6 +100,7 @@ public:
             std::cout << miningDevice.buffersDesc() << std::endl;
             sep();
         }
+        std::cout << std::endl;
 
         minerIdle = std::vector<bool>(miners.size(), true);
     }

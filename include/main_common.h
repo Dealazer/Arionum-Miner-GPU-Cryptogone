@@ -270,6 +270,7 @@ int run(const char *const *argv) {
             return 1;
         }
         std::cout << "Found " << devices.size() << " compute devices" << std::endl;
+        std::cout << std::endl;
     }
 
     // list devices mode
