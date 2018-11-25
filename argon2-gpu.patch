@@ -117,7 +117,7 @@ index 3dd95ba..d8e67d9 100644
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
 diff --git a/data/kernels/argon2_kernel.cl b/data/kernels/argon2_kernel.cl
-index fa5e12a..f3310a7 100644
+index fa5e12a..c2c0295 100644
 --- a/data/kernels/argon2_kernel.cl
 +++ b/data/kernels/argon2_kernel.cl
 @@ -35,6 +35,8 @@ typedef ptrdiff_t intptr_t;
@@ -179,7 +179,37 @@ index fa5e12a..f3310a7 100644
  void store_block(__global struct block_g *dst, const struct block_th *src,
                   uint thread)
  {
-@@ -407,244 +429,318 @@ void next_addresses(struct block_th *addr, struct block_th *tmp,
+@@ -159,29 +181,10 @@ void store_block(__global struct block_g *dst, const struct block_th *src,
+     dst->data[3 * THREADS_PER_LANE + thread] = src->d;
+ }
+ 
+-#ifdef cl_amd_media_ops
+-#pragma OPENCL EXTENSION cl_amd_media_ops : enable
+-
+-ulong rotr64(ulong x, ulong n)
+-{
+-    uint lo = u64_lo(x);
+-    uint hi = u64_hi(x);
+-    uint r_lo, r_hi;
+-    if (n < 32) {
+-        r_lo = amd_bitalign(hi, lo, (uint)n);
+-        r_hi = amd_bitalign(lo, hi, (uint)n);
+-    } else {
+-        r_lo = amd_bitalign(lo, hi, (uint)n - 32);
+-        r_hi = amd_bitalign(hi, lo, (uint)n - 32);
+-    }
+-    return u64_build(r_hi, r_lo);
+-}
+-#else
+ ulong rotr64(ulong x, ulong n)
+ {
+     return rotate(x, 64 - n);
+ }
+-#endif
+ 
+ ulong f(ulong x, ulong y)
+ {
+@@ -407,244 +410,318 @@ void next_addresses(struct block_th *addr, struct block_th *tmp,
      xor_block(addr, tmp);
  }
  
@@ -689,7 +719,7 @@ index fa5e12a..f3310a7 100644
  #endif /* ARGON2_TYPE == ARGON2_I || ARGON2_TYPE == ARGON2_ID */
  
  void argon2_step(
-@@ -692,94 +788,21 @@ void argon2_step(
+@@ -692,94 +769,21 @@ void argon2_step(
                  ref_index, ref_lane);
  }
  
@@ -798,7 +828,7 @@ index fa5e12a..f3310a7 100644
      uint lane   = get_global_id(0) / THREADS_PER_LANE;
      uint warp   = get_local_id(0) / THREADS_PER_LANE;
      uint thread = get_local_id(0) % THREADS_PER_LANE;
-@@ -788,9 +811,11 @@ __kernel void argon2_kernel_oneshot(
+@@ -788,9 +792,11 @@ __kernel void argon2_kernel_oneshot(
  
      uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
  
@@ -1685,7 +1715,7 @@ index eb52e02..56040c9 100644
      devices.reserve(count);
      for (int i = 0; i < count; i++) {
 diff --git a/lib/argon2-cuda/kernels.cu b/lib/argon2-cuda/kernels.cu
-index 79fb767..20f580f 100644
+index 79fb767..0a422b1 100644
 --- a/lib/argon2-cuda/kernels.cu
 +++ b/lib/argon2-cuda/kernels.cu
 @@ -3,8 +3,11 @@
@@ -1713,15 +1743,83 @@ index 79fb767..20f580f 100644
      return u64_build(hi, lo);
  }
  
-@@ -269,6 +272,7 @@ __device__ void next_addresses(struct block_th *addr, struct block_th *tmp,
-     xor_block(addr, tmp);
+@@ -62,6 +65,49 @@ struct block_th {
+     uint64_t a, b, c, d;
+ };
+ 
++struct block_l {
++    uint32_t lo[ARGON2_QWORDS_IN_BLOCK];
++    uint32_t hi[ARGON2_QWORDS_IN_BLOCK];
++};
++
++__device__ void block_l_store(struct block_l *dst, const struct block_th *src,
++    uint32_t thread)
++{
++    dst->lo[0 * THREADS_PER_LANE + thread] = u64_lo(src->a);
++    dst->hi[0 * THREADS_PER_LANE + thread] = u64_hi(src->a);
++
++    dst->lo[1 * THREADS_PER_LANE + thread] = u64_lo(src->b);
++    dst->hi[1 * THREADS_PER_LANE + thread] = u64_hi(src->b);
++
++    dst->lo[2 * THREADS_PER_LANE + thread] = u64_lo(src->c);
++    dst->hi[2 * THREADS_PER_LANE + thread] = u64_hi(src->c);
++
++    dst->lo[3 * THREADS_PER_LANE + thread] = u64_lo(src->d);
++    dst->hi[3 * THREADS_PER_LANE + thread] = u64_hi(src->d);
++}
++
++__device__ void block_l_load_xor(struct block_th *dst,
++    const struct block_l *src, uint32_t thread)
++{
++    uint32_t lo, hi;
++
++    lo = src->lo[0 * THREADS_PER_LANE + thread];
++    hi = src->hi[0 * THREADS_PER_LANE + thread];
++    dst->a ^= u64_build(hi, lo);
++
++    lo = src->lo[1 * THREADS_PER_LANE + thread];
++    hi = src->hi[1 * THREADS_PER_LANE + thread];
++    dst->b ^= u64_build(hi, lo);
++
++    lo = src->lo[2 * THREADS_PER_LANE + thread];
++    hi = src->hi[2 * THREADS_PER_LANE + thread];
++    dst->c ^= u64_build(hi, lo);
++
++    lo = src->lo[3 * THREADS_PER_LANE + thread];
++    hi = src->hi[3 * THREADS_PER_LANE + thread];
++    dst->d ^= u64_build(hi, lo);
++}
++
+ __device__ uint64_t cmpeq_mask(uint32_t test, uint32_t ref)
+ {
+     uint32_t x = -(uint32_t)(test == ref);
+@@ -251,7 +297,7 @@ __device__ void shuffle_block(struct block_th *block, uint32_t thread)
+     apply_shuffle<unshift2_shuffle>(block, thread);
+ }
+ 
+-__device__ void next_addresses(struct block_th *addr, struct block_th *tmp,
++__device__ void next_addresses(struct block_th *addr, struct block_l *tmp,
+                                uint32_t thread_input, uint32_t thread)
+ {
+     addr->a = u64_build(0, thread_input);
+@@ -262,13 +308,14 @@ __device__ void next_addresses(struct block_th *addr, struct block_th *tmp,
+     shuffle_block(addr, thread);
+ 
+     addr->a ^= u64_build(0, thread_input);
+-    move_block(tmp, addr);
++    block_l_store(tmp, addr, thread);
+ 
+     shuffle_block(addr, thread);
+ 
+-    xor_block(addr, tmp);
++    block_l_load_xor(addr, tmp, thread);
  }
  
 +// ~= index_alpha in ref code ...
  __device__ void compute_ref_pos(
          uint32_t lanes, uint32_t segment_blocks,
          uint32_t pass, uint32_t lane, uint32_t slice, uint32_t offset,
-@@ -304,91 +308,41 @@ __device__ void compute_ref_pos(
+@@ -304,254 +351,349 @@ __device__ void compute_ref_pos(
      }
  }
  
@@ -1843,7 +1941,34 @@ index 79fb767..20f580f 100644
  
  template<uint32_t version>
  __device__ void argon2_core(
-@@ -415,137 +369,284 @@ __device__ void argon2_core(
+         struct block_g *memory, struct block_g *mem_curr,
+-        struct block_th *prev, struct block_th *tmp,
++        struct block_th *prev, struct block_l *tmp,
+         uint32_t lanes, uint32_t thread, uint32_t pass,
+         uint32_t ref_index, uint32_t ref_lane)
+ {
+     struct block_g *mem_ref = memory + ref_index * lanes + ref_lane;
+ 
+-    if (version != ARGON2_VERSION_10 && pass != 0) {
+-        load_block(tmp, mem_curr, thread);
+-        load_block_xor(prev, mem_ref, thread);
+-        xor_block(tmp, prev);
+-    } else {
+-        load_block_xor(prev, mem_ref, thread);
+-        move_block(tmp, prev);
+-    }
++    load_block_xor(prev, mem_ref, thread);
++    block_l_store(tmp, prev, thread);
+ 
+     shuffle_block(prev, thread);
+ 
+-    xor_block(prev, tmp);
++    block_l_load_xor(prev, tmp, thread);
++
++    if (version != ARGON2_VERSION_10 && pass != 0) {
++        load_block_xor(prev, mem_curr, thread);
++    }
+ 
      store_block(mem_curr, prev, thread);
  }
  
@@ -2024,11 +2149,7 @@ index 79fb767..20f580f 100644
 +        17, 32, 65, 112,
      }
 +};
- 
--    for (uint32_t offset = start_offset; offset < segment_blocks; ++offset) {
--        argon2_step_precompute<type, version>(
--                    memory, mem_curr, &prev, &tmp, &refs, lanes, segment_blocks,
--                    thread, lane, pass, slice, offset);
++
 +__global__ void argon2_kernel_oneshot_precomputedIndex(
 +    struct block_g *memory,
 +    uint32_t memory_0_count,
@@ -2071,11 +2192,15 @@ index 79fb767..20f580f 100644
 +        uint32_t storeSlot = indexs->storeSlot;
 +        uint32_t ref_index = indexs->refSlot;
  
--        mem_curr += lanes;
+-    for (uint32_t offset = start_offset; offset < segment_blocks; ++offset) {
+-        argon2_step_precompute<type, version>(
+-                    memory, mem_curr, &prev, &tmp, &refs, lanes, segment_blocks,
+-                    thread, lane, pass, slice, offset);
 +        struct block_g *mem_curr = (storeSlot != UINT32_MAX) ? (memory + storeSlot) : 0;
 +        argon2_core_precomputedIndex(
 +            memory, mem_curr, &prev, &tmp, thread, ref_index);
-+
+ 
+-        mem_curr += lanes;
 +        indexs++;
      }
 +#endif
@@ -2229,7 +2354,14 @@ index 79fb767..20f580f 100644
  }
  
  template<uint32_t type, uint32_t version>
-@@ -588,98 +689,32 @@ __device__ void argon2_step(
+ __device__ void argon2_step(
+         struct block_g *memory, struct block_g *mem_curr,
+-        struct block_th *prev, struct block_th *tmp, struct block_th *addr,
++        struct block_th *prev, struct block_l *tmp, struct block_th *addr,
+         uint32_t lanes, uint32_t segment_blocks, uint32_t thread,
+         uint32_t *thread_input, uint32_t lane, uint32_t pass, uint32_t slice,
+         uint32_t offset)
+@@ -588,100 +730,37 @@ __device__ void argon2_step(
                           ref_index, ref_lane);
  }
  
@@ -2329,6 +2461,7 @@ index 79fb767..20f580f 100644
 -    uint32_t job_id = blockIdx.z * blockDim.z + threadIdx.z;
 +    int job_id = blockIdx.z * blockDim.z + threadIdx.z;
      uint32_t lane   = threadIdx.y;
++    uint32_t warp = threadIdx.y; // correct ??
      uint32_t thread = threadIdx.x;
  
      uint32_t lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
@@ -2342,9 +2475,32 @@ index 79fb767..20f580f 100644
 +        memory_2, memory_2_count, memory_3, memory_3_count,
 +        lanes * lane_blocks);
  
-     struct block_th prev, addr, tmp;
+-    struct block_th prev, addr, tmp;
++    struct block_th prev, addr;
++
++    struct block_l *tmp = &((struct block_l*)(sharedMem))[warp];
      uint32_t thread_input;
-@@ -757,301 +792,140 @@ __global__ void argon2_kernel_oneshot(
+ 
+     if (type == ARGON2_I || type == ARGON2_ID) {
+@@ -707,7 +786,7 @@ __global__ void argon2_kernel_oneshot(
+             if (thread == 6) {
+                 ++thread_input;
+             }
+-            next_addresses(&addr, &tmp, thread_input, thread);
++            next_addresses(&addr, tmp, thread_input, thread);
+         }
+     }
+ 
+@@ -727,7 +806,7 @@ __global__ void argon2_kernel_oneshot(
+                 }
+ 
+                 argon2_step<type, version>(
+-                            memory, mem_curr, &prev, &tmp, &addr, lanes,
++                            memory, mem_curr, &prev, tmp, &addr, lanes,
+                             segment_blocks, thread, &thread_input, lane, pass,
+                             slice, offset);
+ 
+@@ -757,301 +836,141 @@ __global__ void argon2_kernel_oneshot(
      }
  }
  
@@ -2436,22 +2592,20 @@ index 79fb767..20f580f 100644
 -    }
 -    if (stream != nullptr) {
 -        cudaStreamDestroy(stream);
--    }
--    if (memory != nullptr) {
--        cudaFree(memory);
--    }
--    if (refs != nullptr) {
--        cudaFree(refs);
 +void KernelRunner::configure() {
 +    PerfScope p("KernelRunner::configure()");
 +    for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++) {
 +        auto bufWrapper = (BufferWrapper *)cfg.mem->blocksBuffers[cfg.blockType][i];
 +        blocksBuffers[i] = bufWrapper ? bufWrapper->buf : nullptr;
      }
-+    auto indexBufWrapper = (BufferWrapper*)cfg.mem->indexBuffer;
-+    indexBuffer = indexBufWrapper ? indexBufWrapper->buf : nullptr;
- }
- 
+-    if (memory != nullptr) {
+-        cudaFree(memory);
+-    }
+-    if (refs != nullptr) {
+-        cudaFree(refs);
+-    }
+-}
+-
 -void KernelRunner::writeInputMemory(uint32_t jobId, const void *buffer)
 -{
 -    std::size_t memorySize = static_cast<size_t>(lanes) * segmentBlocks
@@ -2474,8 +2628,10 @@ index 79fb767..20f580f 100644
 -    CudaException::check(cudaMemcpyAsync(buffer, mem, size,
 -                                         cudaMemcpyDeviceToHost, stream));
 -    CudaException::check(cudaStreamSynchronize(stream));
--}
--
++    auto indexBufWrapper = (BufferWrapper*)cfg.mem->indexBuffer;
++    indexBuffer = indexBufWrapper ? indexBufWrapper->buf : nullptr;
+ }
+ 
 -void KernelRunner::runKernelSegment(uint32_t lanesPerBlock,
 -                                    uint32_t jobsPerBlock,
 -                                    uint32_t pass, uint32_t slice)
@@ -2712,8 +2868,9 @@ index 79fb767..20f580f 100644
 +                cfg.opt->customBlockCount);
 +    }
 +    else {
++        uint32_t sharedSize = lanesPerBlock * 1 * sizeof(struct block_l);
 +        argon2_kernel_oneshot<ARGON2_I, ARGON2_VERSION_13>
-+            << <blocks, threads, 0, ctx.stream >> >(
++            << <blocks, threads, sharedSize, ctx.stream >> >(
 +                (struct block_g *)blocksBuffers[0], (uint32_t)counts[0],
 +                (struct block_g *)blocksBuffers[1], (uint32_t)counts[1],
 +                (struct block_g *)blocksBuffers[2], (uint32_t)counts[2],
