@@ -113,8 +113,9 @@ public:
 
             int nIdle = processMinersResults();
             if (nIdle == 0) {
-                const long long SLEEP_INTERVAL_MS = 3;
-                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_INTERVAL_MS));
+                std::this_thread::yield();
+                //const long long SLEEP_INTERVAL_MS = 3;
+                //std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_INTERVAL_MS));
             }
         }
     }
@@ -192,6 +193,7 @@ protected:
             if (!miner->generateNonces())
                 continue;
 
+            testRawDurationStart = std::chrono::steady_clock::now();
             miner->launchGPUTask();
 
             minerIdle[i] = false;
@@ -209,6 +211,16 @@ protected:
             if (miners[i]->resultsReady()) {
                 PerfScope p("processResults()");
 
+                std::chrono::duration<double> rawDuration = 
+                    std::chrono::steady_clock::now() - testRawDurationStart;
+                double theoricalHs = 
+                    (double)miners[i]->nHashesPerRun() / rawDuration.count();
+                auto durationMs = 
+                    (std::chrono::duration_cast<std::chrono::milliseconds>(rawDuration)).count();
+                std::cout
+                    << "duration = " << durationMs << " ms" << std::endl
+                    << "theorical Hs = " << theoricalHs << std::endl;
+
                 auto result = miners[i]->processResults();
                 stats.addHashes(result.nHashes);
                 minerStatsOnTaskEnd((int)i, result.valid);
@@ -224,4 +236,6 @@ protected:
         }
         return nIdle;
     }
+
+    t_time_point testRawDurationStart;
 };
