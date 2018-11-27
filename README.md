@@ -168,6 +168,9 @@ Once done, binaries are put in the `rel/`folder.
 
 Note that `setup_libs.sh` may ask you for your password as it needs to install some packages with `apt-get`
 
+If you get an error during `make_release_linux.sh` like `Cannot allocate memory` or `virtual memory exhausted`,
+then  edit `make_release_linux.sh`, replace `make -j` with  `make` and relaunch the build.
+
 ## Building (Windows)
 
 First install the following:
