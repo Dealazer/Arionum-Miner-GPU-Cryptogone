@@ -2761,10 +2761,16 @@ index 79fb767..20f580f 100644
  
  } // cuda
 diff --git a/lib/argon2-cuda/processingunit.cpp b/lib/argon2-cuda/processingunit.cpp
-index 7768427..19e1a3f 100644
+index 7768427..19d3924 100644
 --- a/lib/argon2-cuda/processingunit.cpp
 +++ b/lib/argon2-cuda/processingunit.cpp
-@@ -10,146 +10,53 @@
+@@ -7,149 +7,61 @@
+ #include <iostream>
+ #endif
+ 
++#include <chrono>
++std::chrono::time_point<std::chrono::high_resolution_clock> s_testRawDurationStart;
++
  namespace argon2 {
  namespace cuda {
  
@@ -2916,6 +2922,8 @@ index 7768427..19e1a3f 100644
 -    runner.writeInputMemory(index, buffer.get());
 +void ProcessingUnit::uploadInputDataAsync(const std::vector<std::string>& bases) {
 +    KernelRunnerBase<ProgramContext>::prepareInputData(runner, inBuffer, bases);
++    
++    s_testRawDurationStart = std::chrono::high_resolution_clock::now();
 +    runner.writeInputMemory(inBuffer);
  }
  
@@ -3428,10 +3436,10 @@ index 9fe39b4..ec83717 100644
  
  } // namespace opencl
 diff --git a/lib/argon2-opencl/processingunit.cpp b/lib/argon2-opencl/processingunit.cpp
-index 598ced7..02a891b 100644
+index 598ced7..79beef8 100644
 --- a/lib/argon2-opencl/processingunit.cpp
 +++ b/lib/argon2-opencl/processingunit.cpp
-@@ -1,6 +1,7 @@
+@@ -1,137 +1,86 @@
  #include "processingunit.h"
  
  #include <limits>
@@ -3439,7 +3447,10 @@ index 598ced7..02a891b 100644
  #ifndef NDEBUG
  #include <iostream>
  #endif
-@@ -8,130 +9,73 @@
++#include <chrono>
++
++std::chrono::time_point<std::chrono::high_resolution_clock> s_testRawDurationStart;
+ 
  namespace argon2 {
  namespace opencl {
  
@@ -3513,14 +3524,14 @@ index 598ced7..02a891b 100644
 -#endif
 -                break;
 -            }
-+    std::tie(inBuffer, inPtr) = newPinnedMemBuffer(
-+        miningCtx, miningConfig.mem->in, PinnedMemType::INPUT);
- 
+-
 -#ifndef NDEBUG
 -            std::cerr << "[INFO]   " << lpb << " lanes per block: "
 -                      << time << " ms" << std::endl;
 -#endif
--
++    std::tie(inBuffer, inPtr) = newPinnedMemBuffer(
++        miningCtx, miningConfig.mem->in, PinnedMemType::INPUT);
+ 
 -            if (time < bestTime) {
 -                bestTime = time;
 -                bestLanesPerBlock = lpb;
@@ -3531,7 +3542,10 @@ index 598ced7..02a891b 100644
 -                  << " lanes per block." << std::endl;
 -#endif
 -    }
--
++    std::tie(outBuffer, outPtr) = newPinnedMemBuffer(
++        miningCtx, miningConfig.mem->out, PinnedMemType::OUTPUT);
++}
+ 
 -    /* Only tune jobs per block if we hit maximum lanes per block: */
 -    if (bestLanesPerBlock == runner.getMaxLanesPerBlock()
 -            && runner.getMaxJobsPerBlock() > runner.getMinJobsPerBlock()
@@ -3539,9 +3553,8 @@ index 598ced7..02a891b 100644
 -#ifndef NDEBUG
 -        std::cerr << "[INFO] Tuning jobs per block..." << std::endl;
 -#endif
-+    std::tie(outBuffer, outPtr) = newPinnedMemBuffer(
-+        miningCtx, miningConfig.mem->out, PinnedMemType::OUTPUT);
-+}
++void ProcessingUnit::uploadInputDataAsync(const std::vector<std::string>& bases) const {
++    KernelRunner::prepareInputData(runner, inPtr, bases);
  
 -        float bestTime = std::numeric_limits<float>::infinity();
 -        for (std::uint32_t jpb = 1; jpb <= runner.getMaxJobsPerBlock();
@@ -3558,8 +3571,7 @@ index 598ced7..02a891b 100644
 -#endif
 -                break;
 -            }
-+void ProcessingUnit::uploadInputDataAsync(const std::vector<std::string>& bases) const {
-+    KernelRunner::prepareInputData(runner, inPtr, bases);
++    s_testRawDurationStart = std::chrono::high_resolution_clock::now();
 +    runner.uploadToInputMemoryAsync(inPtr);
 +}
  

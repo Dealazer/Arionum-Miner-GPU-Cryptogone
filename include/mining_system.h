@@ -14,6 +14,8 @@
 
 const size_t MAX_MINERS_PER_DEVICE = 256;
 
+extern std::chrono::time_point<std::chrono::high_resolution_clock> s_testRawDurationStart;
+
 struct DeviceConfig {
     uint32_t deviceIndex;
     uint32_t nMiners;
@@ -193,7 +195,6 @@ protected:
             if (!miner->generateNonces())
                 continue;
 
-            testRawDurationStart = std::chrono::high_resolution_clock::now();
             miner->launchGPUTask();
 
             minerIdle[i] = false;
@@ -212,7 +213,7 @@ protected:
                 PerfScope p("processResults()");
 
                 std::chrono::duration<double> rawDuration = 
-                    std::chrono::high_resolution_clock::now() - testRawDurationStart;
+                    std::chrono::high_resolution_clock::now() - s_testRawDurationStart;
                 double theoricalHs = 
                     (double)miners[i]->nHashesPerRun() / rawDuration.count();
                 auto durationMs = 
@@ -236,6 +237,4 @@ protected:
         }
         return nIdle;
     }
-
-    t_time_point testRawDurationStart;
 };
