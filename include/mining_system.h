@@ -193,7 +193,7 @@ protected:
             if (!miner->generateNonces())
                 continue;
 
-            testRawDurationStart = std::chrono::steady_clock::now();
+            testRawDurationStart = std::chrono::high_resolution_clock::now();
             miner->launchGPUTask();
 
             minerIdle[i] = false;
@@ -212,7 +212,7 @@ protected:
                 PerfScope p("processResults()");
 
                 std::chrono::duration<double> rawDuration = 
-                    std::chrono::steady_clock::now() - testRawDurationStart;
+                    std::chrono::high_resolution_clock::now() - testRawDurationStart;
                 double theoricalHs = 
                     (double)miners[i]->nHashesPerRun() / rawDuration.count();
                 auto durationMs = 
