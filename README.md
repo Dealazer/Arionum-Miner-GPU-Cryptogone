@@ -76,7 +76,6 @@ Also see the [FAQ](https://bitbucket.org/cryptogone/arionum-gpu-miner/src/master
         --skip-cpu-blocks                  do not mine cpu blocks
         --skip-gpu-blocks                  do not mine gpu blocks
         --test-mode                        test CPU/GPU blocks hashrate
-        --legacy-5s-hashrate               show 5s avg hashrate instead of last set of batches hashrate
     -?, --help                             show this help and exit
 
 ## Tuning performance

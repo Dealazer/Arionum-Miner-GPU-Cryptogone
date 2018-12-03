@@ -47,6 +47,7 @@ public:
         argon2::OPT_MODE gpuOptimizationMode);
 
     bool resultsReady() override;
+    argon2::time_point asyncStartTime() const override;
     
 protected:
     void reconfigureKernel() override;

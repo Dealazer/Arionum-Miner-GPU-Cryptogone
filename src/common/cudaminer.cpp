@@ -89,3 +89,8 @@ void CudaMiner::run_Async() {
 uint8_t * CudaMiner::resultsPtr() {
     return unit->results();
 }
+
+argon2::time_point CudaMiner::asyncStartTime() const {
+    return unit->asyncStartTime();
+}
+

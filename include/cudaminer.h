@@ -42,6 +42,7 @@ public:
        argon2::OPT_MODE);
 
    bool resultsReady() override;
+   argon2::time_point asyncStartTime() const override;
 
 protected:
     void reconfigureKernel() override;
@@ -49,6 +50,7 @@ protected:
     void fetchResults_Async() override;
     void run_Async() override;
     uint8_t * resultsPtr() override;
+
 
 private:
     std::unique_ptr<argon2::cuda::ProcessingUnit> unit;

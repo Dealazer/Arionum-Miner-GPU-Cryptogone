@@ -114,6 +114,10 @@ uint8_t * OpenClMiner::resultsPtr() {
     return pUnit->results();
 }
 
+argon2::time_point OpenClMiner::asyncStartTime() const {
+    return pUnit->asyncStartTime();
+}
+
 #if 0
 std::string toGB(size_t size) {
     double GB = (double)size / (1024.f * 1024.f * 1024.f);

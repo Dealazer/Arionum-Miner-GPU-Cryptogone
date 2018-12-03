@@ -19,6 +19,7 @@ class IGPUMiner {
 public:
     virtual ~IGPUMiner() {};
     virtual bool resultsReady() = 0;
+    virtual argon2::time_point asyncStartTime() const = 0;
 
 protected:
     virtual void reconfigureKernel() = 0;
@@ -48,7 +49,8 @@ public:
     void launchGPUTask();
     ProcessedResults processResults();
 
-    uint32_t nHashesPerRun() const;
+    uint32_t nHashesPerRun(BLOCK_TYPE bt) const;
+
     BLOCK_TYPE taskBlockType() const 
     { return nonces.blockDesc.type; };
     BLOCK_TYPE providerBlockType() const 

@@ -19,15 +19,14 @@ public:
         const std::string & uniqid,
         const std::string & stats_nodeUrl,
         const std::string & stats_nodeKey,
-        bool mineGPU, bool mineCPU, bool showLastHashrate) :
+        bool mineGPU, bool mineCPU) :
         poolAddress_(poolAddress),
         privateKey_(privateKey),
         uniqid_(uniqid),
         stats_nodeUrl_(stats_nodeUrl),
         stats_nodeKey_(stats_nodeKey),
         mineGpuBlocks(mineGPU),
-        mineCpuBlocks(mineCPU),
-        showLastHashrate(showLastHashrate) {
+        mineCpuBlocks(mineCPU) {
     }
 
     friend std::ostream &operator<<(std::ostream &os, const MinerSettings &settings);
@@ -36,7 +35,6 @@ public:
     const std::string & privateKey() const;
     const std::string & uniqueID() const;
     bool canMineBlock(BLOCK_TYPE type) const;
-    bool useLastHashrateInsteadOfRoundAvg() const { return showLastHashrate; };
     bool hasStatsNode() const { return stats_nodeUrl_.size() > 0; };
     std::string statsAPIUrl() const {
         if (!hasStatsNode())
@@ -54,7 +52,6 @@ private:
     const std::string &stats_nodeKey_;
     bool mineGpuBlocks;
     bool mineCpuBlocks;
-    bool showLastHashrate;
 };
 
 #endif //ARIONUM_GPU_MINER_MINERSETTINGS_H

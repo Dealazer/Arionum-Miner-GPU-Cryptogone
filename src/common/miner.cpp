@@ -31,11 +31,14 @@ AroMiner::AroMiner(
     cpuBlocksOptimizationMode(cpuOptimizationMode) {
 }
 
-uint32_t AroMiner::nHashesPerRun() const {
+uint32_t AroMiner::nHashesPerRun(BLOCK_TYPE bt) const {
+    if (bt != BLOCK_CPU && bt != BLOCK_GPU) {
+        exit(1);
+        return 0;
+    }
     uint32_t nHashes = 0;
-    auto blockType = services.nonceProvider.currentBlockType();
     for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++)
-        nHashes += (uint32_t)memConfig.batchSizes[blockType][i];
+        nHashes += (uint32_t)memConfig.batchSizes[bt][i];
     return nHashes;
 }
 
@@ -82,7 +85,11 @@ bool AroMiner::updateNonceProvider() {
 }
 
 bool AroMiner::generateNonces() {
-    auto nHashes = nHashesPerRun();
+    auto bt = services.nonceProvider.currentBlockType();
+    if (bt == BLOCK_MAX)
+        return false;
+
+    uint32_t nHashes = nHashesPerRun(bt);
     if (nHashes <= 0)
         return false;
 

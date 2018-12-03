@@ -12,14 +12,12 @@
 
 using std::chrono::high_resolution_clock;
 
-using t_time_point = std::chrono::time_point<high_resolution_clock>;
-
 const int TEST_MODE_STATS_INTERVAL = 5;
 const int TEST_MODE_BLOCK_CHANGE_RATE = 6;
 
 struct TestModeInfo {
     bool enabled = false;
-    t_time_point lastT = {};
+    argon2::time_point lastT = {};
     int nRounds = 0;
     BLOCK_TYPE blockType = BLOCK_GPU;
     bool testCPU = true;
@@ -56,29 +54,32 @@ void updateTestMode(Stats &stats) {
     auto& tm = s_testMode;
     if (!tm.enabled)
         return;
-    if (tm.lastT == t_time_point()) {
+    if (tm.lastT == argon2::time_point()) {
         tm.lastT = high_resolution_clock::now();
-        stats.beginRound(tm.blockType);
-        stats.printRoundStatsHeader();
+        stats.onBlockChange(tm.blockType);
+        stats.printHeaderTestMode();
     }
     std::chrono::duration<float> duration =
         high_resolution_clock::now() - tm.lastT;
     if (duration.count() >= TEST_MODE_STATS_INTERVAL) {
-        stats.endRound();
-        stats.printRoundStats(duration.count());
-
         tm.nRounds++;
-        if (tm.nRounds >= TEST_MODE_BLOCK_CHANGE_RATE 
-            && tm.testCPU 
-            && tm.testGPU) {
+
+        stats.printStatsTestMode();
+
+        bool blockChange = 
+            tm.nRounds >= TEST_MODE_BLOCK_CHANGE_RATE &&
+            tm.testCPU && tm.testGPU;
+        if (blockChange) {
+            tm.nRounds = 0;
+            
             auto &bt = tm.blockType;
             bt = (bt == BLOCK_GPU) ? BLOCK_CPU : BLOCK_GPU;
-            tm.nRounds = 0;
+            stats.onBlockChange(bt);
+            
             std::cout << std::endl;
-            stats.printRoundStatsHeader();
+            stats.printHeaderTestMode();
         }
 
         tm.lastT = high_resolution_clock::now();
-        stats.beginRound(tm.blockType);
     }
 }

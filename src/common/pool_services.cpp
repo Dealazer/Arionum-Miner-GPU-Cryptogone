@@ -133,7 +133,7 @@ bool AroResultsProcessorPool::processResult(const Input& input) {
     mpz_class maxDL = UINT32_MAX;
     if (!dd && mpz_cmp(mpz_rest.get_mpz_t(), maxDL.get_mpz_t()) < 0) {
         long si = (long)mpz_rest.get_si();
-        stats.newDl(si, bd.type);
+        stats.onDL(si, bd.type);
     }
     return true;
 }
@@ -141,7 +141,7 @@ bool AroResultsProcessorPool::processResult(const Input& input) {
 void AroResultsProcessorPool::submitReject(
     const std::string & msg, const SubmitParams & p) {
     std::cout << msg << std::endl;
-    stats.newRejection(p);
+    stats.onRejectedShare(p);
 }
 
 void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
@@ -251,7 +251,7 @@ void AroResultsProcessorPool::submit(SubmitParams prms, size_t retryCount) {
             if (status == "ok") {
                 std::cout << "-- " <<
                     (prms.isBlock ? "block" : "share") << " accepted by pool :-)" << std::endl;
-                prms.isBlock ? stats.newBlock(prms) : stats.newShare(prms);
+                prms.isBlock ? stats.onBlockFound(prms) : stats.onShareFound(prms);
             }
             else {
                 submitReject(

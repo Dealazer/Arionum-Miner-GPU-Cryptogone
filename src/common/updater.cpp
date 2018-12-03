@@ -31,7 +31,7 @@ void Updater::update() {
     auto timeSinceLastHrUpdateMs = duration.count();
     double hrSendRate_mins = (nHashRateSends == 0) ? 
         FIRST_HASHRATE_SEND_N_MINUTES : NEXT_HASHRATE_SENDS_N_MINUTES;
-    auto hrCPU = std::round(stats.getAvgHashrate(BLOCK_CPU));
+    auto hrCPU = std::round(stats.averageHashrate(BLOCK_CPU));
     bool sendHashrate =
         ((double)timeSinceLastHrUpdateMs >= hrSendRate_mins * 60.0 * 1000.0) ||
         (hrCPU > 0 && !hrCPUSentAtLeastOneTime);
@@ -46,7 +46,7 @@ void Updater::update() {
         else
             hrCPU = DEFAULT_CPU_HASHRATE;
         paths << "&hashrate=" << hrCPU
-              << "&hrgpu=" << std::round(stats.getAvgHashrate(BLOCK_GPU));
+              << "&hrgpu=" << std::round(stats.averageHashrate(BLOCK_GPU));
         if (nHashRateSends != 0)
             start = now;
         nHashRateSends++;
@@ -109,7 +109,6 @@ void Updater::start() {
 
         // loop
         MinerData roundData = getData();
-        stats.beginRound(roundData.getBlockType());
         while (true) {
             auto start = std::chrono::system_clock::now();
             update();
@@ -117,18 +116,17 @@ void Updater::start() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(250));
                 std::chrono::duration<float> duration = std::chrono::system_clock::now() - start;
                 MinerData curData = getData();
-                bool blockTypeChanged = curData.getBlockType() != roundData.getBlockType();
-                bool roundFinished = (duration.count() >= POOL_UPDATE_RATE_SECONDS || blockTypeChanged);
+                bool blockTypeChanged = 
+                    curData.getBlockType() != roundData.getBlockType();
+                bool roundFinished = 
+                    (duration.count() >= POOL_UPDATE_RATE_SECONDS || blockTypeChanged);
                 if (roundFinished) {
-                    stats.endRound();
                     if (!blockTypeChanged) {
-                        stats.printMiningStats(
+                        stats.printStatsMiningMode(
                             roundData,
-                            settings.useLastHashrateInsteadOfRoundAvg(),
                             settings.canMineBlock(roundData.getBlockType()));
                     }
                     roundData = getData();
-                    stats.beginRound(roundData.getBlockType());
                     break;
                 }
                 if (refreshCount > 0) {
@@ -197,7 +195,7 @@ void Updater::processResponse(const json::value *value) {
                     if (s_miningReady) {
                         std::cout << std::endl << "-- NEW BLOCK --" << std::endl << *data;
                     }
-                    stats.blockChange(data->getBlockType());
+                    stats.onBlockChange(data->getBlockType());
                 }
             }
         }

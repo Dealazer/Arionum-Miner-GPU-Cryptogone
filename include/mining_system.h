@@ -4,17 +4,12 @@
 #include "stats.h"
 #include "updater.h"
 #include "testMode.h"
-#include "miners_stats.h"
 #include "perfscope.h"
 
 #include <chrono>
 #include <vector>
 #include <thread>
 #include <iomanip>
-
-const size_t MAX_MINERS_PER_DEVICE = 256;
-
-extern std::chrono::time_point<std::chrono::high_resolution_clock> s_testRawDurationStart;
 
 struct DeviceConfig {
     uint32_t deviceIndex;
@@ -39,7 +34,6 @@ public:
         miners{},
         devicesMiners{},
         minerIdle{},
-        minerStartT(MAX_MINERS_PER_DEVICE),
         stats(stats) {
     }
 
@@ -116,7 +110,7 @@ public:
             int nIdle = processMinersResults();
             if (nIdle == 0) {
                 std::this_thread::yield();
-                //const long long SLEEP_INTERVAL_MS = 3;
+                //const long long SLEEP_INTERVAL_MS = 1;
                 //std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_INTERVAL_MS));
             }
         }
@@ -127,7 +121,7 @@ public:
     }
 
 protected:
-    t_time_point startTime;
+    argon2::time_point startTime;
     std::unique_ptr<CONTEXT> globalContext;
     std::unique_ptr<IAroNonceProvider> nonceProvider;
     std::unique_ptr<IAroResultsProcessor> resultsProcessor;
@@ -135,7 +129,6 @@ protected:
     std::vector<std::unique_ptr<AroMiner>> miners;
     std::vector<std::vector<size_t>> devicesMiners;
     std::vector<bool> minerIdle;
-    std::vector<t_time_point> minerStartT;
     Stats &stats;
 
     size_t minerDeviceIndex(size_t minerIndex) {
@@ -177,7 +170,7 @@ protected:
 
     bool feedMiners() {
         for (size_t i = 0; i < miners.size(); i++) {
-            t_time_point now = std::chrono::high_resolution_clock::now();
+            argon2::time_point now = std::chrono::high_resolution_clock::now();
             if (minerIdle[i] == false)
                 continue;
 
@@ -187,7 +180,7 @@ protected:
             if (!miner->updateNonceProvider())
                 continue;
 
-            minerStatsOnNewTask(*miner, (int)i, (int)miners.size(), now);
+            stats.onMinerTaskStart(*miner, (int)i, (int)miners.size(), now);
 
             if (!canStartMiner(minerDeviceIndex(i), miner->providerBlockType()))
                 continue;
@@ -209,22 +202,19 @@ protected:
                 nIdle++;
                 continue;
             }
-            if (miners[i]->resultsReady()) {
+            auto pM = miners[i].get();
+            if (pM->resultsReady()) {
                 PerfScope p("processResults()");
+                
+                auto blockType = pM->taskBlockType();
+                std::chrono::nanoseconds deviceTime =
+                    std::chrono::high_resolution_clock::now() - 
+                    pM->asyncStartTime();
+                auto nHashes = pM->nHashesPerRun(blockType);
+                stats.onMinerDeviceTime((int)i, blockType, nHashes, deviceTime);
 
-                std::chrono::duration<double> rawDuration = 
-                    std::chrono::high_resolution_clock::now() - s_testRawDurationStart;
-                double theoricalHs = 
-                    (double)miners[i]->nHashesPerRun() / rawDuration.count();
-                auto durationMs = 
-                    (std::chrono::duration_cast<std::chrono::milliseconds>(rawDuration)).count();
-                std::cout
-                    << "duration = " << durationMs << " ms" << std::endl
-                    << "theorical Hs = " << theoricalHs << std::endl;
-
-                auto result = miners[i]->processResults();
-                stats.addHashes(result.nHashes);
-                minerStatsOnTaskEnd((int)i, result.valid);
+                auto result = pM->processResults();
+                stats.onMinerTaskEnd((int)i, result.valid);
                 minerIdle[i] = true;
 
                 if (testMode() && (result.nGood != result.nHashes)) {

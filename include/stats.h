@@ -8,6 +8,7 @@
 #include "minerdata.h"
 #include "minersettings.h"
 #include <cpprest/http_client.h>
+#include <argon2-gpu-common/argon2-common.h>
 
 struct SubmitParams {
     std::string nonce;
@@ -19,99 +20,108 @@ struct SubmitParams {
     uint32_t dl;
 };
 
+class AroMiner;
+
 class Stats {
-private:
-    const MinerSettings & minerSettings;
-
-    std::atomic<long> roundType;
-    std::atomic<long> roundHashes;
-    std::atomic<double> roundHashRate;
-    std::chrono::time_point<std::chrono::system_clock> roundStart;
-
-    std::atomic<long> rounds_cpu;
-    std::atomic<long> totalHashes_cpu;
-    std::atomic<double> totalTime_cpu_sec;
-
-    std::atomic<long> rounds_gpu;
-    std::atomic<long> totalHashes_gpu;
-    std::atomic<double> totalTime_gpu_sec;
-
-    std::atomic<long> shares;
-    std::atomic<long> blocks;
-    std::atomic<long> rejections;
-
-    std::atomic<uint32_t> bestDl_cpu;
-    std::atomic<uint32_t> bestDl_gpu;
-    std::atomic<uint32_t> blockBestDl;
-
-    std::mutex mutex;
-
 public:
-
     Stats(const MinerSettings & minerSettings) :
         minerSettings(minerSettings),
-        roundType(-1),
-        roundHashes(0),
-        roundHashRate(0.0),
-        roundStart(std::chrono::system_clock::now()),
-        rounds_cpu(0),
-        totalHashes_cpu(0),
-        totalTime_cpu_sec(0.0),
-        rounds_gpu(0),
-        totalHashes_gpu(0),
-        totalTime_gpu_sec(0.0),
         shares(0),
         blocks(0),
         rejections(0),
         bestDl_cpu(UINT32_MAX),
         bestDl_gpu(UINT32_MAX),
-        blockBestDl(UINT32_MAX),
+        curBlockBestDl(UINT32_MAX),
+        forceShowHeaders(false),
         mutex{} {
     };
 
-    bool dd();
-    void addHashes(long hashes);
-    void newShare(const SubmitParams & p);
-    void newBlock(const SubmitParams & p);
-    void newRejection(const SubmitParams & p);
-    void newDl(uint32_t dl, BLOCK_TYPE t);
+    void onMinerTaskStart(AroMiner & miner,
+        int minerId, int nMiners, argon2::time_point time);
+    void onMinerTaskEnd(
+        int minerId, bool hashesAccepted);
+    void onMinerDeviceTime(
+        int minerId, BLOCK_TYPE t, uint32_t nHashes, std::chrono::nanoseconds duration);
+    void onBlockChange(BLOCK_TYPE);
+    void onShareFound(const SubmitParams & p);
+    void onBlockFound(const SubmitParams & p);
+    void onRejectedShare(const SubmitParams & p);
+    void onDL(uint32_t dl, BLOCK_TYPE t);
 
-    void beginRound(BLOCK_TYPE blockType);
-    void endRound();
+    double lastHashrate() const;
+    double averageHashrate(BLOCK_TYPE t) const;
+    double maxTheoricalHashrate(BLOCK_TYPE t) const;
+
+    uint32_t bestDL(BLOCK_TYPE t) const;
+    uint32_t currentBlockBestDL() const;
+    uint64_t sharesFound() const;
+    uint64_t blocksFound() const;
+    uint64_t sharesRejected() const;
 
     void printTimePrefix() const;
-    void printRoundStats(float nSeconds) const;
-    void printMiningStats(
-        const MinerData & data,
-        bool useLastHashrateInsteadOfRoundAvg,
-        bool isMining);
-
-    void printRoundStatsHeader() const;
-
-    const std::atomic<long> &getRounds(BLOCK_TYPE t) const;
-    const std::atomic<long> &getTotalHashes(BLOCK_TYPE t) const;
-
-    const std::atomic<long> &getRoundHashes() const;
-    const std::atomic<double> &getRoundHashRate() const;
-    const std::chrono::time_point<std::chrono::system_clock> &getRoundStart() const;
-
-    double getAvgHashrate(BLOCK_TYPE t) const;
-    const std::atomic<uint32_t> &getBestDl(BLOCK_TYPE t) const;
-    const std::atomic<uint32_t> &getBlockBestDl() const;
-
-    const std::atomic<long> &getShares() const;
-    const std::atomic<long> &getBlocks() const;
-    const std::atomic<long> &getRejections() const;
-
-    void blockChange(BLOCK_TYPE blockType);
+    void printHeaderTestMode() const;
+    void printStatsTestMode() const;
+    void printStatsMiningMode(
+        const MinerData & data, bool isMining);
+    bool dd();
 
 private:
+    const MinerSettings & minerSettings;
+
+    uint64_t shares;
+    uint64_t blocks;
+    uint64_t rejections;
+
+    uint32_t bestDl_cpu;
+    uint32_t bestDl_gpu;
+    uint32_t curBlockBestDl;
+
+    bool forceShowHeaders;
+
+    std::mutex mutex;
+
+private:
+    typedef std::chrono::nanoseconds ns;
+    typedef std::chrono::duration<double> fsec;
+
+    struct HashrateAccum {
+        uint64_t totalHashes[BLOCK_TYPES_COUNT]{};
+        ns totalDuration[BLOCK_TYPES_COUNT]{};
+
+        void addHashes(BLOCK_TYPE bt, uint32_t nHashes, ns duration) {
+            totalHashes[bt] += nHashes;
+            totalDuration[bt] += duration;
+        }
+
+        double average(BLOCK_TYPE bt) const {
+            double nSecs = 
+                std::chrono::duration_cast<fsec>(totalDuration[bt]).count();
+            if (nSecs < 1.0e-6)
+                return 0;
+            return totalHashes[bt] / nSecs;
+        }
+    };
+
+    struct MinerStats {
+        double lastHashrate() const;
+        double averageHashrate(BLOCK_TYPE t) const;
+
+        argon2::time_point lastT{};
+        BLOCK_TYPE lastTaskType{ BLOCK_MAX };
+        double lastTaskHashrate{ 0.0 };
+        bool lastTaskValidated{ false };
+        HashrateAccum totalHashrate{};
+        HashrateAccum deviceTimeHashrate{};
+    };
+    
+    std::vector<MinerStats> minerStats;
+
+private:
+    // stats node
     void nodeSubmitReq(std::string desc, const SubmitParams & p, bool accepted);
     std::stringstream nodeBaseFields(const std::string &query, long roundType);
     std::unique_ptr<web::http::client::http_client> nodeClient();
     void nodeReq(std::string desc, const std::string & paths);
-
-    uint32_t rndRange(uint32_t n);
 };
 
 #endif //ARIONUM_GPU_MINER_STATS_H

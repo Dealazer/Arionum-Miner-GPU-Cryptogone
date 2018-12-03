@@ -59,7 +59,6 @@ struct OpenCLArguments {
     bool skipCpuBlocks = false;
     bool skipGpuBlocks = false;
     bool testMode = false;
-    bool legacyHashrate = false;
     std::vector<uint32_t> deviceIndexList = { 0 };
     std::vector<uint32_t> nTasksPerDeviceList = { DEFAULT_TASKS_PER_DEVICE };
     std::vector<uint32_t> gpuBatchSizePerDeviceList = { DEFAULT_GPU_BATCH_SIZE };
@@ -170,10 +169,6 @@ CommandLineParser<OpenCLArguments> buildCmdLineParser() {
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.testMode = true; },
             "test-mode", '\0', "test CPU/GPU blocks hashrate"),
-
-        new FlagOption<OpenCLArguments>(
-            [](OpenCLArguments &state) { state.legacyHashrate = true; },
-            "legacy-5s-hashrate", '\0', "show 5s avg hashrate instead of last set of batches hashrate"),
 
         new FlagOption<OpenCLArguments>(
             [](OpenCLArguments &state) { state.showHelp = true; },
@@ -307,7 +302,7 @@ int run(const char *const *argv) {
     MinerSettings minerSettings(
         args.poolUrl, args.address, uniqid,
         args.stats_nodeUrl, args.stats_token,
-        !args.skipGpuBlocks, !args.skipCpuBlocks, !args.legacyHashrate);
+        !args.skipGpuBlocks, !args.skipCpuBlocks);
     std::cout << minerSettings << std::endl;
 
     // create stats module

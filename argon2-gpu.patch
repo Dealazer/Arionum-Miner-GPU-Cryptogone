@@ -117,7 +117,7 @@ index 3dd95ba..d8e67d9 100644
 +    argon2-gpu-common ${OpenCL_LIBRARY}
  )
 diff --git a/data/kernels/argon2_kernel.cl b/data/kernels/argon2_kernel.cl
-index fa5e12a..f3310a7 100644
+index fa5e12a..b466102 100644
 --- a/data/kernels/argon2_kernel.cl
 +++ b/data/kernels/argon2_kernel.cl
 @@ -35,6 +35,8 @@ typedef ptrdiff_t intptr_t;
@@ -138,15 +138,6 @@ index fa5e12a..f3310a7 100644
  ulong u64_build(uint hi, uint lo)
  {
      return upsample(hi, lo);
-@@ -79,7 +83,7 @@ ulong u64_shuffle(ulong v, uint thread_src, uint thread,
-     buf->lo[thread] = lo;
-     buf->hi[thread] = hi;
- 
--    barrier(CLK_LOCAL_MEM_FENCE);
-+    //barrier(CLK_LOCAL_MEM_FENCE);
- 
-     lo = buf->lo[thread_src];
-     hi = buf->hi[thread_src];
 @@ -132,6 +136,15 @@ void xor_block(struct block_th *dst, const struct block_th *src)
      dst->d ^= src->d;
  }
@@ -179,7 +170,37 @@ index fa5e12a..f3310a7 100644
  void store_block(__global struct block_g *dst, const struct block_th *src,
                   uint thread)
  {
-@@ -407,244 +429,318 @@ void next_addresses(struct block_th *addr, struct block_th *tmp,
+@@ -159,29 +181,10 @@ void store_block(__global struct block_g *dst, const struct block_th *src,
+     dst->data[3 * THREADS_PER_LANE + thread] = src->d;
+ }
+ 
+-#ifdef cl_amd_media_ops
+-#pragma OPENCL EXTENSION cl_amd_media_ops : enable
+-
+-ulong rotr64(ulong x, ulong n)
+-{
+-    uint lo = u64_lo(x);
+-    uint hi = u64_hi(x);
+-    uint r_lo, r_hi;
+-    if (n < 32) {
+-        r_lo = amd_bitalign(hi, lo, (uint)n);
+-        r_hi = amd_bitalign(lo, hi, (uint)n);
+-    } else {
+-        r_lo = amd_bitalign(lo, hi, (uint)n - 32);
+-        r_hi = amd_bitalign(hi, lo, (uint)n - 32);
+-    }
+-    return u64_build(r_hi, r_lo);
+-}
+-#else
+ ulong rotr64(ulong x, ulong n)
+ {
+     return rotate(x, 64 - n);
+ }
+-#endif
+ 
+ ulong f(ulong x, ulong y)
+ {
+@@ -407,244 +410,320 @@ void next_addresses(struct block_th *addr, struct block_th *tmp,
      xor_block(addr, tmp);
  }
  
@@ -374,6 +395,7 @@ index fa5e12a..f3310a7 100644
 +    while (pIndex < pIndexEnd) {
 +        uint nBlocks = min((uint)(pIndexEnd - pIndex), (uint)THREADS_PER_LANE);
 +        indexCache[thread] = pIndex[thread];
++        barrier(CLK_LOCAL_MEM_FENCE);
 +
 +        for (uint i = 0; i < nBlocks; i++) {
 +            ulong4 th_ref = vload4(thread, BLOCK_MEM(indexCache[i].refSlot));
@@ -622,6 +644,7 @@ index fa5e12a..f3310a7 100644
 +    while (pIndex < pIndexEnd) {
 +        uint nBlocks = min((uint)(pIndexEnd - pIndex), (uint)THREADS_PER_LANE);
 +        indexCache[thread] = pIndex[thread];
++        barrier(CLK_LOCAL_MEM_FENCE);
  
 -    load_block(&prev, mem_prev, thread);
 +        for (uint i = 0; i < nBlocks; i++) {
@@ -689,7 +712,7 @@ index fa5e12a..f3310a7 100644
  #endif /* ARGON2_TYPE == ARGON2_I || ARGON2_TYPE == ARGON2_ID */
  
  void argon2_step(
-@@ -692,94 +788,21 @@ void argon2_step(
+@@ -692,94 +771,21 @@ void argon2_step(
                  ref_index, ref_lane);
  }
  
@@ -798,7 +821,7 @@ index fa5e12a..f3310a7 100644
      uint lane   = get_global_id(0) / THREADS_PER_LANE;
      uint warp   = get_local_id(0) / THREADS_PER_LANE;
      uint thread = get_local_id(0) % THREADS_PER_LANE;
-@@ -788,9 +811,11 @@ __kernel void argon2_kernel_oneshot(
+@@ -788,9 +794,11 @@ __kernel void argon2_kernel_oneshot(
  
      uint lane_blocks = ARGON2_SYNC_POINTS * segment_blocks;
  
@@ -997,7 +1020,7 @@ index 16418b4..35723c6 100644
  
  } // cuda
 diff --git a/include/argon2-cuda/processingunit.h b/include/argon2-cuda/processingunit.h
-index 2109154..387b673 100644
+index 2109154..74501ec 100644
 --- a/include/argon2-cuda/processingunit.h
 +++ b/include/argon2-cuda/processingunit.h
 @@ -3,8 +3,6 @@
@@ -1009,7 +1032,7 @@ index 2109154..387b673 100644
  #include "programcontext.h"
  #include "kernels.h"
  #include "argon2-gpu-common/argon2params.h"
-@@ -14,28 +12,23 @@ namespace cuda {
+@@ -14,28 +12,27 @@ namespace cuda {
  
  class ProcessingUnit
  {
@@ -1043,15 +1066,19 @@ index 2109154..387b673 100644
 +    bool streamOperationsComplete();
 +    void fetchResultsAsync();
 +    uint8_t* results();
++    time_point asyncStartTime() const {
++        return asyncTp;
++    }
 +
 +private:
 +    KernelRunner runner;
 +    uint8_t* inBuffer;
 +    uint8_t* outBuffer;
++    time_point asyncTp;
  };
  
  } // namespace cuda
-@@ -44,7 +37,6 @@ public:
+@@ -44,7 +41,6 @@ public:
  #else
  
  #include <cstddef>
@@ -1059,7 +1086,7 @@ index 2109154..387b673 100644
  #include "programcontext.h"
  #include "argon2-gpu-common/argon2params.h"
  
-@@ -54,21 +46,17 @@ namespace cuda {
+@@ -54,21 +50,17 @@ namespace cuda {
  class ProcessingUnit
  {
  public:
@@ -1162,23 +1189,29 @@ index 9808669..4a4205f 100644
  
  #endif /* HAVE_CUDA */
 diff --git a/include/argon2-gpu-common/argon2-common.h b/include/argon2-gpu-common/argon2-common.h
-index fbcf67c..b193b30 100644
+index fbcf67c..09195a4 100644
 --- a/include/argon2-gpu-common/argon2-common.h
 +++ b/include/argon2-gpu-common/argon2-common.h
-@@ -1,6 +1,9 @@
+@@ -1,8 +1,14 @@
  #ifndef ARGON2COMMON_H
  #define ARGON2COMMON_H
  
 +#include <cstddef>
 +#include <cstdint>
++#include <chrono>
 +
  namespace argon2 {
  
++typedef std::chrono::time_point<std::chrono::high_resolution_clock> time_point;
++
  enum {
-@@ -21,6 +24,53 @@ enum Version {
+     ARGON2_BLOCK_SIZE = 1024,
+     ARGON2_SYNC_POINTS = 4,
+@@ -21,8 +27,54 @@ enum Version {
      ARGON2_VERSION_13 = 0x13,
  };
  
+-} // namespace argon2
 +enum OPT_MODE {
 +    BASELINE = 0,
 +    PRECOMPUTE_SHUFFLE = 1,
@@ -1211,7 +1244,7 @@ index fbcf67c..b193b30 100644
 +        indexBuffer = nullptr;
 +        in = out = 0;
 +    }
-+
+ 
 +    size_t batchSizes[BLOCK_TYPE_COUNT][MAX_BLOCKS_BUFFERS];
 +    void* blocksBuffers[BLOCK_TYPE_COUNT][MAX_BLOCKS_BUFFERS];
 +    void* indexBuffer;
@@ -1226,14 +1259,15 @@ index fbcf67c..b193b30 100644
 +        return total;
 +    }
 +};
- } // namespace argon2
++} // namespace argon2
  
+ #endif // ARGON2COMMON_H
  
 diff --git a/include/argon2-gpu-common/argon2params.h b/include/argon2-gpu-common/argon2params.h
-index bf2ca75..98a4c11 100644
+index bf2ca75..d517bcb 100644
 --- a/include/argon2-gpu-common/argon2params.h
 +++ b/include/argon2-gpu-common/argon2params.h
-@@ -2,9 +2,13 @@
+@@ -2,8 +2,15 @@
  #define ARGON2_ARGON2PARAMS_H
  
  #include <cstdint>
@@ -1241,13 +1275,15 @@ index bf2ca75..98a4c11 100644
 +#include <vector>
  
  #include "argon2-common.h"
- 
-+#define OPEN_CL_SKIP_MEM_TRANSFERS (0)
++#include "../../../include/perfscope.h"
 +
++#include <chrono>
++
++#define OPEN_CL_SKIP_MEM_TRANSFERS (0)
+ 
  namespace argon2 {
  
- class Argon2Params
-@@ -19,7 +23,7 @@ private:
+@@ -19,7 +26,7 @@ private:
      static void digestLong(void *out, std::size_t outLen,
                             const void *in, std::size_t inLen);
  
@@ -1256,7 +1292,7 @@ index bf2ca75..98a4c11 100644
                       Type type, Version version) const;
  
  public:
-@@ -47,19 +51,93 @@ public:
+@@ -47,19 +54,96 @@ public:
          return static_cast<std::size_t>(getMemoryBlocks()) * ARGON2_BLOCK_SIZE;
      }
  
@@ -1326,6 +1362,9 @@ index bf2ca75..98a4c11 100644
 +        KernelRunnerBase<CONTEXT> runner,
 +        uint8_t* inPtr,
 +        const std::vector<std::string>& bases) {
++
++        PerfScope p("KernelRunnerBase::prepareInputData()", true);
++
 +        std::vector<std::string>::const_iterator it = bases.begin();
 +        auto blockType = runner.currentBlockType();
 +        uint8_t* pIn = inPtr;
@@ -1552,7 +1591,7 @@ index a1bba8b..5ea2e3f 100644
  
  #endif // ARGON2_OPENCL_KERNELRUNNER_H
 diff --git a/include/argon2-opencl/processingunit.h b/include/argon2-opencl/processingunit.h
-index 277272d..336a0b3 100644
+index 277272d..992dd68 100644
 --- a/include/argon2-opencl/processingunit.h
 +++ b/include/argon2-opencl/processingunit.h
 @@ -2,6 +2,7 @@
@@ -1563,7 +1602,7 @@ index 277272d..336a0b3 100644
  
  #include "kernelrunner.h"
  
-@@ -10,28 +11,26 @@ namespace opencl {
+@@ -10,28 +11,31 @@ namespace opencl {
  
  class ProcessingUnit
  {
@@ -1580,19 +1619,22 @@ index 277272d..336a0b3 100644
 -    std::size_t getBatchSize() const { return runner.getBatchSize(); }
 +    ProcessingUnit(const Argon2iMiningConfig & miningConfig,
 +        KernelRunner::MiningContext & miningCtx);
- 
--    ProcessingUnit(
--            const ProgramContext *programContext, const Argon2Params *params,
--            const Device *device, std::size_t batchSize,
--            bool bySegment = true, bool precomputeRefs = false);
++
 +    void configure();
-+    void uploadInputDataAsync(const std::vector<std::string>& bases) const;
++    void uploadInputDataAsync(const std::vector<std::string>& bases);
 +    void runKernelAsync();
 +    void waitForResults() const;
 +    bool resultsReady() const;
 +    void fetchResultsAsync();
 +    uint8_t* results();
-+
++    time_point asyncStartTime() const {
++        return asyncTp;
++    }
+ 
+-    ProcessingUnit(
+-            const ProgramContext *programContext, const Argon2Params *params,
+-            const Device *device, std::size_t batchSize,
+-            bool bySegment = true, bool precomputeRefs = false);
 +private:
 +    KernelRunner runner;
  
@@ -1605,6 +1647,8 @@ index 277272d..336a0b3 100644
 -    void endProcessing();
 +    cl::Buffer outBuffer;
 +    uint8_t* outPtr;
++    
++    time_point asyncTp;
  };
  
  } // namespace opencl
@@ -2761,15 +2805,14 @@ index 79fb767..20f580f 100644
  
  } // cuda
 diff --git a/lib/argon2-cuda/processingunit.cpp b/lib/argon2-cuda/processingunit.cpp
-index 7768427..19d3924 100644
+index 7768427..4e7aa59 100644
 --- a/lib/argon2-cuda/processingunit.cpp
 +++ b/lib/argon2-cuda/processingunit.cpp
-@@ -7,149 +7,61 @@
+@@ -7,149 +7,60 @@
  #include <iostream>
  #endif
  
 +#include <chrono>
-+std::chrono::time_point<std::chrono::high_resolution_clock> s_testRawDurationStart;
 +
  namespace argon2 {
  namespace cuda {
@@ -2922,8 +2965,8 @@ index 7768427..19d3924 100644
 -    runner.writeInputMemory(index, buffer.get());
 +void ProcessingUnit::uploadInputDataAsync(const std::vector<std::string>& bases) {
 +    KernelRunnerBase<ProgramContext>::prepareInputData(runner, inBuffer, bases);
-+    
-+    s_testRawDurationStart = std::chrono::high_resolution_clock::now();
++
++    asyncTp = std::chrono::high_resolution_clock::now();
 +    runner.writeInputMemory(inBuffer);
  }
  
@@ -3436,10 +3479,10 @@ index 9fe39b4..ec83717 100644
  
  } // namespace opencl
 diff --git a/lib/argon2-opencl/processingunit.cpp b/lib/argon2-opencl/processingunit.cpp
-index 598ced7..79beef8 100644
+index 598ced7..337680e 100644
 --- a/lib/argon2-opencl/processingunit.cpp
 +++ b/lib/argon2-opencl/processingunit.cpp
-@@ -1,137 +1,86 @@
+@@ -1,6 +1,7 @@
  #include "processingunit.h"
  
  #include <limits>
@@ -3447,10 +3490,7 @@ index 598ced7..79beef8 100644
  #ifndef NDEBUG
  #include <iostream>
  #endif
-+#include <chrono>
-+
-+std::chrono::time_point<std::chrono::high_resolution_clock> s_testRawDurationStart;
- 
+@@ -8,130 +9,75 @@
  namespace argon2 {
  namespace opencl {
  
@@ -3524,14 +3564,14 @@ index 598ced7..79beef8 100644
 -#endif
 -                break;
 -            }
--
++    std::tie(inBuffer, inPtr) = newPinnedMemBuffer(
++        miningCtx, miningConfig.mem->in, PinnedMemType::INPUT);
+ 
 -#ifndef NDEBUG
 -            std::cerr << "[INFO]   " << lpb << " lanes per block: "
 -                      << time << " ms" << std::endl;
 -#endif
-+    std::tie(inBuffer, inPtr) = newPinnedMemBuffer(
-+        miningCtx, miningConfig.mem->in, PinnedMemType::INPUT);
- 
+-
 -            if (time < bestTime) {
 -                bestTime = time;
 -                bestLanesPerBlock = lpb;
@@ -3542,10 +3582,7 @@ index 598ced7..79beef8 100644
 -                  << " lanes per block." << std::endl;
 -#endif
 -    }
-+    std::tie(outBuffer, outPtr) = newPinnedMemBuffer(
-+        miningCtx, miningConfig.mem->out, PinnedMemType::OUTPUT);
-+}
- 
+-
 -    /* Only tune jobs per block if we hit maximum lanes per block: */
 -    if (bestLanesPerBlock == runner.getMaxLanesPerBlock()
 -            && runner.getMaxJobsPerBlock() > runner.getMinJobsPerBlock()
@@ -3553,8 +3590,9 @@ index 598ced7..79beef8 100644
 -#ifndef NDEBUG
 -        std::cerr << "[INFO] Tuning jobs per block..." << std::endl;
 -#endif
-+void ProcessingUnit::uploadInputDataAsync(const std::vector<std::string>& bases) const {
-+    KernelRunner::prepareInputData(runner, inPtr, bases);
++    std::tie(outBuffer, outPtr) = newPinnedMemBuffer(
++        miningCtx, miningConfig.mem->out, PinnedMemType::OUTPUT);
++}
  
 -        float bestTime = std::numeric_limits<float>::infinity();
 -        for (std::uint32_t jpb = 1; jpb <= runner.getMaxJobsPerBlock();
@@ -3571,7 +3609,10 @@ index 598ced7..79beef8 100644
 -#endif
 -                break;
 -            }
-+    s_testRawDurationStart = std::chrono::high_resolution_clock::now();
++void ProcessingUnit::uploadInputDataAsync(const std::vector<std::string>& bases) {
++    KernelRunner::prepareInputData(runner, inPtr, bases);
++   
++    asyncTp = std::chrono::high_resolution_clock::now();
 +    runner.uploadToInputMemoryAsync(inPtr);
 +}
  
