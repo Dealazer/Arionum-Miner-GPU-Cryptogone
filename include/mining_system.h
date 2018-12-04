@@ -214,7 +214,7 @@ protected:
                 stats.onMinerDeviceTime((int)i, blockType, nHashes, deviceTime);
 
                 auto result = pM->processResults();
-                stats.onMinerTaskEnd((int)i, result.valid);
+                stats.onMinerTaskEnd((int)i, blockType);
                 minerIdle[i] = true;
 
                 if (testMode() && (result.nGood != result.nHashes)) {

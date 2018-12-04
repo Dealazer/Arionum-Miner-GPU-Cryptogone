@@ -33,8 +33,7 @@ AroMiner::AroMiner(
 
 uint32_t AroMiner::nHashesPerRun(BLOCK_TYPE bt) const {
     if (bt != BLOCK_CPU && bt != BLOCK_GPU) {
-        exit(1);
-        return 0;
+        throw std::logic_error("Invalid block type!");
     }
     uint32_t nHashes = 0;
     for (int i = 0; i < MAX_BLOCKS_BUFFERS; i++)

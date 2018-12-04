@@ -1591,7 +1591,7 @@ index a1bba8b..5ea2e3f 100644
  
  #endif // ARGON2_OPENCL_KERNELRUNNER_H
 diff --git a/include/argon2-opencl/processingunit.h b/include/argon2-opencl/processingunit.h
-index 277272d..992dd68 100644
+index 277272d..c28bcfa 100644
 --- a/include/argon2-opencl/processingunit.h
 +++ b/include/argon2-opencl/processingunit.h
 @@ -2,6 +2,7 @@
@@ -1610,13 +1610,7 @@ index 277272d..992dd68 100644
 -    const ProgramContext *programContext;
 -    const Argon2Params *params;
 -    const Device *device;
--
--    KernelRunner runner;
--    std::uint32_t bestLanesPerBlock;
--    std::uint32_t bestJobsPerBlock;
--
- public:
--    std::size_t getBatchSize() const { return runner.getBatchSize(); }
++public:
 +    ProcessingUnit(const Argon2iMiningConfig & miningConfig,
 +        KernelRunner::MiningContext & miningCtx);
 +
@@ -1631,23 +1625,28 @@ index 277272d..992dd68 100644
 +        return asyncTp;
 +    }
  
++private:
+     KernelRunner runner;
+-    std::uint32_t bestLanesPerBlock;
+-    std::uint32_t bestJobsPerBlock;
+-
+-public:
+-    std::size_t getBatchSize() const { return runner.getBatchSize(); }
+ 
 -    ProcessingUnit(
 -            const ProgramContext *programContext, const Argon2Params *params,
 -            const Device *device, std::size_t batchSize,
 -            bool bySegment = true, bool precomputeRefs = false);
-+private:
-+    KernelRunner runner;
- 
--    void setPassword(std::size_t index, const void *pw, std::size_t pwSize);
--    void getHash(std::size_t index, void *hash);
 +    cl::Buffer inBuffer;
 +    uint8_t* inPtr;
  
--    void beginProcessing();
--    void endProcessing();
+-    void setPassword(std::size_t index, const void *pw, std::size_t pwSize);
+-    void getHash(std::size_t index, void *hash);
 +    cl::Buffer outBuffer;
 +    uint8_t* outPtr;
-+    
+ 
+-    void beginProcessing();
+-    void endProcessing();
 +    time_point asyncTp;
  };
  
@@ -3479,7 +3478,7 @@ index 9fe39b4..ec83717 100644
  
  } // namespace opencl
 diff --git a/lib/argon2-opencl/processingunit.cpp b/lib/argon2-opencl/processingunit.cpp
-index 598ced7..337680e 100644
+index 598ced7..8cfbd89 100644
 --- a/lib/argon2-opencl/processingunit.cpp
 +++ b/lib/argon2-opencl/processingunit.cpp
 @@ -1,6 +1,7 @@
@@ -3571,7 +3570,10 @@ index 598ced7..337680e 100644
 -            std::cerr << "[INFO]   " << lpb << " lanes per block: "
 -                      << time << " ms" << std::endl;
 -#endif
--
++    std::tie(outBuffer, outPtr) = newPinnedMemBuffer(
++        miningCtx, miningConfig.mem->out, PinnedMemType::OUTPUT);
++}
+ 
 -            if (time < bestTime) {
 -                bestTime = time;
 -                bestLanesPerBlock = lpb;
@@ -3582,7 +3584,9 @@ index 598ced7..337680e 100644
 -                  << " lanes per block." << std::endl;
 -#endif
 -    }
--
++void ProcessingUnit::uploadInputDataAsync(const std::vector<std::string>& bases) {
++    KernelRunner::prepareInputData(runner, inPtr, bases);
+ 
 -    /* Only tune jobs per block if we hit maximum lanes per block: */
 -    if (bestLanesPerBlock == runner.getMaxLanesPerBlock()
 -            && runner.getMaxJobsPerBlock() > runner.getMinJobsPerBlock()
@@ -3590,10 +3594,7 @@ index 598ced7..337680e 100644
 -#ifndef NDEBUG
 -        std::cerr << "[INFO] Tuning jobs per block..." << std::endl;
 -#endif
-+    std::tie(outBuffer, outPtr) = newPinnedMemBuffer(
-+        miningCtx, miningConfig.mem->out, PinnedMemType::OUTPUT);
-+}
- 
+-
 -        float bestTime = std::numeric_limits<float>::infinity();
 -        for (std::uint32_t jpb = 1; jpb <= runner.getMaxJobsPerBlock();
 -             jpb *= 2)
@@ -3609,9 +3610,6 @@ index 598ced7..337680e 100644
 -#endif
 -                break;
 -            }
-+void ProcessingUnit::uploadInputDataAsync(const std::vector<std::string>& bases) {
-+    KernelRunner::prepareInputData(runner, inPtr, bases);
-+   
 +    asyncTp = std::chrono::high_resolution_clock::now();
 +    runner.uploadToInputMemoryAsync(inPtr);
 +}

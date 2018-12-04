@@ -181,6 +181,8 @@ void Updater::processResponse(const json::value *value) {
             {
                 std::lock_guard<std::mutex> lg(mutex);
                 if (data == NULL || data->isNewBlock(&block)) {
+                    stats.onBlockChange(blockType);
+
                     if (data)
                         delete data;
                     data = new MinerData(
@@ -195,7 +197,6 @@ void Updater::processResponse(const json::value *value) {
                     if (s_miningReady) {
                         std::cout << std::endl << "-- NEW BLOCK --" << std::endl << *data;
                     }
-                    stats.onBlockChange(data->getBlockType());
                 }
             }
         }

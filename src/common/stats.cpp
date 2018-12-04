@@ -36,9 +36,6 @@ uint32_t rndRange(uint32_t n) {
     if (!s_inited) {
         std::unique_ptr<int> dummy(new int[32]);
         unsigned int local = (uintptr_t)(dummy.get()) & 0xFFFFFFFF;
-
-        std::cout << "local = " << local << std::endl;
-
         unsigned int t = time(0) & 0xFFFFFFFF;
         std::mt19937::result_type seed = (local + t);
         s_gen = std::mt19937(seed);
@@ -65,47 +62,55 @@ void Stats::onMinerTaskStart(AroMiner & miner,
         minerStats.resize(nMiners);
     assert(minerStats.size() == nMiners);
 
-    auto newTaskBlockType = miner.providerBlockType();
     auto &ms = minerStats[minerIndex];
-    if (ms.lastT != argon2::time_point()) {
+    if (ms.lastT == argon2::time_point()) {
+        ms.lastT = time;
+        ms.lastTaskType = BLOCK_MAX;
+    }
+    else {
         ns duration = time - ms.lastT;
-        if (!ms.lastTaskValidated) {
-            ms.lastTaskHashrate = 0;
-            ms.totalHashrate.addHashes(ms.lastTaskType, 0, duration);
-        }
-        else {
-            auto nHashes = miner.nHashesPerRun(ms.lastTaskType);
-            ms.lastTaskHashrate = (double)(nHashes) / 
-                std::chrono::duration_cast<fsec>(duration).count();
-            ms.totalHashrate.addHashes(ms.lastTaskType, nHashes, duration);
-        }
-#if 0
-        uint64_t totHashes = 0;
-        std::chrono::nanoseconds totDuration{};
-        for (const auto& it : minerStats) {
-            totHashes += it.totalHashrate.totalHashes[ms.lastTaskType];
-            totDuration += it.totalHashrate.totalDuration[ms.lastTaskType];
+        if (ms.lastBlockChangeType == ms.lastTaskType) {
+            duration = time - ms.lastBlockChangeT;
+            ms.lastBlockChangeType = BLOCK_MAX;
+            ms.lastBlockChangeT = argon2::time_point();
         }
 
-        std::cout << "miner " << minerIndex << " "
-            "TOTAL " << blockTypeName(ms.lastTaskType) <<
-            " hashes=" << totHashes <<
-            " time=" << std::chrono::duration_cast<fsec>(totDuration).count() <<
-            std::endl;
-#endif
+        if (ms.lastTaskType == BLOCK_MAX) {
+            ms.lastTaskHashrate = 0;
+        }
+        else 
+        {
+            auto nHashes = miner.nHashesPerRun(ms.lastTaskType);
+            if (nHashes <= 0) {
+                ms.lastTaskHashrate = 0;
+            }
+            else {
+                ms.lastTaskHashrate = (double)(nHashes) /
+                    std::chrono::duration_cast<fsec>(duration).count();
+                ms.totalHashrate.addHashes(ms.lastTaskType, nHashes, duration);
+            }
+        }
+
+        ms.lastT = time;
+        ms.lastTaskType = BLOCK_MAX;
     }
-    ms.lastT = time;
-    ms.lastTaskType = newTaskBlockType;
 }
 
-void Stats::onMinerTaskEnd(int minerId, bool hashesAccepted) {
+void Stats::onMinerTaskEnd(int minerId, BLOCK_TYPE bt) {
     std::lock_guard<std::mutex> lg(mutex);
-    minerStats[minerId].lastTaskValidated = hashesAccepted;
+    auto & ms = minerStats[minerId];
+    ms.lastTaskType = bt;
 }
 
 void Stats::onBlockChange(BLOCK_TYPE blockType) {
     forceShowHeaders = true;
     curBlockBestDl = UINT32_MAX;
+    argon2::time_point blockChangeTime = 
+        std::chrono::high_resolution_clock::now();
+    for (auto &it : minerStats) {
+        it.lastBlockChangeT = blockChangeTime;
+        it.lastBlockChangeType = blockType;
+    }
 }
 
 void Stats::onShareFound(const SubmitParams & p) {
@@ -161,21 +166,6 @@ void Stats::onMinerDeviceTime(
     int minerId, BLOCK_TYPE t, uint32_t nHashes, std::chrono::nanoseconds duration) {
     std::lock_guard<std::mutex> lg(mutex);
     minerStats[minerId].deviceTimeHashrate.addHashes(t, nHashes, duration);
-
-#if 0
-    uint64_t totHashes = 0;
-    std::chrono::nanoseconds totDuration{};
-    for (const auto& it : minerStats) {
-        totHashes += it.deviceTimeHashrate.totalHashes[t];
-        totDuration += it.deviceTimeHashrate.totalDuration[t];
-    }
-
-    std::cout << "miner " << minerId << " "
-        "DEVICE " << blockTypeName(t) <<
-        " hashes=" << totHashes <<
-        " time=" << std::chrono::duration_cast<fsec>(totDuration).count() <<
-        std::endl;
-#endif
 }
 
 double Stats::maxTheoricalHashrate(BLOCK_TYPE bt) const {

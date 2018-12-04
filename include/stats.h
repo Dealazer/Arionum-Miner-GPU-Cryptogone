@@ -38,8 +38,8 @@ public:
 
     void onMinerTaskStart(AroMiner & miner,
         int minerId, int nMiners, argon2::time_point time);
-    void onMinerTaskEnd(
-        int minerId, bool hashesAccepted);
+
+    void onMinerTaskEnd(int minerId, BLOCK_TYPE bt);
     void onMinerDeviceTime(
         int minerId, BLOCK_TYPE t, uint32_t nHashes, std::chrono::nanoseconds duration);
     void onBlockChange(BLOCK_TYPE);
@@ -109,9 +109,16 @@ private:
         argon2::time_point lastT{};
         BLOCK_TYPE lastTaskType{ BLOCK_MAX };
         double lastTaskHashrate{ 0.0 };
-        bool lastTaskValidated{ false };
         HashrateAccum totalHashrate{};
         HashrateAccum deviceTimeHashrate{};
+
+        void onBlockChange(BLOCK_TYPE bt, argon2::time_point time) {
+            lastBlockChangeType = bt;
+            lastBlockChangeT = time;
+        }
+
+        BLOCK_TYPE lastBlockChangeType = BLOCK_MAX;
+        argon2::time_point lastBlockChangeT;
     };
     
     std::vector<MinerStats> minerStats;
