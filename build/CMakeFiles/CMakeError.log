@@ -1,0 +1,106 @@
+Determining if the CL_VERSION_2_2 exist failed with the following output:
+Change Dir: C:/src/v1.6-opt/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_74e86.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=15.0 /v:m 
+Microsoft (R) Build Engine version 15.9.21+g9802d43bc3 for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.16.27031.1 for x64
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  
+  cl /c /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include" /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Qspectre /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_74e86.dir\Debug\\" /Fd"cmTC_74e86.dir\Debug\vc141.pdb" /Gd /TC /errorReport:queue "C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\CheckSymbolExists.c"
+  CheckSymbolExists.c
+  
+C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\CheckSymbolExists.c(8): error C2065: 'CL_VERSION_2_2': undeclared identifier [C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\cmTC_74e86.vcxproj]
+
+File C:/src/v1.6-opt/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.1/include/CL/cl.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef CL_VERSION_2_2
+  return ((int*)(&CL_VERSION_2_2))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the CL_VERSION_2_1 exist failed with the following output:
+Change Dir: C:/src/v1.6-opt/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_1d79c.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=15.0 /v:m 
+Microsoft (R) Build Engine version 15.9.21+g9802d43bc3 for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.16.27031.1 for x64
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  
+  cl /c /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include" /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Qspectre /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_1d79c.dir\Debug\\" /Fd"cmTC_1d79c.dir\Debug\vc141.pdb" /Gd /TC /errorReport:queue "C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\CheckSymbolExists.c"
+  CheckSymbolExists.c
+  
+C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\CheckSymbolExists.c(8): error C2065: 'CL_VERSION_2_1': undeclared identifier [C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\cmTC_1d79c.vcxproj]
+
+File C:/src/v1.6-opt/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.1/include/CL/cl.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef CL_VERSION_2_1
+  return ((int*)(&CL_VERSION_2_1))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the CL_VERSION_2_0 exist failed with the following output:
+Change Dir: C:/src/v1.6-opt/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_40c4f.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=15.0 /v:m 
+Microsoft (R) Build Engine version 15.9.21+g9802d43bc3 for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.16.27031.1 for x64
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  
+  cl /c /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include" /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Qspectre /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_40c4f.dir\Debug\\" /Fd"cmTC_40c4f.dir\Debug\vc141.pdb" /Gd /TC /errorReport:queue "C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\CheckSymbolExists.c"
+  CheckSymbolExists.c
+  
+C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\CheckSymbolExists.c(8): error C2065: 'CL_VERSION_2_0': undeclared identifier [C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\cmTC_40c4f.vcxproj]
+
+File C:/src/v1.6-opt/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.1/include/CL/cl.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef CL_VERSION_2_0
+  return ((int*)(&CL_VERSION_2_0))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the include file pthread.h exists failed with the following output:
+Change Dir: C:/src/v1.6-opt/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_5e628.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=15.0 /v:m 
+Microsoft (R) Build Engine version 15.9.21+g9802d43bc3 for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.16.27031.1 for x64
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Qspectre /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_5e628.dir\Debug\\" /Fd"cmTC_5e628.dir\Debug\vc141.pdb" /Gd /TC /errorReport:queue "C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\CheckIncludeFile.c"
+  CheckIncludeFile.c
+  
+C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\CheckIncludeFile.c(1): fatal error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\src\v1.6-opt\build\CMakeFiles\CMakeTmp\cmTC_5e628.vcxproj]
+
+
