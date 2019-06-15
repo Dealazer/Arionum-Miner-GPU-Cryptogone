@@ -20,7 +20,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{ECEC692C-07A1-3A0D-96FE-12E05E83EE69}</ProjectGuid>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <Keyword>Win32Proj</Keyword>
     <Platform>x64</Platform>
     <ProjectName>arionum-cuda-miner</ProjectName>
@@ -142,7 +142,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include;C:\src\v1.6-opt\mpir-3.0.0;C:\src\v1.6-opt\vcpkg\installed\x64-windows\include;C:\src\v1.6-opt\argon2\include;C:\src\v1.6-opt\argon2-gpu\ext\argon2\include;C:\src\v1.6-opt\argon2-gpu\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(AMDAPPSDKROOT)/include;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include;C:\src\v1.6-opt\mpir-3.0.0;C:\src\v1.6-opt\vcpkg\installed\x64-windows\include;C:\src\v1.6-opt\argon2\include;C:\src\v1.6-opt\argon2-gpu\ext\argon2\include;C:\src\v1.6-opt\argon2-gpu\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Release/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -190,7 +190,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>argon2-gpu\ext\argon2\Release\argon2.lib;mpir.lib;argon2-gpu\Release\argon2-cuda.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\lib\x64\cudart_static.lib;argon2-gpu\Release\argon2-gpu-common.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>OpenCL.lib;argon2-gpu\ext\argon2\Release\argon2.lib;mpir.lib;argon2-gpu\Release\argon2-cuda.lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\lib\x64\cudart_static.lib;argon2-gpu\Release\argon2-gpu-common.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:/src/v1.6-opt/mpir-3.0.0/lib/x64/Release;C:/src/v1.6-opt/mpir-3.0.0/lib/x64/Release/$(Configuration);C:/src/v1.6-opt/vcpkg/installed/x64-windows/lib;C:/src/v1.6-opt/vcpkg/installed/x64-windows/lib/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>false</GenerateDebugInformation>
