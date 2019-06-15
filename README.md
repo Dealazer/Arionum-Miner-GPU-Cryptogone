@@ -2,16 +2,16 @@
 # Arionum GPU Miner, Cryptogone Edition #
 GPU miner for [Arionum](https://www.arionum.com/)
 
+This is additional fork of cryptogone: https://bitbucket.org/cryptogone/arionum-gpu-miner/branch/v1.6-opt
 This is a fork of [Guli's GPU miner](https://bitbucket.org/guli13/arionum-gpu-miner/src), adding windows support and many performance & stability improvements.
 
 Please make sure you install latest Nvidia drivers if you use the CUDA miner !
 
-Miner takes 1% fees (everytime you find a share or block, there is 1 chance on 100 it will be taken as fees).
+Miner takes 0% fees (everytime you find a share or block, there is 0 chance on 100 it will be taken as fees).
 
 ## Prebuilt Binaries
-If you do not want to compile the project by yourself, you can find up to date ready to go binaries at this address :
+If you do not want to compile the project by yourself, you can find up to date ready to go binaries at this address:
 
-https://bitbucket.org/cryptogone/arionum-gpu-miner/downloads/
 
 ## Simple Ubuntu install config & run
 
@@ -172,17 +172,30 @@ First install the following:
 
 * Visual studio 2015 or 2017 (https://visualstudio.microsoft.com/fr/vs/community/)
 * For Visual Studio 2017 make sure to select `Windows 8.1 SDK` during installation
-* cuda sdk (https://developer.nvidia.com/cuda-downloads)
+* cuda sdk (https://developer.nvidia.com/cuda-downloads) 10.1!
+You should install cuda SDK on AMD version since it uses cuda OpenCL files in it's directory!
+300-400h/s increase as of AMD.
 * cmake (https://cmake.org/download/), make sure `cmake.exe` is in the system `PATH`
 * git for windows (https://git-scm.com/download/win)
+* OPENCL SDK AMD: (https://www.softpedia.com/get/Programming/SDK-DDK/ATI-Stream-SDK.shtml)
 
 Then open a git console and launch the following commands (if needed, replace `vs2015` by `vs2017`)
 
     git clone https://bitbucket.org/cryptogone/arionum-gpu-miner.git
     cd arionum-gpu-miner
-    ./setup_libs.sh vs2015
+    ./setup_libs.sh vs2017
     ./setup_submodules.sh
-    ./gen_prj.sh vs2015
+    After you run submodules: edit cmakelists.txt in argon2-gpu:
+    Make this line instead of the other below: 
+    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};
+    
+    -std=c++11;-O3;--ptxas-options=-v;-arch sm_30;-lineinfo;-maxrregcount=56
+    
+    The VS2017 build files are already in this repository but command to build new ones are this command: 
+    If you are not experienced with optimizing VS2017 you should't run this command:
+    As of VS2017, it runs OPENCL 1.2 of cuda and OpenCL 1.2 of AMD and which gives 400h/s better speed as combined files.
+    ./gen_prj.sh vs2017
+    
     ./make_release_win.sh
 
 Once done, binaries are put in the `rel/`folder.
@@ -190,6 +203,10 @@ Once done, binaries are put in the `rel/`folder.
 You can also skip the last step and instead open `build/arionum-gpu-miner.sln` with Visual Studio 2015 or 2017, then in the toolbar select `Release / x64` then `Build Menu -> Build Solution`.
 
 ## Versions release notes
+#### Version 1.5.1 Dealazer
+* cmakelists.txt in submodules to maxregcount 56 for cuda compute 1-2% better speed.
+* removal of fee
+* optimized build files for vs2017 with 1.2 and 1.2 of cuda and OpenCL SDK
 
 #### Version 1.5.1
 * show cuda / opencl version used for building in welcome msg
