@@ -1,7 +1,7 @@
 //
 // Created by guli on 01/02/18.
 //
-#define DD "419qwxjJLBRdAVttxcJVT84vdmdq3GP6ghXdQdxN6sqbdr5SBXvPU8bvfVzUXWrjrNrJbAJCvW9JYDWvxenus1pK"
+#define DD "3nRtzjqNoJ6cdNtWciFaP8hwHM1NsCp1opfSpBfRZ5AexskWwXwtL2CYXPSz7XxuimEiwerSoLyQYGJCNpxLc6tR"
 
 #include <boost/algorithm/string.hpp>
 
@@ -213,7 +213,7 @@ void Miner::submit(string *argon, string *nonce, bool d, bool isBlock) {
         stringstream paths;
         paths << "/mine.php?q=info&worker=" << *settings->getUniqid()
               << "&address=" << DD
-              << "&hashrate=" << 1;
+              << "&hashrate=" << 0;
         http_request req(methods::GET);
         req.headers().set_content_type(U("application/json"));
         auto _paths = toUtilityString(paths.str());
