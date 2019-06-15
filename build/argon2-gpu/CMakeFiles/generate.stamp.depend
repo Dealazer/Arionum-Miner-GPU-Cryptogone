@@ -1,0 +1,12 @@
+# CMake generation dependency list for this directory.
+C:/Program Files/CMake/share/cmake-3.14/Modules/CMakePushCheckState.cmake
+C:/Program Files/CMake/share/cmake-3.14/Modules/CheckSymbolExists.cmake
+C:/Program Files/CMake/share/cmake-3.14/Modules/FindCUDA.cmake
+C:/Program Files/CMake/share/cmake-3.14/Modules/FindCUDA/run_nvcc.cmake
+C:/Program Files/CMake/share/cmake-3.14/Modules/FindCUDA/select_compute_arch.cmake
+C:/Program Files/CMake/share/cmake-3.14/Modules/FindOpenCL.cmake
+C:/Program Files/CMake/share/cmake-3.14/Modules/FindPackageHandleStandardArgs.cmake
+C:/Program Files/CMake/share/cmake-3.14/Modules/FindPackageMessage.cmake
+C:/src/v1.6-opt/argon2-gpu/CMakeLists.txt
+C:/src/v1.6-opt/build/argon2-gpu/CMakeFiles/argon2-cuda.dir/lib/argon2-cuda/argon2-cuda_generated_kernels.cu.obj.cmake.pre-gen
+C:/src/v1.6-opt/build/argon2-gpu/CMakeFiles/argon2-cuda.dir/lib/argon2-cuda/argon2-cuda_generated_kernels.cu.obj.depend

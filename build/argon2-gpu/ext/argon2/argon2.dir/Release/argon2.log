@@ -1,0 +1,15 @@
+﻿  Building Custom Rule C:/src/v1.6-opt/argon2-gpu/ext/argon2/CMakeLists.txt
+  CMake does not need to re-run because C:/src/v1.6-opt/build/argon2-gpu/ext/argon2/CMakeFiles/generate.stamp is up-to-date.
+  argon2.c
+  core.c
+  encoding.c
+  genkat.c
+  impl-select.c
+  thread.c
+  blake2.c
+  argon2-arch.c
+     Creating library C:/src/v1.6-opt/build/argon2-gpu/ext/argon2/Release/argon2.lib and object C:/src/v1.6-opt/build/argon2-gpu/ext/argon2/Release/argon2.exp
+  Generating code
+  All 90 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  argon2.vcxproj -> C:\src\v1.6-opt\build\argon2-gpu\ext\argon2\Release\argon2.dll
