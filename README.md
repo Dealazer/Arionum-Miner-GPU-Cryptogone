@@ -181,7 +181,7 @@ You should install cuda SDK on AMD version since it uses cuda OpenCL files in it
 
 Then open a git console and launch the following commands (if needed, replace `vs2015` by `vs2017`)
 
-    git clone https://bitbucket.org/cryptogone/arionum-gpu-miner.git
+    git clone https://github.com/Dealazer/Arionum-Miner-GPU-Cryptogone.git
     cd arionum-gpu-miner
     ./setup_libs.sh vs2017
     ./setup_submodules.sh
