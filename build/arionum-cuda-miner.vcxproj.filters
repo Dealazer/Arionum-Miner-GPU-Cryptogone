@@ -1,102 +1,102 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\src\v1.6-opt\src\common\updater.cpp">
+    <ClCompile Include="C:\src\v1.6-beta\src\common\updater.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\src\common\stats.cpp">
+    <ClCompile Include="C:\src\v1.6-beta\src\common\stats.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\src\common\minerdata.cpp">
+    <ClCompile Include="C:\src\v1.6-beta\src\common\minerdata.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\src\common\minersettings.cpp">
+    <ClCompile Include="C:\src\v1.6-beta\src\common\minersettings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\src\common\miner.cpp">
+    <ClCompile Include="C:\src\v1.6-beta\src\common\miner.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\src\common\timer.cpp">
+    <ClCompile Include="C:\src\v1.6-beta\src\common\timer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\src\common\win_tools.cpp">
+    <ClCompile Include="C:\src\v1.6-beta\src\common\win_tools.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\src\common\testMode.cpp">
+    <ClCompile Include="C:\src\v1.6-beta\src\common\testMode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\argon2\src\opt.c">
+    <ClCompile Include="C:\src\v1.6-beta\argon2\src\opt.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\argon2\src\argon2.c">
+    <ClCompile Include="C:\src\v1.6-beta\argon2\src\argon2.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\argon2\src\core.c">
+    <ClCompile Include="C:\src\v1.6-beta\argon2\src\core.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\argon2\src\encoding.c">
+    <ClCompile Include="C:\src\v1.6-beta\argon2\src\encoding.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\argon2\src\thread.c">
+    <ClCompile Include="C:\src\v1.6-beta\argon2\src\thread.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\argon2\src\blake2\blake2b.c">
+    <ClCompile Include="C:\src\v1.6-beta\argon2\src\blake2\blake2b.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\src\common\cudaminer.cpp">
+    <ClCompile Include="C:\src\v1.6-beta\src\common\cudaminer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\src\v1.6-opt\src\arionum-cuda-miner\main.cpp">
+    <ClCompile Include="C:\src\v1.6-beta\src\arionum-cuda-miner\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="C:\src\v1.6-opt\include\miner_version.h">
+    <ClInclude Include="C:\src\v1.6-beta\include\miner_version.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\include\updater.h">
+    <ClInclude Include="C:\src\v1.6-beta\include\updater.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\include\stats.h">
+    <ClInclude Include="C:\src\v1.6-beta\include\stats.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\include\minerdata.h">
+    <ClInclude Include="C:\src\v1.6-beta\include\minerdata.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\include\minersettings.h">
+    <ClInclude Include="C:\src\v1.6-beta\include\minersettings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\include\miner.h">
+    <ClInclude Include="C:\src\v1.6-beta\include\miner.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\include\main_common.h">
+    <ClInclude Include="C:\src\v1.6-beta\include\main_common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\include\timer.h">
+    <ClInclude Include="C:\src\v1.6-beta\include\timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\argon2\include\argon2.h">
+    <ClInclude Include="C:\src\v1.6-beta\argon2\include\argon2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\argon2\src\encoding.h">
+    <ClInclude Include="C:\src\v1.6-beta\argon2\src\encoding.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\argon2\src\thread.h">
+    <ClInclude Include="C:\src\v1.6-beta\argon2\src\thread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\src\v1.6-opt\include\cudaminer.h">
+    <ClInclude Include="C:\src\v1.6-beta\include\cudaminer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\src\v1.6-opt\CMakeLists.txt" />
+    <CustomBuild Include="C:\src\v1.6-beta\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
-      <UniqueIdentifier>{265E051E-A504-3AF0-9E59-2A1C16E49D82}</UniqueIdentifier>
+      <UniqueIdentifier>{D301545D-E771-3ACC-8F29-6C89F640C436}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{642AC17C-3C44-3958-85D5-B460A0153BBB}</UniqueIdentifier>
+      <UniqueIdentifier>{C6B35797-0DD8-33A4-A56D-904043297F17}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
