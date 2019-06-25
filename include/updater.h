@@ -20,7 +20,7 @@ using namespace web::http::client;
 std::string toString(const utility::string_t &s);
 utility::string_t toUtilityString(const std::string &s);
 
-const int POOL_UPDATE_RATE_SECONDS = 5;
+const int POOL_UPDATE_RATE_SECONDS = 3;
 
 class Updater {
 
