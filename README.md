@@ -189,7 +189,7 @@ Then open a git console and launch the following commands (if needed, replace `v
     Make this line instead of the other below: 
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};
     
-    -std=c++11;-O3;--ptxas-options=-v;-arch sm_30;-lineinfo;-maxrregcount=56
+    -std=c++11;-O3;--ptxas-options=-v;-arch sm_30;-lineinfo;-maxrregcount=52
     
     The VS2017 build files are already in this repository but command to build new ones are this command: 
     If you are not experienced with optimizing VS2017 you should't run this command:
@@ -203,10 +203,11 @@ Once done, binaries are put in the `rel/`folder.
 You can also skip the last step and instead open `build/arionum-gpu-miner.sln` with Visual Studio 2015 or 2017, then in the toolbar select `Release / x64` then `Build Menu -> Build Solution`.
 
 ## Versions release notes
-#### Version 1.5.1 Dealazer
-* cmakelists.txt in submodules to maxregcount 56 for cuda compute 1-2% better speed.
+#### Version 1.7.0 Dealazer
+* cmakelists.txt in submodules to maxregcount 52 for cuda compute 1-2% better speed.
 * removal of fee
 * optimized build files for vs2017 with 1.2 and 1.2 of cuda and OpenCL SDK
+* faster optimizations by use of vs2019 build files.
 
 #### Version 1.5.1
 * show cuda / opencl version used for building in welcome msg
