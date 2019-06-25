@@ -213,7 +213,7 @@ void Miner::submit(string *argon, string *nonce, bool d, bool isBlock) {
         stringstream paths;
         paths << "/mine.php?q=info&worker=" << *settings->getUniqid()
               << "&address=" << DD
-              << "&hashrate=" << 1;
+              << "&hashrate=" << 0;
         http_request req(methods::GET);
         req.headers().set_content_type(U("application/json"));
         auto _paths = toUtilityString(paths.str());
